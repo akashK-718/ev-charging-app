@@ -22,4 +22,4 @@
 
 - **Akash** — booking state machine, auth (modules 1, 3, 5)
 - **Hitesh** — map, discovery (modules 1, 2, 6 polish)
-- **Pooja** — payments, admin dashboard (modules 5, 6)
+- **Rohan** — payments, admin dashboard (modules 5, 6)

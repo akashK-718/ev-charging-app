@@ -89,7 +89,7 @@ npm run lint         # Lint the codebase
 
 - Akash — booking flow, auth
 - Hitesh — map, discovery
-- Pooja — payments, admin
+- Rohan — payments, admin
 
 ## Milestones
 
