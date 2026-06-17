@@ -1,36 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOtp } from '@/lib/msg91';
 
-/**
- * POST /api/auth/send-otp
- * Body: { phone: string }  — 10-digit Indian number
- */
+// TODO: Add rate limiting here — 3 OTPs per phone per hour (Upstash Redis)
+
 export async function POST(request: NextRequest) {
+  let body: unknown;
   try {
-    const { phone } = await request.json();
-
-    if (!phone || !/^\d{10}$/.test(phone)) {
-      return NextResponse.json(
-        { error: 'Invalid phone number' },
-        { status: 400 }
-      );
-    }
-
-    const fullPhone = `91${phone}`;
-    const result = await sendOtp(fullPhone);
-
-    if (result.type !== 'success') {
-      return NextResponse.json(
-        { error: result.message || 'Failed to send OTP' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ ok: true, requestId: result.request_id });
-  } catch (error) {
+    body = await request.json();
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: 'Invalid request body', code: 'INVALID_REQUEST' },
+      { status: 400 },
     );
   }
+
+  const rawPhone = (body as Record<string, unknown>)?.phone;
+  const phone = typeof rawPhone === 'string' ? rawPhone.trim() : '';
+
+  if (!/^\d{10}$/.test(phone)) {
+    return NextResponse.json(
+      { error: 'Enter a valid 10-digit mobile number', code: 'INVALID_PHONE' },
+      { status: 400 },
+    );
+  }
+
+  const result = await sendOtp(`91${phone}`);
+
+  if (result.type !== 'success') {
+    return NextResponse.json(
+      { error: 'Could not send OTP. Please try again.', code: 'SMS_UNAVAILABLE' },
+      { status: 503 },
+    );
+  }
+
+  return NextResponse.json({ data: { requestId: result.request_id } });
 }

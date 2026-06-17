@@ -28,18 +28,12 @@ export default function HomePage() {
           book a slot, charge, and pay — all in one app.
         </p>
 
-        <div className="mt-10 space-y-3">
+        <div className="mt-10">
           <Link
-            href="/chargers"
+            href="/login"
             className="block w-full bg-volt text-ink font-display font-bold text-center py-4 rounded-2xl"
           >
-            Find a charger near me
-          </Link>
-          <Link
-            href="/lender/dashboard"
-            className="block w-full bg-volt-soft text-volt-deep font-display font-bold text-center py-4 rounded-2xl"
-          >
-            I have a charger to share
+            Get started
           </Link>
         </div>
       </section>

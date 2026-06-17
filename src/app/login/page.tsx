@@ -22,7 +22,8 @@ export default function LoginPage() {
         body: JSON.stringify({ phone })
       });
 
-      if (!res.ok) throw new Error('Failed to send OTP');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send OTP');
 
       router.push(`/verify-otp?phone=${encodeURIComponent(phone)}`);
     } catch (err) {

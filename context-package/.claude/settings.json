@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "projectName": "EV Charging Marketplace",
+  "description": "P2P marketplace for home EV chargers — Airbnb model. India, Delhi NCR. Next.js + TypeScript + Supabase + Razorpay.",
+  "contextFiles": [
+    "CLAUDE.md",
+    "docs/TECH_STACK.md",
+    "docs/DATABASE_SCHEMA.md",
+    "docs/ROADMAP.md",
+    "docs/CODING_CONVENTIONS.md",
+    "docs/API_DESIGN.md",
+    "docs/USER_FLOWS.md",
+    "docs/BUSINESS_RULES.md",
+    "docs/CURRENT_STATUS.md",
+    "docs/TEAM_AND_PROCESS.md"
+  ],
+  "conventions": {
+    "language": "TypeScript",
+    "framework": "Next.js 14 (App Router)",
+    "styling": "Tailwind CSS",
+    "database": "Supabase (PostgreSQL + PostGIS)",
+    "moneyHandling": "Always integers in paise (rupees × 100). Never floats. Use rupeesToPaise/paiseToRupees/formatINR helpers.",
+    "componentStyle": "Function components only. Named exports. Server components by default; client components only when needed.",
+    "fileNaming": {
+      "components": "PascalCase.tsx",
+      "hooks": "useCamelCase.ts",
+      "pages": "page.tsx (Next.js convention)",
+      "apiRoutes": "route.ts (Next.js convention)",
+      "utilities": "camelCase.ts"
+    },
+    "pathAlias": "@/* maps to src/*"
+  },
+  "forbidden": [
+    "any type without explanatory comment",
+    "floats for money values",
+    "direct commits to main branch",
+    "committing .env.local or secrets",
+    "class components (use functions + hooks)",
+    "polling with setInterval (use Supabase realtime)",
+    "trusting frontend for payment confirmation (always verify webhook server-side)",
+    "React Native or Flutter (use Next.js + Capacitor)",
+    "Firebase as database (wrong shape for marketplace)",
+    "Stripe (use Razorpay for India)",
+    "Twilio for OTP (use MSG91, 5x cheaper)"
+  ],
+  "currentModule": "Module 1 — Foundation (Weeks 1-2)",
+  "stage": "Pre-launch, foundation scaffolded, team onboarding"
+}

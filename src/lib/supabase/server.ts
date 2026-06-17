@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import type { Database } from './types';
 
@@ -20,10 +21,10 @@ export function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }>) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])
             );
           } catch {
             // Called from a server component — middleware handles cookie refresh.
@@ -31,5 +32,16 @@ export function createClient() {
         }
       }
     }
+  );
+}
+
+/**
+ * Service-role Supabase client for server-side operations.
+ * Bypasses RLS — use only in API routes, never expose to the browser.
+ */
+export function createAdminClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 }

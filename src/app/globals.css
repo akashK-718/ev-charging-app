@@ -7,12 +7,9 @@
   --foreground: #0c1611;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0c1611;
-    --foreground: #ffffff;
-  }
-}
+/* Dark mode is intentionally disabled for MVP.
+   The app ships in light mode only.
+   Tracked for Module 6+ polish: https://github.com/akashK-718/ev-charging-app/issues (open "Implement proper dark mode") */
 
 body {
   color: var(--foreground);
