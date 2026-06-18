@@ -80,6 +80,16 @@ Update this file whenever a significant milestone changes status. Treat it as th
 - [ ] **Supabase account + project** — needed for Module 1 auth and DB. **Akash should do this first.**
 - [ ] **MSG91 account + DLT registration** — needed for OTP. Start ASAP, takes 1-2 days for DLT.
 - [ ] **Vercel account + project link** — needed for auto-deploy. Easy, 10 minutes.
+
+### MSG91 / OTP
+- [x] Auth flow code implemented end-to-end
+- [x] Demo OTP (000000) works in development
+- [x] Demo bypass restricted to development only (NODE_ENV === 'development' && no MSG91_AUTH_KEY)
+- [ ] MSG91 account created
+- [ ] DLT registration submitted (1-2 day wait)
+- [ ] Template registration submitted (1-2 day wait post-DLT)
+- [ ] Production keys added to Vercel env
+- [ ] Real SMS verified delivering to phones
 - [ ] **Cloudinary account** — needed for photo upload (Module 1 step 3). Easy, 5 minutes.
 - [ ] **Razorpay account + KYC** — needed for Module 5 payments. Start now — Razorpay KYC takes 2-5 business days.
 - [ ] **Firebase account** — needed for Module 6 push. Wait, not urgent.
