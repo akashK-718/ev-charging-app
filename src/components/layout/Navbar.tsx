@@ -116,20 +116,20 @@ export function Navbar() {
       <header className="h-14 border-b border-gray-100 bg-white sticky top-0 z-40">
         {/* ── Mobile layout ─────────────────────────────────────────── */}
         <div className="flex items-center justify-between h-full px-4 md:hidden">
+          {/* Spacer balances the hamburger so logo stays centered */}
+          <div className="w-9" aria-hidden="true" />
+
+          <Logo href={homeHref} />
+
           <button
             onClick={() => setDrawerOpen(true)}
-            className="p-2 -ml-2 rounded-xl hover:bg-volt-soft transition-colors"
+            className="p-2 -mr-2 rounded-xl hover:bg-volt-soft transition-colors"
             aria-label="Open navigation"
             aria-expanded={drawerOpen}
             aria-controls="nav-drawer"
           >
             <Menu className="w-5 h-5 text-ink" />
           </button>
-
-          <Logo href={homeHref} />
-
-          {/* Spacer balances the hamburger so logo stays centered */}
-          <div className="w-9" aria-hidden="true" />
         </div>
 
         {/* ── Desktop layout ────────────────────────────────────────── */}
@@ -174,10 +174,10 @@ export function Navbar() {
         aria-modal="true"
         aria-label="Navigation"
         className={cn(
-          'fixed inset-y-0 left-0 w-4/5 max-w-xs bg-white z-50 md:hidden',
+          'fixed inset-y-0 right-0 w-4/5 max-w-xs bg-white z-50 md:hidden',
           'flex flex-col shadow-2xl',
           'transition-transform duration-200 ease-out',
-          drawerOpen ? 'translate-x-0' : '-translate-x-full',
+          drawerOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >
         {/* Drawer header */}
