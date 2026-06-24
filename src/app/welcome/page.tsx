@@ -53,7 +53,7 @@ export default function WelcomePage() {
         return;
       }
       if (selected === 'lender' || selected === 'both') {
-        router.push('/lender/dashboard');
+        router.push('/lender/chargers/new');
       } else {
         router.push('/chargers');
       }
