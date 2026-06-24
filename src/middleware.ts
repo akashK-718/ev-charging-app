@@ -43,9 +43,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect logged-in users away from auth screens
-  if ((pathname === '/login' || pathname === '/verify-otp') && user) {
-    return NextResponse.redirect(new URL('/', request.url));
+  // Redirect logged-in users away from auth screens and landing page
+  if ((pathname === '/login' || pathname === '/verify-otp' || pathname === '/') && user) {
+    return NextResponse.redirect(new URL('/chargers', request.url));
   }
 
   return supabaseResponse;

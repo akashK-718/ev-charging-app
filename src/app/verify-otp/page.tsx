@@ -1,11 +1,39 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 const OTP_LENGTH = 6;
+const INITIAL_COOLDOWN = 30;
+const RESEND_COOLDOWN = 60;
+
+function useCountdown(initial: number) {
+  const [seconds, setSeconds] = useState(initial);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const start = useCallback((from: number) => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setSeconds(from);
+    intervalRef.current = setInterval(() => {
+      setSeconds((s) => {
+        if (s <= 1) {
+          clearInterval(intervalRef.current!);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+  }, []);
+
+  useEffect(() => {
+    start(initial);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [initial, start]);
+
+  return { seconds, restart: start };
+}
 
 function VerifyOtpContent() {
   const router = useRouter();
@@ -15,6 +43,11 @@ function VerifyOtpContent() {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const { seconds, restart } = useCountdown(INITIAL_COOLDOWN);
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const otp = digits.join('');
@@ -59,6 +92,39 @@ function VerifyOtpContent() {
     }
   }
 
+  async function handleResend() {
+    if (seconds > 0 || resendState === 'sending') return;
+    setResendState('sending');
+    setResendMessage(null);
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (res.status === 429) {
+        setResendMessage(data.error ?? 'Too many requests. Please wait before trying again.');
+        setResendState('idle');
+        return;
+      }
+      if (!res.ok) {
+        setResendMessage("Couldn't send code. Please try again.");
+        setResendState('idle');
+        return;
+      }
+      setResendState('sent');
+      setResendMessage(`Code resent to +91 ${phone}`);
+      setDigits(Array(OTP_LENGTH).fill(''));
+      inputRefs.current[0]?.focus();
+      restart(RESEND_COOLDOWN);
+      setTimeout(() => setResendState('idle'), 3000);
+    } catch {
+      setResendMessage("Couldn't send code. Please try again.");
+      setResendState('idle');
+    }
+  }
+
   function handleChange(index: number, value: string) {
     const digit = value.replace(/\D/g, '').slice(-1);
     const next = [...digits];
@@ -88,16 +154,19 @@ function VerifyOtpContent() {
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
     if (!pasted) return;
     const next = Array(OTP_LENGTH).fill('');
-    pasted.split('').forEach((d, i) => {
-      next[i] = d;
-    });
+    pasted.split('').forEach((d, i) => { next[i] = d; });
     setDigits(next);
     const lastIdx = Math.min(pasted.length, OTP_LENGTH) - 1;
     inputRefs.current[lastIdx]?.focus();
-    if (pasted.length === OTP_LENGTH) {
-      submit(pasted);
-    }
+    if (pasted.length === OTP_LENGTH) submit(pasted);
   }
+
+  const resendLabel =
+    resendState === 'sending' ? 'Sending…' :
+    seconds > 0 ? `Resend in ${seconds}s` :
+    'Resend code';
+
+  const resendDisabled = seconds > 0 || resendState === 'sending';
 
   return (
     <main className="min-h-screen flex flex-col px-6 py-12">
@@ -111,19 +180,20 @@ function VerifyOtpContent() {
       <h1 className="font-display font-extrabold text-3xl text-ink">Enter the code</h1>
       <p className="mt-2 text-muted">
         We sent a 6-digit code to{' '}
-        <span className="font-semibold text-volt-deep">+91 {phone}</span>.
+        <span className="font-semibold text-volt-deep">+91 {phone}</span>.{' '}
+        <button
+          onClick={() => router.push('/login')}
+          className="text-ink underline hover:text-volt-deep transition-colors"
+        >
+          Edit
+        </button>
       </p>
 
-      <div
-        className="mt-10 flex gap-3"
-        onPaste={handlePaste}
-      >
+      <div className="mt-10 flex gap-3" onPaste={handlePaste}>
         {digits.map((digit, i) => (
           <input
             key={i}
-            ref={(el) => {
-              inputRefs.current[i] = el;
-            }}
+            ref={(el) => { inputRefs.current[i] = el; }}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
@@ -156,15 +226,32 @@ function VerifyOtpContent() {
         </Button>
       </div>
 
-      <p className="mt-6 text-center text-muted text-sm">
-        Didn't receive a code?{' '}
-        <button
-          onClick={() => router.push('/login')}
-          className="text-ink font-semibold underline"
-        >
-          Try again
-        </button>
-      </p>
+      <div className="mt-6 text-center">
+        <p className="text-muted text-sm">
+          Didn't receive a code?{' '}
+          <button
+            onClick={handleResend}
+            disabled={resendDisabled}
+            className={cn(
+              'font-semibold transition-colors',
+              resendDisabled
+                ? 'text-muted cursor-default'
+                : 'text-ink underline hover:text-volt-deep',
+            )}
+          >
+            {resendLabel}
+          </button>
+        </p>
+
+        {resendMessage && (
+          <p className={cn(
+            'mt-2 text-sm',
+            resendState === 'sent' ? 'text-volt-deep' : 'text-red-600',
+          )}>
+            {resendMessage}
+          </p>
+        )}
+      </div>
     </main>
   );
 }
