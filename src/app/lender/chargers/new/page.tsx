@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button';
 import type { NewChargerDraft } from '@/types/charger-draft';
 import { StepBasics } from './steps/StepBasics';
 import { StepPricing } from './steps/StepPricing';
+import { StepLocation } from './steps/StepLocation';
+import { StepPhotos } from './steps/StepPhotos';
 import { StepStub } from './steps/StepStub';
 
 const DRAFT_KEY = 'lender:new-charger:draft';
@@ -48,7 +50,7 @@ export default function NewChargerPage() {
     setDraft(prev => ({ ...prev, ...updates }));
   }
 
-  const isActiveStep = step <= 2;
+  const isActiveStep = step <= 4;
   const isLastStep = step === TOTAL_STEPS;
 
   return (
@@ -77,7 +79,13 @@ export default function NewChargerPage() {
         {step === 2 && (
           <StepPricing draft={draft} onChange={updateDraft} onValidChange={setStepValid} />
         )}
-        {step >= 3 && <StepStub stepName={STEP_LABELS[step]} />}
+        {step === 3 && (
+          <StepLocation draft={draft} onChange={updateDraft} onValidChange={setStepValid} />
+        )}
+        {step === 4 && (
+          <StepPhotos draft={draft} onChange={updateDraft} onValidChange={setStepValid} />
+        )}
+        {step >= 5 && <StepStub stepName={STEP_LABELS[step]} />}
       </div>
 
       {/* Navigation */}

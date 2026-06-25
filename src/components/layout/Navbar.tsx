@@ -115,7 +115,7 @@ export function Navbar() {
     <>
       <header className="h-14 border-b border-gray-100 bg-white sticky top-0 z-40">
         {/* ── Mobile layout ─────────────────────────────────────────── */}
-        <div className="flex items-center justify-between h-full px-4 md:hidden">
+        <div className="flex items-center justify-between h-full px-4 lg:hidden">
           {/* Spacer balances the hamburger so logo stays centered */}
           <div className="w-9" aria-hidden="true" />
 
@@ -133,7 +133,7 @@ export function Navbar() {
         </div>
 
         {/* ── Desktop layout ────────────────────────────────────────── */}
-        <div className="hidden md:flex items-center h-full px-6 gap-6">
+        <div className="hidden lg:flex items-center h-full px-6 gap-6">
           <Logo href={homeHref} />
 
           {isBoth && (
@@ -159,7 +159,7 @@ export function Navbar() {
       {/* ── Mobile drawer backdrop ────────────────────────────────────── */}
       <div
         className={cn(
-          'fixed inset-0 bg-black/40 z-50 md:hidden transition-opacity duration-200',
+          'fixed inset-0 bg-black/40 z-50 lg:hidden transition-opacity duration-200',
           drawerOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
         )}
         aria-hidden="true"
@@ -174,7 +174,7 @@ export function Navbar() {
         aria-modal="true"
         aria-label="Navigation"
         className={cn(
-          'fixed inset-y-0 right-0 w-4/5 max-w-xs bg-white z-50 md:hidden',
+          'fixed inset-y-0 right-0 w-4/5 max-w-xs bg-white z-50 lg:hidden',
           'flex flex-col shadow-2xl',
           'transition-transform duration-200 ease-out',
           drawerOpen ? 'translate-x-0' : 'translate-x-full',
