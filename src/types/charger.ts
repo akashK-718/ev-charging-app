@@ -9,7 +9,7 @@ export interface Charger {
   lenderId: string;
   title: string;
   chargerType: ChargerType;
-  connectorType: ConnectorType;
+  connectorTypes: ConnectorType[];
   pricePerKwh: number;
   address: string;
   latitude: number;
