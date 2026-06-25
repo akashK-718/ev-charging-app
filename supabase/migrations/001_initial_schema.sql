@@ -1,5 +1,6 @@
 -- Migration: 001_initial_schema
 -- Run this in Supabase SQL Editor (Database → SQL Editor → New query)
+-- Safe to re-run — all statements use IF NOT EXISTS.
 
 -- Enable required extensions
 create extension if not exists "uuid-ossp";
@@ -7,7 +8,7 @@ create extension if not exists "uuid-ossp";
 -- ============================================
 -- USERS
 -- ============================================
-create table public.users (
+create table if not exists public.users (
   id uuid primary key default uuid_generate_v4(),
   phone varchar(15) unique not null,
   name varchar(100),
@@ -24,7 +25,7 @@ create table public.users (
 -- ============================================
 -- CHARGERS
 -- ============================================
-create table public.chargers (
+create table if not exists public.chargers (
   id uuid primary key default uuid_generate_v4(),
   lender_id uuid not null references public.users(id) on delete cascade,
   title varchar(120) not null,
@@ -43,13 +44,13 @@ create table public.chargers (
   updated_at timestamptz not null default now()
 );
 
-create index idx_chargers_lender on public.chargers(lender_id);
-create index idx_chargers_status on public.chargers(status);
+create index if not exists idx_chargers_lender on public.chargers(lender_id);
+create index if not exists idx_chargers_status on public.chargers(status);
 
 -- ============================================
 -- BOOKINGS
 -- ============================================
-create table public.bookings (
+create table if not exists public.bookings (
   id uuid primary key default uuid_generate_v4(),
   charger_id uuid not null references public.chargers(id),
   driver_id uuid not null references public.users(id),
@@ -68,14 +69,14 @@ create table public.bookings (
   updated_at timestamptz not null default now()
 );
 
-create index idx_bookings_charger_slot on public.bookings(charger_id, scheduled_start);
-create index idx_bookings_driver on public.bookings(driver_id);
-create index idx_bookings_lender_status on public.bookings(lender_id, status);
+create index if not exists idx_bookings_charger_slot on public.bookings(charger_id, scheduled_start);
+create index if not exists idx_bookings_driver on public.bookings(driver_id);
+create index if not exists idx_bookings_lender_status on public.bookings(lender_id, status);
 
 -- ============================================
 -- PAYMENTS
 -- ============================================
-create table public.payments (
+create table if not exists public.payments (
   id uuid primary key default uuid_generate_v4(),
   booking_id uuid not null unique references public.bookings(id) on delete cascade,
   razorpay_order_id text,
@@ -93,5 +94,5 @@ create table public.payments (
   updated_at timestamptz not null default now()
 );
 
-create index idx_payments_razorpay_order on public.payments(razorpay_order_id);
-create index idx_payments_payout on public.payments(status, payout_released_at);
+create index if not exists idx_payments_razorpay_order on public.payments(razorpay_order_id);
+create index if not exists idx_payments_payout on public.payments(status, payout_released_at);
