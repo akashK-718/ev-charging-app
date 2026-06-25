@@ -47,7 +47,7 @@ A physical EV charger that a lender has listed for sharing.
 | `lender_id` | uuid FK → users.id | ON DELETE CASCADE |
 | `title` | varchar(120) | User-facing label |
 | `charger_type` | text CHECK | `'AC_3.3kW' \| 'AC_7kW' \| 'AC_22kW' \| 'DC_fast'` |
-| `connector_type` | text CHECK | `'Type2' \| 'BharatAC' \| 'CCS2' \| 'CHAdeMO' \| 'Type1'` |
+| `connector_types` | text[] CHECK | Array of connector types; min 1 required. Valid values: `'Type2' \| 'BharatAC' \| 'CCS2' \| 'CHAdeMO' \| 'Type1'` |
 | `price_per_kwh` | numeric(6,2) | INR (this one is rupees, lender-facing input) |
 | `address` | text | Human-readable |
 | `latitude`, `longitude` | numeric(10,7) | Raw coords |
@@ -261,7 +261,7 @@ SELECT
 FROM chargers c
 WHERE 
   c.status = 'active'
-  AND c.connector_type = ANY($connectors)  -- optional filter
+  AND c.connector_types && $connectors::text[]  -- optional filter (overlap: charger supports at least one requested type)
   AND ST_DWithin(
     c.location,
     ST_MakePoint($lng, $lat)::geography,

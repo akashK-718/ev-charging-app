@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     .eq('status', 'active');
 
   if (connector) {
-    query = query.eq('connector_type', connector);
+    query = query.contains('connector_types', [connector]);
   }
 
   const { data, error } = await query;
