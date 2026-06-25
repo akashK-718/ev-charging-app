@@ -41,7 +41,7 @@ export type Database = {
           lender_id: string;
           title: string;
           charger_type: 'AC_3.3kW' | 'AC_7kW' | 'AC_22kW' | 'DC_fast';
-          connector_type: 'Type2' | 'BharatAC' | 'CCS2' | 'CHAdeMO' | 'Type1';
+          connector_types: ('Type2' | 'BharatAC' | 'CCS2' | 'CHAdeMO' | 'Type1')[];
           price_per_kwh: number;
           address: string;
           latitude: number;
@@ -60,7 +60,7 @@ export type Database = {
           lender_id: string;
           title: string;
           charger_type: 'AC_3.3kW' | 'AC_7kW' | 'AC_22kW' | 'DC_fast';
-          connector_type: 'Type2' | 'BharatAC' | 'CCS2' | 'CHAdeMO' | 'Type1';
+          connector_types: ('Type2' | 'BharatAC' | 'CCS2' | 'CHAdeMO' | 'Type1')[];
           price_per_kwh: number;
           address: string;
           latitude: number;
