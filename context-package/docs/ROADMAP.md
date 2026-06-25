@@ -154,7 +154,12 @@ Most teams skip this. Most teams regret it. Real usage reveals what testing in i
 - Auto-pause chargers below 3.5 avg after 10+ reviews
 - Lender earnings dashboard (`/lender/dashboard`)
 - Pending payout visibility for lenders
-- Lightweight KYC for lenders: phone verified + Razorpay contact/fund account setup
+- Lender KYC via commercial API (IDfy, HyperVerge, or Signzy — decided at module start)
+  - Aadhaar OTP verification
+  - PAN collection
+  - Selfie + face match
+  - Bank account / UPI ID for payouts
+  - See `docs/KYC_STRATEGY.md` for full details
 - DB audit trail on bookings and payments
 - Circuit breaker around Razorpay and MSG91 calls
 
@@ -235,6 +240,7 @@ After v1.0:
 
 - **Month 4-5:** Capacitor iOS wrap → App Store submission
 - **Month 5-6:** City 2 expansion (only after City 1 hits 500+ sessions/month consistently)
+- **Month 6-8:** DigiLocker Requestor accreditation + migration from commercial KYC API
 - **Month 6+:** Smart charger IoT integration (OCPP protocol)
 - **Month 6+:** B2B / fleet accounts with monthly billing
 - **Month 6+:** SaaS subscriptions for high-volume lenders

@@ -65,6 +65,7 @@ These are non-negotiable and should not be reconsidered without explicit team ap
 7. **No iOS App Store in v1.** Deferred to v1.1 (Apple's review adds 2 weeks).
 8. **Manual kWh entry for MVP.** No IoT/smart charger integration until proven product-market fit.
 9. **One city at a time.** Delhi NCR first. No expansion to City 2 until City 1 hits 500+ sessions/month.
+10. **Lender KYC is mandatory before listing chargers.** No charger can be created without verified lender identity (Aadhaar + PAN + bank/UPI). Implementation in Module 5 via commercial KYC API; migration to DigiLocker direct in Module 8+. Drivers do NOT need KYC. See `docs/KYC_STRATEGY.md`.
 
 ## Forbidden patterns
 
