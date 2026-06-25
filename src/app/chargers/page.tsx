@@ -1,20 +1,30 @@
 import { createClient } from '@/lib/supabase/server';
+import { ChargerListView } from '@/components/chargers/ChargerListView';
 
-/**
- * /chargers — list/map view of nearby chargers.
- * TODO (Milestone 2): integrate Leaflet map, geo query, filters.
- */
 export default async function ChargersPage() {
   const supabase = createClient();
-  // Placeholder: fetch all active chargers for now.
-  // const { data } = await supabase.from('chargers').select('*').eq('status', 'active');
+  const { data: chargers, error } = await supabase
+    .from('chargers')
+    .select('*')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
 
   return (
-    <main className="min-h-screen px-6 py-12">
-      <h1 className="font-display font-extrabold text-3xl">Chargers nearby</h1>
-      <p className="mt-2 text-muted">
-        Map and list view coming in Milestone 2.
-      </p>
+    <main className="min-h-screen px-4 sm:px-6 py-8 max-w-5xl mx-auto">
+      <div className="mb-6">
+        <h1 className="font-display font-extrabold text-2xl text-ink">Find a charger</h1>
+        <p className="text-sm text-muted mt-1">
+          {error
+            ? 'Could not load chargers right now.'
+            : `${chargers?.length ?? 0} charger${chargers?.length === 1 ? '' : 's'} available`}
+        </p>
+      </div>
+
+      {error ? (
+        <p className="text-sm text-red-500">Something went wrong. Please try again later.</p>
+      ) : (
+        <ChargerListView chargers={chargers ?? []} />
+      )}
     </main>
   );
 }

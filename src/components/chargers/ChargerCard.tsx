@@ -1,55 +1,71 @@
 import Link from 'next/link';
-import { MapPin, Star, Zap } from 'lucide-react';
-import { formatINR } from '@/lib/utils';
-import type { ChargerWithDistance } from '@/types';
+import { Star, Zap } from 'lucide-react';
+import type { Database } from '@/lib/supabase/types';
 
-interface ChargerCardProps {
-  charger: ChargerWithDistance;
-}
+export type ChargerRow = Database['public']['Tables']['chargers']['Row'];
 
-export function ChargerCard({ charger }: ChargerCardProps) {
-  const distanceKm = (charger.distanceMeters / 1000).toFixed(1);
+const CHARGER_TYPE_LABEL: Record<string, string> = {
+  'AC_3.3kW': '3.3 kW · AC',
+  'AC_7kW': '7 kW · AC',
+  'AC_22kW': '22 kW · AC',
+  'DC_fast': 'DC Fast',
+};
+
+export function ChargerCard({ charger }: { charger: ChargerRow }) {
+  const cover = charger.photos?.[0];
+  const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
 
   return (
-    <Link
-      href={`/chargers/${charger.id}`}
-      className="block p-4 bg-white border border-gray-100 rounded-2xl hover:shadow-md transition-shadow"
-    >
-      <div className="flex gap-3">
-        <div className="w-16 h-16 rounded-xl bg-volt-soft grid place-items-center flex-shrink-0 relative">
-          <Zap className="w-7 h-7 text-volt-deep" />
-          <span
-            className={`absolute top-1 right-1 w-2 h-2 rounded-full ${
-              charger.isAvailable ? 'bg-volt' : 'bg-gray-300'
-            }`}
-          />
+    <Link href={`/chargers/${charger.id}`} className="block group">
+      <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        {/* Cover photo */}
+        <div className="aspect-[16/9] bg-volt-soft relative overflow-hidden">
+          {cover ? (
+            <img
+              src={cover}
+              alt={charger.title}
+              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Zap className="w-10 h-10 text-volt opacity-40" />
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-baseline gap-2">
-            <h3 className="font-display font-bold text-sm truncate">
+        {/* Details */}
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold text-ink text-sm leading-snug line-clamp-1 flex-1">
               {charger.title}
             </h3>
-            <span className="font-display font-extrabold text-sm whitespace-nowrap">
-              {formatINR(charger.pricePerKwh)}
-              <small className="text-muted font-semibold">/kWh</small>
-            </span>
+            {charger.avg_rating !== null && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Star className="w-3.5 h-3.5 text-volt fill-volt" />
+                <span className="text-xs font-semibold text-ink">
+                  {Number(charger.avg_rating).toFixed(1)}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-3 mt-1 text-xs text-muted font-semibold">
-            {charger.avgRating !== null && (
-              <span className="flex items-center gap-1">
-                <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                {charger.avgRating.toFixed(1)}
+          <p className="text-xs text-muted mt-1 line-clamp-1">{charger.address}</p>
+
+          {/* Connector chips */}
+          <div className="flex flex-wrap gap-1 mt-2">
+            {charger.connector_types.map(ct => (
+              <span
+                key={ct}
+                className="px-1.5 py-0.5 rounded-md bg-volt-soft text-ink text-[10px] font-semibold"
+              >
+                {ct}
               </span>
-            )}
-            <span className="text-volt-deep bg-volt-soft px-2 py-0.5 rounded font-bold">
-              {charger.connectorType}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {distanceKm} km
-            </span>
+            ))}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-xs text-muted">{powerLabel}</span>
+            <span className="font-bold text-ink text-sm">₹{charger.price_per_kwh}/kWh</span>
           </div>
         </div>
       </div>
