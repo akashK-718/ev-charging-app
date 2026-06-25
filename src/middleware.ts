@@ -35,7 +35,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/lender') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/bookings') ||
-    pathname.startsWith('/welcome');
+    pathname.startsWith('/welcome') ||
+    pathname.startsWith('/chargers') ||
+    pathname.startsWith('/profile');
 
   if (requiresAuth && !user) {
     const url = new URL('/login', request.url);
