@@ -82,19 +82,34 @@ The non-technical rules that shape the product. Every developer working on the c
 
 ## KYC requirements
 
+See `docs/KYC_STRATEGY.md` for full strategy and implementation plan.
+
 ### Drivers
-- Phone number (verified via OTP) — only requirement
-- Email collected but optional
+
+- Phone number verified via OTP (Module 1) — only requirement
+- Email optional
+- No identity verification required at signup or booking
 
 ### Lenders
-- Phone number (verified via OTP)
-- Aadhaar number + photo (for Razorpay payout setup, mandatory)
-- Bank account or UPI ID (for receiving payouts)
-- Property ownership/permission **not** verified (their responsibility legally)
 
-### Why this difference
-- Drivers are paying *us*, low fraud risk
-- Lenders are receiving money, must comply with KYC for Razorpay Route
+- Phone number verified via OTP (Module 1)
+- Aadhaar-based KYC required before listing first charger (Module 5)
+  - Aadhaar OTP verification
+  - PAN number
+  - Selfie + face match
+  - Bank account or UPI ID
+- Verification is one-time; valid indefinitely unless regulations change
+- Until verified, lenders can sign up and explore but cannot list a charger
+
+### Why the asymmetry
+
+- Drivers pay money → low fraud risk → minimal friction
+- Lenders receive money → mandatory KYC for Razorpay Route compliance + platform trust
+
+### Provider strategy
+
+- **Module 5-7:** Commercial KYC API (cost: ~₹2,500-4,000/month at MVP scale)
+- **Module 8+:** Direct DigiLocker integration after company incorporation + accreditation (cost: near-zero)
 
 ## Rating thresholds
 
