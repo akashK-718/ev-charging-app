@@ -2,16 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { cn } from '@/lib/utils';
 import { PLATFORM_COMMISSION_PERCENT } from '@/lib/constants';
 import type { NewChargerDraft } from '@/types/charger-draft';
 
-const mapsApiConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY;
-
-const LocationMapPreview = dynamic(() => import('./LocationMap'), {
-  ssr: false,
-  loading: () => <div className="h-[160px] bg-gray-100 rounded-2xl animate-pulse" />,
-});
+const MapViewPreview = dynamic(
+  () => import('@/components/maps/MapView').then(m => ({ default: m.MapView })),
+  { ssr: false, loading: () => <div className="h-[160px] bg-gray-100 rounded-2xl animate-pulse" /> },
+);
 
 const DAY_LABELS: Record<number, string> = {
   0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat',
@@ -125,19 +122,21 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
             <Missing />
           )}
           {draft.latitude != null && draft.longitude != null && (
-            <p className="mt-1 text-xs text-muted">
-              {draft.latitude.toFixed(5)}, {draft.longitude.toFixed(5)}
-            </p>
-          )}
-          {mapsApiConfigured && draft.latitude != null && draft.longitude != null && (
-            <div className="mt-3">
-              <LocationMapPreview
-                lat={draft.latitude}
-                lng={draft.longitude}
-                addressKey={0}
-                onMarkerDrag={() => {}}
-              />
-            </div>
+            <>
+              <p className="mt-1 text-xs text-muted">
+                {draft.latitude.toFixed(5)}, {draft.longitude.toFixed(5)}
+              </p>
+              <div className="mt-3 h-[160px] rounded-2xl overflow-hidden">
+                <MapViewPreview
+                  center={{ lat: draft.latitude, lng: draft.longitude }}
+                  zoom={15}
+                  markers={[{
+                    id: 'charger',
+                    coords: { lat: draft.latitude, lng: draft.longitude },
+                  }]}
+                />
+              </div>
+            </>
           )}
         </section>
 
