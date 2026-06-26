@@ -72,6 +72,26 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['chargers']['Insert']>;
         Relationships: [];
       };
+      availability_slots: {
+        Row: {
+          id: string;
+          charger_id: string;
+          day_of_week: number[];
+          start_time: string;
+          end_time: string;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: string;
+          charger_id: string;
+          day_of_week: number[];
+          start_time: string;
+          end_time: string;
+          is_active?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['availability_slots']['Insert']>;
+        Relationships: [];
+      };
       bookings: {
         Row: {
           id: string;
@@ -108,7 +128,24 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      create_charger_with_slots: {
+        Args: {
+          p_lender_id: string;
+          p_title: string;
+          p_charger_type: string;
+          p_connector_types: string[];
+          p_price_per_kwh: number;
+          p_address: string;
+          p_latitude: number;
+          p_longitude: number;
+          p_photos: string[];
+          p_instructions: string;
+          p_slots: string; // JSON string
+        };
+        Returns: string; // new charger UUID
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import type { NewChargerDraft } from '@/types/charger-draft';
 import { StepBasics } from './steps/StepBasics';
 import { StepPricing } from './steps/StepPricing';
 import { StepLocation } from './steps/StepLocation';
 import { StepPhotos } from './steps/StepPhotos';
-import { StepStub } from './steps/StepStub';
+import { StepAvailability } from './steps/StepAvailability';
+import { StepInstructions } from './steps/StepInstructions';
+import { StepReview } from './steps/StepReview';
 
 const DRAFT_KEY = 'lender:new-charger:draft';
 const TOTAL_STEPS = 7;
@@ -18,14 +21,17 @@ const STEP_LABELS: Record<number, string> = {
   3: 'Location',
   4: 'Photos',
   5: 'Availability',
-  6: 'Access instructions',
+  6: 'Title & instructions',
   7: 'Review & submit',
 };
 
 export default function NewChargerPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<Partial<NewChargerDraft>>({});
   const [stepValid, setStepValid] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const isInitialized = useRef(false);
 
   useEffect(() => {
@@ -37,7 +43,7 @@ export default function NewChargerPage() {
     }
   }, []);
 
-  // Skip the first run so we don't overwrite a saved draft before restoration fires
+  // Skip the first render so we don't overwrite a saved draft before restoration fires
   useEffect(() => {
     if (!isInitialized.current) {
       isInitialized.current = true;
@@ -50,7 +56,55 @@ export default function NewChargerPage() {
     setDraft(prev => ({ ...prev, ...updates }));
   }
 
-  const isActiveStep = step <= 4;
+  function goToStep(s: number) {
+    setStepValid(false); // let the incoming step re-report its own validity
+    setStep(s);
+  }
+
+  async function handleSubmit() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    const payload = {
+      title: draft.title,
+      chargerType: draft.chargerType,
+      connectorTypes: draft.connectorTypes,
+      pricePerKwh: draft.pricePerKwh,
+      address: draft.address,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
+      photos: draft.photos,
+      instructions: draft.instructions,
+      availability: (draft.availability ?? []).map(slot => ({
+        daysOfWeek: [slot.day_of_week],
+        startTime: slot.start_time,
+        endTime: slot.end_time,
+      })),
+    };
+
+    try {
+      const res = await fetch('/api/chargers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        setSubmitError(body.error ?? "Couldn't save charger, please try again.");
+        return;
+      }
+
+      localStorage.removeItem(DRAFT_KEY);
+      router.push('/lender/dashboard?listed=1');
+    } catch {
+      setSubmitError("Couldn't save charger, please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const isLastStep = step === TOTAL_STEPS;
 
   return (
@@ -85,8 +139,23 @@ export default function NewChargerPage() {
         {step === 4 && (
           <StepPhotos draft={draft} onChange={updateDraft} onValidChange={setStepValid} />
         )}
-        {step >= 5 && <StepStub stepName={STEP_LABELS[step]} />}
+        {step === 5 && (
+          <StepAvailability draft={draft} onChange={updateDraft} onValidChange={setStepValid} />
+        )}
+        {step === 6 && (
+          <StepInstructions draft={draft} onChange={updateDraft} onValidChange={setStepValid} />
+        )}
+        {step === 7 && (
+          <StepReview draft={draft} onEditStep={goToStep} onValidChange={setStepValid} />
+        )}
       </div>
+
+      {/* Submit error */}
+      {submitError && (
+        <p className="mt-4 px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+          {submitError}
+        </p>
+      )}
 
       {/* Navigation */}
       <div className="mt-8 flex gap-3">
@@ -95,7 +164,8 @@ export default function NewChargerPage() {
             variant="ghost"
             size="lg"
             className="flex-1"
-            onClick={() => setStep(s => s - 1)}
+            disabled={isSubmitting}
+            onClick={() => goToStep(step - 1)}
           >
             Back
           </Button>
@@ -104,10 +174,12 @@ export default function NewChargerPage() {
           variant="secondary"
           size="lg"
           className="flex-1"
-          disabled={(isActiveStep && !stepValid) || isLastStep}
-          onClick={() => setStep(s => s + 1)}
+          disabled={!stepValid || isSubmitting}
+          onClick={isLastStep ? () => { void handleSubmit(); } : () => goToStep(step + 1)}
         >
-          {isLastStep ? 'Submit' : 'Next'}
+          {isLastStep
+            ? (isSubmitting ? 'Listing…' : 'List my charger')
+            : 'Next'}
         </Button>
       </div>
     </main>
