@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/maps/AddressAutocomplete';
+import { maps } from '@/lib/maps/provider';
 import type { NewChargerDraft } from '@/types/charger-draft';
 import type { Coords } from '@/lib/maps/types';
 
@@ -23,6 +24,8 @@ interface StepLocationProps {
 export function StepLocation({ draft, onChange, onValidChange }: StepLocationProps) {
   const [addressText, setAddressText] = useState(draft.address ?? '');
   const [mapKey, setMapKey] = useState(0);
+  // Tracks the latest drag position to discard stale reverse-geocode responses
+  const latestDragRef = useRef<Coords | null>(null);
 
   const isValid =
     !!draft.address && draft.latitude !== undefined && draft.longitude !== undefined;
@@ -46,7 +49,26 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
   }
 
   function handlePinDrag(newCoords: Coords) {
+    // Update coords immediately for a responsive feel
     onChange({ latitude: newCoords.lat, longitude: newCoords.lng });
+    latestDragRef.current = newCoords;
+
+    // Reverse-geocode in the background to update the address field
+    void (async () => {
+      try {
+        const result = await maps.reverseGeocode(newCoords);
+        // Discard if the user has already dragged to a newer position
+        if (
+          latestDragRef.current?.lat === newCoords.lat &&
+          latestDragRef.current?.lng === newCoords.lng
+        ) {
+          setAddressText(result.formattedAddress);
+          onChange({ address: result.formattedAddress, latitude: newCoords.lat, longitude: newCoords.lng });
+        }
+      } catch {
+        // Keep the existing address text if reverse geocoding fails
+      }
+    })();
   }
 
   const hasCoords = draft.latitude !== undefined && draft.longitude !== undefined;
