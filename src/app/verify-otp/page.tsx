@@ -135,6 +135,7 @@ function VerifyOtpContent() {
     if (digit && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
+    // Auto-submit on last digit
     if (digit && index === OTP_LENGTH - 1) {
       submit(next.join(''));
     }
@@ -161,15 +162,10 @@ function VerifyOtpContent() {
     if (pasted.length === OTP_LENGTH) submit(pasted);
   }
 
-  const resendLabel =
-    resendState === 'sending' ? 'Sending…' :
-    seconds > 0 ? `Resend in ${seconds}s` :
-    'Resend code';
-
   const resendDisabled = seconds > 0 || resendState === 'sending';
 
   return (
-    <main className="min-h-screen flex flex-col px-6 py-12">
+    <main className="min-h-screen flex flex-col px-6 py-12 animate-page-in">
       <button
         onClick={() => router.back()}
         className="text-muted text-sm mb-8 self-start hover:text-ink transition-colors"
@@ -178,18 +174,20 @@ function VerifyOtpContent() {
       </button>
 
       <h1 className="font-display font-extrabold text-3xl text-ink">Enter the code</h1>
-      <p className="mt-2 text-muted">
-        We sent a 6-digit code to{' '}
-        <span className="font-semibold text-volt-deep">+91 {phone}</span>.{' '}
+      <p className="mt-2 text-sm text-muted">
+        Sent to{' '}
+        <span className="text-muted">+91</span>{' '}
+        <span className="font-semibold text-ink">{phone}</span>.{' '}
         <button
           onClick={() => router.push('/login')}
-          className="text-ink underline hover:text-volt-deep transition-colors"
+          className="text-volt-deep underline hover:no-underline transition-colors"
         >
           Edit
         </button>
       </p>
 
-      <div className="mt-10 flex gap-3" onPaste={handlePaste}>
+      {/* OTP boxes */}
+      <div className="mt-10 flex gap-2.5" onPaste={handlePaste}>
         {digits.map((digit, i) => (
           <input
             key={i}
@@ -203,9 +201,12 @@ function VerifyOtpContent() {
             onKeyDown={(e) => handleKeyDown(i, e)}
             disabled={loading}
             className={cn(
-              'flex-1 min-w-0 h-14 text-center text-2xl font-bold text-ink rounded-2xl border-2 bg-gray-50 focus:outline-none focus:border-volt transition-colors',
-              digit ? 'border-ink' : 'border-gray-200',
-              error && 'border-red-400 bg-red-50',
+              'flex-1 min-w-0 h-14 text-center text-2xl font-bold text-ink rounded-2xl border-2 focus:outline-none transition-all duration-150',
+              error
+                ? 'border-red-400 bg-red-50'
+                : digit
+                  ? 'border-volt bg-white scale-[1.05]'
+                  : 'border-gray-200 bg-gray-50 focus:border-volt focus:bg-volt-soft',
             )}
           />
         ))}
@@ -221,31 +222,33 @@ function VerifyOtpContent() {
           variant="secondary"
           size="lg"
           disabled={!isComplete || loading}
+          className={cn(!isComplete && !loading && 'opacity-40')}
         >
           {loading ? 'Verifying…' : 'Verify'}
         </Button>
       </div>
 
-      <div className="mt-6 text-center">
-        <p className="text-muted text-sm">
-          Didn't receive a code?{' '}
-          <button
-            onClick={handleResend}
-            disabled={resendDisabled}
-            className={cn(
-              'font-semibold transition-colors',
-              resendDisabled
-                ? 'text-muted cursor-default'
-                : 'text-ink underline hover:text-volt-deep',
-            )}
-          >
-            {resendLabel}
-          </button>
+      {/* Resend section */}
+      <div className="mt-6 text-center space-y-1.5">
+        <p className="text-sm text-muted">
+          Didn&apos;t receive a code?{' '}
+          {resendDisabled ? (
+            <span className="text-muted">
+              {resendState === 'sending' ? 'Sending…' : `Resend in ${seconds}s`}
+            </span>
+          ) : (
+            <button
+              onClick={handleResend}
+              className="text-volt-deep font-semibold underline hover:no-underline transition-colors"
+            >
+              Resend code
+            </button>
+          )}
         </p>
 
         {resendMessage && (
           <p className={cn(
-            'mt-2 text-sm',
+            'text-sm',
             resendState === 'sent' ? 'text-volt-deep' : 'text-red-600',
           )}>
             {resendMessage}
