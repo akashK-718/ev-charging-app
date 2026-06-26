@@ -93,7 +93,7 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
   // ── Validity ────────────────────────────────────────────────────────────────
 
   const isValid = (() => {
-    if (!mapsApiConfigured) {
+    if (!mapsApiConfigured || apiError) {
       const lat = parseFloat(manualLat);
       const lng = parseFloat(manualLng);
       return (
@@ -216,14 +216,20 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  if (!mapsApiConfigured) {
+  if (!mapsApiConfigured || apiError) {
     return (
       <div>
         <h1 className="font-display font-extrabold text-3xl text-ink">Location</h1>
         <p className="mt-2 text-base text-muted">Where is your charger located?</p>
 
+        {apiError && (
+          <div className="mt-4 px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+            {apiError} Enter coordinates manually below.
+          </div>
+        )}
+
         {/* Address */}
-        <div className="mt-8">
+        <div className="mt-6">
           <label htmlFor="manual-address" className="block text-sm font-semibold text-ink mb-2">
             Address
           </label>
