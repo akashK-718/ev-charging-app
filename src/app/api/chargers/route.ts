@@ -11,43 +11,84 @@ type ConnectorType = (typeof VALID_CONNECTOR_TYPES)[number];
 /**
  * GET /api/chargers
  *
- * Query params (optional):
- *   - lat, lng: search center
- *   - radius: search radius in meters (default 5000)
- *   - connector: connector type filter
+ * Query params:
+ *   - lat, lng   (both required for spatial mode — uses PostGIS radius search)
+ *   - radius     (meters, default 10000 = 10 km; only used in spatial mode)
+ *   - connector  (repeatable: ?connector=Type2&connector=CCS2 — OR match)
+ *   - maxPrice   (₹/kWh upper bound)
  *
- * Returns: list of chargers, optionally filtered + sorted by distance.
+ * Spatial mode (lat+lng present): calls chargers_within_radius(), results
+ *   ordered by distance. Connector/maxPrice applied in JS after the RPC.
+ * Non-spatial mode: plain Supabase query with optional column filters.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const lat = searchParams.get('lat');
-  const lng = searchParams.get('lng');
-  const radius =
-    Number(searchParams.get('radius')) || DEFAULT_SEARCH_RADIUS_METERS;
-  const connector = searchParams.get('connector');
+  const latStr = searchParams.get('lat');
+  const lngStr = searchParams.get('lng');
+  const radius = Number(searchParams.get('radius')) || DEFAULT_SEARCH_RADIUS_METERS;
+  const connectors = searchParams.getAll('connector').filter(Boolean);
+  const maxPriceStr = searchParams.get('maxPrice');
+  const maxPrice = maxPriceStr ? Number(maxPriceStr) : null;
 
   const supabase = createClient();
 
-  let query = supabase
-    .from('chargers')
-    .select('*')
-    .eq('status', 'active');
+  if (latStr && lngStr) {
+    // ── Spatial mode ──────────────────────────────────────────────────────
+    const lat = Number(latStr);
+    const lng = Number(lngStr);
 
-  if (connector) {
-    query = query.contains('connector_types', [connector]);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return NextResponse.json({ error: 'Invalid lat/lng' }, { status: 400 });
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('chargers_within_radius', {
+      center_lat: lat,
+      center_lng: lng,
+      radius_m: radius,
+    }) as { data: Record<string, unknown>[] | null; error: { message: string } | null };
+
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to fetch chargers', detail: error.message },
+        { status: 500 },
+      );
+    }
+
+    // Client-side connector + price filters (post-RPC)
+    let chargers = data ?? [];
+    if (connectors.length > 0) {
+      chargers = chargers.filter(c =>
+        (c.connector_types as string[]).some(ct => connectors.includes(ct)),
+      );
+    }
+    if (maxPrice !== null && !isNaN(maxPrice)) {
+      chargers = chargers.filter(c => Number(c.price_per_kwh) <= maxPrice);
+    }
+
+    return NextResponse.json({ chargers });
+  }
+
+  // ── Non-spatial mode ─────────────────────────────────────────────────────
+  let query = supabase.from('chargers').select('*').eq('status', 'active');
+
+  if (connectors.length === 1) {
+    query = query.contains('connector_types', connectors);
+  } else if (connectors.length > 1) {
+    query = query.filter('connector_types', 'ov', `{${connectors.join(',')}}`);
+  }
+
+  if (maxPrice !== null && !isNaN(maxPrice)) {
+    query = query.lte('price_per_kwh', maxPrice);
   }
 
   const { data, error } = await query;
-
   if (error) {
     return NextResponse.json(
       { error: 'Failed to fetch chargers', detail: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
-
-  // TODO: When PostGIS is set up, swap for a proper ST_DWithin query sorted by ST_Distance.
-  void lat; void lng; void radius;
 
   return NextResponse.json({ chargers: data });
 }

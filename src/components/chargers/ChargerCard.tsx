@@ -11,7 +11,13 @@ const CHARGER_TYPE_LABEL: Record<string, string> = {
   'DC_fast': 'DC Fast',
 };
 
-export function ChargerCard({ charger }: { charger: ChargerRow }) {
+export function ChargerCard({
+  charger,
+  distanceKm,
+}: {
+  charger: ChargerRow;
+  distanceKm?: number;
+}) {
   const cover = charger.photos?.[0];
   const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
 
@@ -49,7 +55,16 @@ export function ChargerCard({ charger }: { charger: ChargerRow }) {
             )}
           </div>
 
-          <p className="text-xs text-muted mt-1 line-clamp-1">{charger.address}</p>
+          <p className="text-xs text-muted mt-1 line-clamp-1">
+            {distanceKm !== undefined && (
+              <span className="font-semibold text-volt-deep mr-1">
+                {distanceKm < 1
+                  ? `${Math.round(distanceKm * 1000)} m ·`
+                  : `${distanceKm.toFixed(1)} km ·`}
+              </span>
+            )}
+            {charger.address}
+          </p>
 
           {/* Connector chips */}
           <div className="flex flex-wrap gap-1 mt-2">
