@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '@/lib/constants';
 
 const VALID_CHARGER_TYPES = ['AC_3.3kW', 'AC_7kW', 'AC_22kW', 'DC_fast'] as const;
@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  // Role check
-  // Supabase v2's column-narrowing inference doesn't propagate the role union
-  // through .single() — cast the result explicitly.
-  const { data: profileRaw } = await supabase
+  // Role check — use admin client to bypass RLS (no SELECT policy on users table).
+  // User identity is already verified by getUser() above.
+  const adminSupabase = createAdminClient();
+  const { data: profileRaw } = await adminSupabase
     .from('users')
     .select('role')
     .eq('id', user.id)
