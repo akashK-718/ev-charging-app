@@ -16,10 +16,12 @@ const CHARGER_TYPE_LABEL: Record<string, string> = {
 interface ChargerBottomSheetProps {
   charger: ChargerRow | null;
   distanceKm?: number;
+  /** Replaces "away" in the distance label. Default: "away". */
+  distanceSuffix?: string;
   onClose: () => void;
 }
 
-export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBottomSheetProps) {
+export function ChargerBottomSheet({ charger, distanceKm, distanceSuffix = 'away', onClose }: ChargerBottomSheetProps) {
   const isOpen = charger !== null;
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBott
         aria-label={charger?.title ?? 'Charger details'}
       >
         {charger && (
-          <SheetContent charger={charger} distanceKm={distanceKm} onClose={onClose} />
+          <SheetContent charger={charger} distanceKm={distanceKm} distanceSuffix={distanceSuffix} onClose={onClose} />
         )}
       </div>
 
@@ -74,7 +76,7 @@ export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBott
         aria-label={charger?.title ?? 'Charger details'}
       >
         {charger && (
-          <SheetContent charger={charger} distanceKm={distanceKm} onClose={onClose} />
+          <SheetContent charger={charger} distanceKm={distanceKm} distanceSuffix={distanceSuffix} onClose={onClose} />
         )}
       </div>
     </>
@@ -84,10 +86,12 @@ export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBott
 function SheetContent({
   charger,
   distanceKm,
+  distanceSuffix = 'away',
   onClose,
 }: {
   charger: ChargerRow;
   distanceKm?: number;
+  distanceSuffix?: string;
   onClose: () => void;
 }) {
   const cover = charger.photos?.[0];
@@ -141,8 +145,8 @@ function SheetContent({
               <span className="text-gray-300 select-none">·</span>
               <span className="text-xs text-muted">
                 {distanceKm < 1
-                  ? `${Math.round(distanceKm * 1000)} m away`
-                  : `${distanceKm.toFixed(1)} km away`}
+                  ? `${Math.round(distanceKm * 1000)} m ${distanceSuffix}`
+                  : `${distanceKm.toFixed(1)} km ${distanceSuffix}`}
               </span>
             </>
           )}
