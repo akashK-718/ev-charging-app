@@ -60,6 +60,23 @@ export async function GET(request: NextRequest) {
  * create_charger_with_slots Postgres function (migration 004).
  */
 export async function POST(request: NextRequest) {
+  try {
+    return await postHandler(request);
+  } catch (err) {
+    console.error('[POST /api/chargers] unhandled exception', err);
+    return NextResponse.json(
+      {
+        error: "Couldn't save charger, please try again.",
+        ...(process.env.NODE_ENV === 'development' && {
+          detail: err instanceof Error ? err.message : String(err),
+        }),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+async function postHandler(request: NextRequest) {
   const supabase = createClient();
 
   // Auth check
@@ -197,27 +214,27 @@ export async function POST(request: NextRequest) {
     p_longitude:       lng,
     p_photos:          b.photos as string[],
     p_instructions:    validatedInstructions,
-    p_slots:           JSON.stringify(slots),
+    p_slots:           slots,
   };
 
   // Supabase v2 rpc() type inference resolves Functions as never when
   // Database['public']['Functions'] doesn't satisfy the internal GenericSchema
-  // constraint in this version of @supabase/supabase-js. Cast through unknown as
-  // the TS error message instructs to bypass the overlap check.
-  const rpcCall = (supabase.rpc as unknown) as (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: string | null; error: { message: string } | null }>;
-
-  const { data: chargerId, error: rpcError } = await rpcCall(
+  // constraint in this version of @supabase/supabase-js. Cast adminSupabase to
+  // any so rpc() is called as a method (preserving `this`) rather than extracted
+  // into a detached variable (which loses binding and throws at runtime).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: chargerId, error: rpcError } = await (adminSupabase as any).rpc(
     'create_charger_with_slots',
     rpcArgs,
-  );
+  ) as { data: string | null; error: { message: string } | null };
 
   if (rpcError) {
     console.error('[POST /api/chargers] rpc error', rpcError);
     return NextResponse.json(
-      { error: "Couldn't save charger, please try again." },
+      {
+        error: "Couldn't save charger, please try again.",
+        ...(process.env.NODE_ENV === 'development' && { detail: rpcError.message }),
+      },
       { status: 500 },
     );
   }
