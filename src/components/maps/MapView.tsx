@@ -12,10 +12,12 @@ import type { Coords } from '@/lib/maps/types';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
-type MarkerDef = {
+export type MarkerDef = {
   id: string;
   coords: Coords;
   label?: string;
+  /** 'green' = active charger (volt), 'gray' = paused charger. Default: 'green'. */
+  color?: 'green' | 'gray';
   onClick?: () => void;
 };
 
@@ -24,6 +26,8 @@ export type MapViewProps = {
   zoom?: number;
   /** Static pins. Use draggablePin for the editable lender-form pin. */
   markers?: MarkerDef[];
+  /** Blue dot at the user's current location. */
+  userLocation?: Coords;
   /** Decoded polyline to render as a route overlay. */
   routeGeometry?: Coords[];
   /** Renders a single draggable pin; fires onDragEnd with new coordinates. */
@@ -35,6 +39,7 @@ export function MapView({
   center,
   zoom = 14,
   markers = [],
+  userLocation,
   draggablePin,
   onMapClick,
 }: MapViewProps) {
@@ -59,21 +64,41 @@ export function MapView({
     >
       <NavigationControl position="top-right" showCompass={false} />
 
-      {markers.map(m => (
-        <Marker
-          key={m.id}
-          latitude={m.coords.lat}
-          longitude={m.coords.lng}
-          onClick={m.onClick ? () => m.onClick?.() : undefined}
-        >
-          <MapPin
-            className="w-7 h-7 text-volt-deep drop-shadow-md"
-            style={{ color: 'var(--color-volt-deep, #1a7a3c)' }}
-            fill="currentColor"
-          />
-        </Marker>
-      ))}
+      {/* Charger markers */}
+      {markers.map(m => {
+        const isGray = m.color === 'gray';
+        return (
+          <Marker
+            key={m.id}
+            latitude={m.coords.lat}
+            longitude={m.coords.lng}
+            onClick={m.onClick ? () => m.onClick?.() : undefined}
+          >
+            <MapPin
+              className="w-7 h-7 drop-shadow-md"
+              style={{
+                color: isGray
+                  ? 'var(--color-muted, #6b7280)'
+                  : 'var(--color-volt-deep, #1a7a3c)',
+                cursor: m.onClick ? 'pointer' : 'default',
+              }}
+              fill="currentColor"
+            />
+          </Marker>
+        );
+      })}
 
+      {/* User location — blue pulsing dot */}
+      {userLocation && (
+        <Marker latitude={userLocation.lat} longitude={userLocation.lng}>
+          <span className="relative flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60" />
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-blue-500 border-2 border-white shadow-md" />
+          </span>
+        </Marker>
+      )}
+
+      {/* Draggable lender-form pin */}
       {draggablePin && (
         <Marker
           latitude={draggablePin.coords.lat}
