@@ -1,4 +1,27 @@
-import type { MapProvider, PlaceSuggestion, GeocodeResult, RouteResult } from './types';
+import type { MapProvider, PlaceSuggestion, GeocodeResult, RouteResult, Coords } from './types';
+
+// ── Circle GeoJSON helper ──────────────────────────────────────────────────
+// Generates a GeoJSON Polygon approximating a geographic circle.
+// Exported so MapView can use it without direct mapbox-gl imports in page code.
+export function makeCircleGeoJSON(
+  center: Coords,
+  radiusMeters: number,
+  steps = 64,
+): { type: 'FeatureCollection'; features: Array<{ type: 'Feature'; geometry: { type: 'Polygon'; coordinates: [number, number][][] }; properties: Record<string, never> }> } {
+  const lat0 = center.lat;
+  const lng0 = center.lng;
+  const coords: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * 2 * Math.PI;
+    const dLat = (radiusMeters / 111320) * Math.cos(angle);
+    const dLng = (radiusMeters / (111320 * Math.cos((lat0 * Math.PI) / 180))) * Math.sin(angle);
+    coords.push([lng0 + dLng, lat0 + dLat]);
+  }
+  return {
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: {} }],
+  };
+}
 
 const BASE = 'https://api.mapbox.com';
 

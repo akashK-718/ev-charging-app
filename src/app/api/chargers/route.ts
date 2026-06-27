@@ -25,12 +25,44 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const latStr = searchParams.get('lat');
   const lngStr = searchParams.get('lng');
-  const radius = Number(searchParams.get('radius')) || DEFAULT_SEARCH_RADIUS_METERS;
+  const radiusStr = searchParams.get('radius');
+  const isAllIndia = radiusStr === 'all_india';
+  const radius = isAllIndia ? 0 : (Number(radiusStr) || DEFAULT_SEARCH_RADIUS_METERS);
   const connectors = searchParams.getAll('connector').filter(Boolean);
   const maxPriceStr = searchParams.get('maxPrice');
   const maxPrice = maxPriceStr ? Number(maxPriceStr) : null;
+  const limitStr = searchParams.get('limit');
+  const limit = Math.min(Math.max(1, Number(limitStr) || 500), 1000);
 
   const supabase = createClient();
+
+  // ── All India mode — return all active chargers up to limit ──────────────
+  if (isAllIndia) {
+    let query = supabase
+      .from('chargers')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (connectors.length === 1) {
+      query = query.contains('connector_types', connectors);
+    } else if (connectors.length > 1) {
+      query = query.filter('connector_types', 'ov', `{${connectors.join(',')}}`);
+    }
+    if (maxPrice !== null && !isNaN(maxPrice)) {
+      query = query.lte('price_per_kwh', maxPrice);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to fetch chargers', detail: error.message },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ chargers: data ?? [], total: data?.length ?? 0 });
+  }
 
   if (latStr && lngStr) {
     // ── Spatial mode ──────────────────────────────────────────────────────
