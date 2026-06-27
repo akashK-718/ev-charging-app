@@ -13,13 +13,16 @@ type ConnectorType = (typeof VALID_CONNECTOR_TYPES)[number];
  *
  * Modes (checked in order):
  *
- * 1. Route mode   — ?route=<GeoJSON LineString>&buffer=<meters>
+ * 1. Route mode    — ?route=<GeoJSON LineString>&buffer=<meters>
  *    Calls chargers_along_route(). Returns chargers with distance_from_route_m.
  *
- * 2. Spatial mode — ?lat=&lng= (+ optional &radius=)
+ * 2. All India     — ?radius=all_india (+ optional &limit=)
+ *    Returns all active chargers up to limit, ordered by created_at desc.
+ *
+ * 3. Spatial mode  — ?lat=&lng= (+ optional &radius=)
  *    Calls chargers_within_radius(). Results ordered by distance.
  *
- * 3. Non-spatial  — no route/lat/lng
+ * 4. Non-spatial   — no route/radius/lat/lng
  *    Plain Supabase query with optional column filters.
  *
  * Common filters (all modes): ?connector= (repeatable), ?maxPrice=
@@ -30,10 +33,14 @@ export async function GET(request: NextRequest) {
   const bufferStr = searchParams.get('buffer');
   const latStr = searchParams.get('lat');
   const lngStr = searchParams.get('lng');
-  const radius = Number(searchParams.get('radius')) || DEFAULT_SEARCH_RADIUS_METERS;
+  const radiusStr = searchParams.get('radius');
+  const isAllIndia = radiusStr === 'all_india';
+  const radius = isAllIndia ? 0 : (Number(radiusStr) || DEFAULT_SEARCH_RADIUS_METERS);
   const connectors = searchParams.getAll('connector').filter(Boolean);
   const maxPriceStr = searchParams.get('maxPrice');
   const maxPrice = maxPriceStr ? Number(maxPriceStr) : null;
+  const limitStr = searchParams.get('limit');
+  const limit = Math.min(Math.max(1, Number(limitStr) || 500), 1000);
 
   const supabase = createClient();
 
@@ -83,6 +90,34 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ chargers });
+  }
+
+  // ── All India mode ──────────────────────────────────────────────────────────
+  if (isAllIndia) {
+    let query = supabase
+      .from('chargers')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (connectors.length === 1) {
+      query = query.contains('connector_types', connectors);
+    } else if (connectors.length > 1) {
+      query = query.filter('connector_types', 'ov', `{${connectors.join(',')}}`);
+    }
+    if (maxPrice !== null && !isNaN(maxPrice)) {
+      query = query.lte('price_per_kwh', maxPrice);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to fetch chargers', detail: error.message },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ chargers: data ?? [], total: data?.length ?? 0 });
   }
 
   // ── Spatial mode ────────────────────────────────────────────────────────────
