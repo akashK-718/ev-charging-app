@@ -49,6 +49,21 @@ export type MapViewProps = {
   /** Crosshair pin — user's manually selected search centre. */
   manualCenter?: Coords;
 
+  // ── Route mode ────────────────────────────────────────────────────────────
+  /** Decoded polyline to render as a route overlay. */
+  routeGeometry?: Coords[];
+  /** Route buffer radius in meters — controls width of the buffer visualisation. */
+  routeBuffer?: number;
+  /** Green A-marker at the route start. */
+  fromCoords?: Coords;
+  /** Red B-marker at the route end. */
+  toCoords?: Coords;
+  /**
+   * When this value changes the map camera fits these bounds.
+   * Format: [[minLng, minLat], [maxLng, maxLat]]
+   */
+  fitBoundsTarget?: [[number, number], [number, number]];
+
   // ── Events ───────────────────────────────────────────────────────────────
   onChargerClick?: (id: string) => void;
   /** Fires after a 500 ms hold with no significant finger/pointer movement. */
@@ -117,6 +132,33 @@ const radiusOutlineLayer: LayerProps = {
   paint: { 'line-color': VOLT, 'line-opacity': 0.6, 'line-width': 1.5 },
 };
 
+const routeLineLayer: LayerProps = {
+  id: 'route-line',
+  type: 'line',
+  source: 'route',
+  layout: { 'line-cap': 'round', 'line-join': 'round' },
+  paint: { 'line-color': VOLT, 'line-width': 4, 'line-opacity': 0.9 },
+};
+
+function makeRouteBufferLayer(bufferM: number): LayerProps {
+  const km = bufferM / 1000;
+  const widthExpr = [
+    'interpolate', ['exponential', 2], ['zoom'],
+    6,  km * 0.9,
+    8,  km * 3.5,
+    10, km * 14,
+    12, km * 56,
+    14, km * 225,
+  ] as unknown as number;
+  return {
+    id: 'route-buffer',
+    type: 'line',
+    source: 'route',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#e4faee', 'line-width': widthExpr, 'line-opacity': 0.55, 'line-blur': 6 },
+  };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MapView({
@@ -127,6 +169,11 @@ export function MapView({
   searchRadius,
   userLocation,
   manualCenter,
+  routeGeometry,
+  routeBuffer = 2500,
+  fromCoords,
+  toCoords,
+  fitBoundsTarget,
   onChargerClick,
   onLongPress,
   onMapClick,
@@ -136,6 +183,7 @@ export function MapView({
   const mapRef = useRef<MapRef>(null);
   const prevCenter = useRef<Coords | null>(null);
   const prevFitIndia = useRef(false);
+  const prevFitBoundsKey = useRef<string | null>(null);
 
   // Long-press state
   const lpTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -159,6 +207,17 @@ export function MapView({
     searchRadius && isFinite(searchRadius) && searchRadius > 0
       ? makeCircleGeoJSON(center, searchRadius)
       : null;
+
+  const routeGeoJSON = routeGeometry
+    ? {
+        type: 'Feature' as const,
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: routeGeometry.map(c => [c.lng, c.lat]),
+        },
+        properties: {},
+      }
+    : null;
 
   // ── Camera: fly to center when the prop changes ───────────────────────────
 
@@ -186,6 +245,16 @@ export function MapView({
     prevFitIndia.current = fitIndia;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitIndia]);
+
+  // ── Camera: fit route bounds ──────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!fitBoundsTarget) return;
+    const key = JSON.stringify(fitBoundsTarget);
+    if (key === prevFitBoundsKey.current) return;
+    prevFitBoundsKey.current = key;
+    mapRef.current?.fitBounds(fitBoundsTarget, { padding: 60, duration: 800 });
+  }, [fitBoundsTarget]);
 
   // ── Long-press helpers ────────────────────────────────────────────────────
 
@@ -303,6 +372,8 @@ export function MapView({
     [draggablePin],
   );
 
+  const bufferLayer = makeRouteBufferLayer(routeBuffer);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -322,6 +393,14 @@ export function MapView({
       onTouchEnd={onLongPress ? handleTouchEnd : undefined}
     >
       <NavigationControl position="top-right" showCompass={false} />
+
+      {/* Route: buffer halo + centre line (rendered below charger markers) */}
+      {routeGeoJSON && (
+        <Source id="route" type="geojson" data={routeGeoJSON}>
+          <Layer {...bufferLayer} />
+          <Layer {...routeLineLayer} />
+        </Source>
+      )}
 
       {/* Search radius circle */}
       {circleGeoJSON && (
@@ -344,6 +423,24 @@ export function MapView({
         <Layer {...clusterCountLayer} />
         <Layer {...unclusteredLayer} />
       </Source>
+
+      {/* Route From (A) endpoint */}
+      {fromCoords && (
+        <Marker latitude={fromCoords.lat} longitude={fromCoords.lng} anchor="bottom">
+          <div className="w-7 h-7 rounded-full bg-volt border-2 border-white shadow-md flex items-center justify-center">
+            <span className="text-ink text-xs font-bold leading-none">A</span>
+          </div>
+        </Marker>
+      )}
+
+      {/* Route To (B) endpoint */}
+      {toCoords && (
+        <Marker latitude={toCoords.lat} longitude={toCoords.lng} anchor="bottom">
+          <div className="w-7 h-7 rounded-full bg-red-500 border-2 border-white shadow-md flex items-center justify-center">
+            <span className="text-white text-xs font-bold leading-none">B</span>
+          </div>
+        </Marker>
+      )}
 
       {/* User location — blue pulsing dot */}
       {userLocation && (

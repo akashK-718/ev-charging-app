@@ -16,10 +16,17 @@ const CHARGER_TYPE_LABEL: Record<string, string> = {
 interface ChargerBottomSheetProps {
   charger: ChargerRow | null;
   distanceKm?: number;
+  /** Replaces "away" in the distance label. Default: "away". */
+  distanceSuffix?: string;
   onClose: () => void;
 }
 
-export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBottomSheetProps) {
+export function ChargerBottomSheet({
+  charger,
+  distanceKm,
+  distanceSuffix = 'away',
+  onClose,
+}: ChargerBottomSheetProps) {
   const isOpen = charger !== null;
 
   useEffect(() => {
@@ -52,7 +59,14 @@ export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBott
         aria-modal="true"
         aria-label={charger?.title ?? 'Charger preview'}
       >
-        {charger && <MobileCard charger={charger} distanceKm={distanceKm} onClose={onClose} />}
+        {charger && (
+          <MobileCard
+            charger={charger}
+            distanceKm={distanceKm}
+            distanceSuffix={distanceSuffix}
+            onClose={onClose}
+          />
+        )}
       </div>
 
       {/* Desktop: right-side drawer with full details */}
@@ -66,7 +80,14 @@ export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBott
         aria-modal="true"
         aria-label={charger?.title ?? 'Charger details'}
       >
-        {charger && <DesktopDrawer charger={charger} distanceKm={distanceKm} onClose={onClose} />}
+        {charger && (
+          <DesktopDrawer
+            charger={charger}
+            distanceKm={distanceKm}
+            distanceSuffix={distanceSuffix}
+            onClose={onClose}
+          />
+        )}
       </div>
     </>
   );
@@ -75,10 +96,12 @@ export function ChargerBottomSheet({ charger, distanceKm, onClose }: ChargerBott
 function MobileCard({
   charger,
   distanceKm,
+  distanceSuffix = 'away',
   onClose,
 }: {
   charger: ChargerRow;
   distanceKm?: number;
+  distanceSuffix?: string;
   onClose: () => void;
 }) {
   const cover = charger.photos?.[0];
@@ -88,8 +111,8 @@ function MobileCard({
   const distLabel = distanceKm === undefined
     ? null
     : distanceKm < 1
-      ? `${Math.round(distanceKm * 1000)} m away`
-      : `${distanceKm.toFixed(1)} km away`;
+      ? `${Math.round(distanceKm * 1000)} m ${distanceSuffix}`
+      : `${distanceKm.toFixed(1)} km ${distanceSuffix}`;
 
   return (
     <div>
@@ -152,10 +175,12 @@ function MobileCard({
 function DesktopDrawer({
   charger,
   distanceKm,
+  distanceSuffix = 'away',
   onClose,
 }: {
   charger: ChargerRow;
   distanceKm?: number;
+  distanceSuffix?: string;
   onClose: () => void;
 }) {
   const cover = charger.photos?.[0];
@@ -214,8 +239,8 @@ function DesktopDrawer({
               <span className="text-gray-300 select-none">·</span>
               <span className="text-xs text-muted">
                 {distanceKm < 1
-                  ? `${Math.round(distanceKm * 1000)} m away`
-                  : `${distanceKm.toFixed(1)} km away`}
+                  ? `${Math.round(distanceKm * 1000)} m ${distanceSuffix}`
+                  : `${distanceKm.toFixed(1)} km ${distanceSuffix}`}
               </span>
             </>
           )}

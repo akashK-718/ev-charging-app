@@ -11,18 +11,26 @@ type ConnectorType = (typeof VALID_CONNECTOR_TYPES)[number];
 /**
  * GET /api/chargers
  *
- * Query params:
- *   - lat, lng   (both required for spatial mode — uses PostGIS radius search)
- *   - radius     (meters, default 10000 = 10 km; only used in spatial mode)
- *   - connector  (repeatable: ?connector=Type2&connector=CCS2 — OR match)
- *   - maxPrice   (₹/kWh upper bound)
+ * Modes (checked in order):
  *
- * Spatial mode (lat+lng present): calls chargers_within_radius(), results
- *   ordered by distance. Connector/maxPrice applied in JS after the RPC.
- * Non-spatial mode: plain Supabase query with optional column filters.
+ * 1. Route mode    — ?route=<GeoJSON LineString>&buffer=<meters>
+ *    Calls chargers_along_route(). Returns chargers with distance_from_route_m.
+ *
+ * 2. All India     — ?radius=all_india (+ optional &limit=)
+ *    Returns all active chargers up to limit, ordered by created_at desc.
+ *
+ * 3. Spatial mode  — ?lat=&lng= (+ optional &radius=)
+ *    Calls chargers_within_radius(). Results ordered by distance.
+ *
+ * 4. Non-spatial   — no route/radius/lat/lng
+ *    Plain Supabase query with optional column filters.
+ *
+ * Common filters (all modes): ?connector= (repeatable), ?maxPrice=
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const routeStr = searchParams.get('route');
+  const bufferStr = searchParams.get('buffer');
   const latStr = searchParams.get('lat');
   const lngStr = searchParams.get('lng');
   const radiusStr = searchParams.get('radius');
@@ -36,7 +44,55 @@ export async function GET(request: NextRequest) {
 
   const supabase = createClient();
 
-  // ── All India mode — return all active chargers up to limit ──────────────
+  // ── Route mode ─────────────────────────────────────────────────────────────
+  if (routeStr) {
+    let parsedRoute: { type: string; coordinates: number[][] };
+    try {
+      parsedRoute = JSON.parse(routeStr) as { type: string; coordinates: number[][] };
+    } catch {
+      return NextResponse.json({ error: 'Invalid route GeoJSON' }, { status: 400 });
+    }
+
+    if (
+      parsedRoute.type !== 'LineString' ||
+      !Array.isArray(parsedRoute.coordinates) ||
+      parsedRoute.coordinates.length < 2
+    ) {
+      return NextResponse.json(
+        { error: 'route must be a GeoJSON LineString with at least 2 points' },
+        { status: 400 },
+      );
+    }
+
+    const bufferM = Math.min(25000, Math.max(500, Number(bufferStr) || 2500));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('chargers_along_route', {
+      route_geojson: routeStr,
+      buffer_m: bufferM,
+    }) as { data: Record<string, unknown>[] | null; error: { message: string } | null };
+
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to fetch chargers along route', detail: error.message },
+        { status: 500 },
+      );
+    }
+
+    let chargers = data ?? [];
+    if (connectors.length > 0) {
+      chargers = chargers.filter(c =>
+        (c.connector_types as string[]).some(ct => connectors.includes(ct)),
+      );
+    }
+    if (maxPrice !== null && !isNaN(maxPrice)) {
+      chargers = chargers.filter(c => Number(c.price_per_kwh) <= maxPrice);
+    }
+
+    return NextResponse.json({ chargers });
+  }
+
+  // ── All India mode ──────────────────────────────────────────────────────────
   if (isAllIndia) {
     let query = supabase
       .from('chargers')
@@ -64,8 +120,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ chargers: data ?? [], total: data?.length ?? 0 });
   }
 
+  // ── Spatial mode ────────────────────────────────────────────────────────────
   if (latStr && lngStr) {
-    // ── Spatial mode ──────────────────────────────────────────────────────
     const lat = Number(latStr);
     const lng = Number(lngStr);
 
@@ -87,7 +143,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Client-side connector + price filters (post-RPC)
     let chargers = data ?? [];
     if (connectors.length > 0) {
       chargers = chargers.filter(c =>
@@ -101,7 +156,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ chargers });
   }
 
-  // ── Non-spatial mode ─────────────────────────────────────────────────────
+  // ── Non-spatial mode ────────────────────────────────────────────────────────
   let query = supabase.from('chargers').select('*').eq('status', 'active');
 
   if (connectors.length === 1) {

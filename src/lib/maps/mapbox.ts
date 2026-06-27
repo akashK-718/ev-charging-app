@@ -148,6 +148,7 @@ export const mapboxProvider: MapProvider = {
 
     return {
       geometry: route.geometry.coordinates.map(([lng, lat]): { lat: number; lng: number } => ({ lat, lng })),
+      geojson: JSON.stringify({ type: 'LineString', coordinates: route.geometry.coordinates }),
       distanceMeters: route.distance,
       durationSeconds: route.duration,
     } satisfies RouteResult;
