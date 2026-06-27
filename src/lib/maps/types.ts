@@ -13,7 +13,9 @@ export type GeocodeResult = {
 };
 
 export type RouteResult = {
-  geometry: Coords[];      // Decoded polyline points
+  geometry: Coords[];
+  /** GeoJSON LineString geometry string — passed to /api/chargers?route= */
+  geojson: string;
   distanceMeters: number;
   durationSeconds: number;
 };

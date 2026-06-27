@@ -4,9 +4,9 @@
 // This file must be dynamically imported with { ssr: false } by its consumers.
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-import { useCallback } from 'react';
-import Map, { Marker, NavigationControl } from 'react-map-gl/mapbox';
-import type { MapMouseEvent, MarkerDragEvent } from 'react-map-gl/mapbox';
+import { useCallback, useEffect, useRef } from 'react';
+import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
+import type { MapRef, MapMouseEvent, MarkerDragEvent, LayerProps } from 'react-map-gl/mapbox';
 import { MapPin } from 'lucide-react';
 import type { Coords } from '@/lib/maps/types';
 
@@ -30,9 +30,59 @@ export type MapViewProps = {
   userLocation?: Coords;
   /** Decoded polyline to render as a route overlay. */
   routeGeometry?: Coords[];
+  /** Route buffer radius in meters — controls width of the buffer visualisation. */
+  routeBuffer?: number;
+  /** Green A-marker at the route start. */
+  fromCoords?: Coords;
+  /** Red B-marker at the route end. */
+  toCoords?: Coords;
+  /**
+   * When this value changes the map camera fits these bounds.
+   * Format: [[minLng, minLat], [maxLng, maxLat]]
+   */
+  fitBoundsTarget?: [[number, number], [number, number]];
   /** Renders a single draggable pin; fires onDragEnd with new coordinates. */
   draggablePin?: { coords: Coords; onDragEnd: (newCoords: Coords) => void };
   onMapClick?: (coords: Coords) => void;
+};
+
+// Route buffer layer — wide, blurred, volt-soft colour
+function makeRouteBufferLayer(bufferM: number): LayerProps {
+  const km = bufferM / 1000;
+  // Approximate pixel width per zoom level (India latitude, ~22°N)
+  const widthExpr = [
+    'interpolate', ['exponential', 2], ['zoom'],
+    6,  km * 0.9,
+    8,  km * 3.5,
+    10, km * 14,
+    12, km * 56,
+    14, km * 225,
+  ] as unknown as number;
+
+  return {
+    id: 'route-buffer',
+    type: 'line',
+    source: 'route',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#e4faee',
+      'line-width': widthExpr,
+      'line-opacity': 0.55,
+      'line-blur': 6,
+    },
+  };
+}
+
+const routeLineLayer: LayerProps = {
+  id: 'route-line',
+  type: 'line',
+  source: 'route',
+  layout: { 'line-cap': 'round', 'line-join': 'round' },
+  paint: {
+    'line-color': '#10d96a',
+    'line-width': 4,
+    'line-opacity': 0.9,
+  },
 };
 
 export function MapView({
@@ -40,9 +90,17 @@ export function MapView({
   zoom = 14,
   markers = [],
   userLocation,
+  routeGeometry,
+  routeBuffer = 2500,
+  fromCoords,
+  toCoords,
+  fitBoundsTarget,
   draggablePin,
   onMapClick,
 }: MapViewProps) {
+  const mapRef = useRef<MapRef>(null);
+  const prevFitKey = useRef<string | null>(null);
+
   const handleMapClick = useCallback(
     (e: MapMouseEvent) => onMapClick?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }),
     [onMapClick],
@@ -54,8 +112,32 @@ export function MapView({
     [draggablePin],
   );
 
+  // Fit camera when fitBoundsTarget changes
+  useEffect(() => {
+    if (!fitBoundsTarget) return;
+    const key = JSON.stringify(fitBoundsTarget);
+    if (key === prevFitKey.current) return;
+    prevFitKey.current = key;
+    mapRef.current?.fitBounds(fitBoundsTarget, { padding: 60, duration: 800 });
+  }, [fitBoundsTarget]);
+
+  // Build GeoJSON for route Source
+  const routeGeoJSON = routeGeometry
+    ? {
+        type: 'Feature' as const,
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: routeGeometry.map(c => [c.lng, c.lat]),
+        },
+        properties: {},
+      }
+    : null;
+
+  const bufferLayer = makeRouteBufferLayer(routeBuffer);
+
   return (
     <Map
+      ref={mapRef}
       initialViewState={{ longitude: center.lng, latitude: center.lat, zoom }}
       mapboxAccessToken={MAPBOX_TOKEN}
       mapStyle="mapbox://styles/mapbox/streets-v12"
@@ -63,6 +145,32 @@ export function MapView({
       onClick={onMapClick ? handleMapClick : undefined}
     >
       <NavigationControl position="top-right" showCompass={false} />
+
+      {/* Route: buffer halo + centre line */}
+      {routeGeoJSON && (
+        <Source id="route" type="geojson" data={routeGeoJSON}>
+          <Layer {...bufferLayer} />
+          <Layer {...routeLineLayer} />
+        </Source>
+      )}
+
+      {/* From (A) endpoint */}
+      {fromCoords && (
+        <Marker latitude={fromCoords.lat} longitude={fromCoords.lng} anchor="bottom">
+          <div className="w-7 h-7 rounded-full bg-volt border-2 border-white shadow-md flex items-center justify-center">
+            <span className="text-ink text-xs font-bold leading-none">A</span>
+          </div>
+        </Marker>
+      )}
+
+      {/* To (B) endpoint */}
+      {toCoords && (
+        <Marker latitude={toCoords.lat} longitude={toCoords.lng} anchor="bottom">
+          <div className="w-7 h-7 rounded-full bg-red-500 border-2 border-white shadow-md flex items-center justify-center">
+            <span className="text-white text-xs font-bold leading-none">B</span>
+          </div>
+        </Marker>
+      )}
 
       {/* Charger markers */}
       {markers.map(m => {
