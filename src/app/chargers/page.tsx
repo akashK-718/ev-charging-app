@@ -672,7 +672,7 @@ export default function ChargersPage() {
           <SlidersHorizontal className="w-3.5 h-3.5" />
           {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
         </button>
-        <MapListToggle mode={viewMode} onChange={handleViewModeChange} />
+        <MapListToggle mode={viewMode} onChange={handleViewModeChange} iconOnly />
       </div>
 
       {/* ── Map view ──────────────────────────────────────────────────────── */}
