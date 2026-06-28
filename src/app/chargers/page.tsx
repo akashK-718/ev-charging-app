@@ -57,7 +57,7 @@ const DELHI_NCR: Coords = { lat: 28.6139, lng: 77.209 };
 const DEFAULT_RADIUS = 10000;
 const DEFAULT_BUFFER = 2500;
 const MAX_PRICE = 50;
-const STORAGE_KEY = 'chargers_map_state_v1';
+const STORAGE_KEY = 'chargers_map_state_v2';
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 // ── Saved state helpers ───────────────────────────────────────────────────────
@@ -73,6 +73,11 @@ type SavedMapState = {
   centerType: 'gps' | 'manual';
   searchMode: SearchMode;
   timestamp: number;
+  routeFrom?: { coords: Coords; address: string };
+  routeFromAddress?: string;
+  routeTo?: { coords: Coords; address: string };
+  routeToAddress?: string;
+  fromIsGps?: boolean;
 };
 
 function loadMapState(): SavedMapState | null {
@@ -145,6 +150,8 @@ export default function ChargersPage() {
   /** Which pin is currently being reverse-geocoded after a drop or drag. */
   const [geocodingPin, setGeocodingPin] = useState<'from' | 'to' | null>(null);
   const dragDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  /** True when routeFrom was set from GPS — renders a locked "Your location" chip instead of editable input. */
+  const [fromIsGps, setFromIsGps] = useState(false);
 
   // ── Shared filters ────────────────────────────────────────────────────────
   const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
@@ -230,6 +237,15 @@ export default function ChargersPage() {
       setSearchMode(saved.searchMode ?? 'near_me');
       setAllIndiaMode(isAllIndia);
       setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
+      if (saved.routeFrom) {
+        setRouteFrom(saved.routeFrom);
+        setRouteFromAddress(saved.routeFromAddress ?? saved.routeFrom.address);
+      }
+      if (saved.routeTo) {
+        setRouteTo(saved.routeTo);
+        setRouteToAddress(saved.routeToAddress ?? saved.routeTo.address);
+      }
+      if (saved.fromIsGps) setFromIsGps(true);
     }
 
     if (!navigator.geolocation) {
@@ -315,6 +331,7 @@ export default function ChargersPage() {
     if (searchMode === 'along_route' && gpsCoords && !routeFrom) {
       setRouteFrom({ coords: gpsCoords, address: 'Your location' });
       setRouteFromAddress('Your location');
+      setFromIsGps(true);
       setActiveRouteInput('to'); // From is set — user should fill in To next
     }
   }, [searchMode, gpsCoords, routeFrom]);
@@ -330,8 +347,13 @@ export default function ChargersPage() {
       viewMode,
       centerType,
       searchMode,
+      routeFrom: routeFrom ?? undefined,
+      routeFromAddress: routeFromAddress || undefined,
+      routeTo: routeTo ?? undefined,
+      routeToAddress: routeToAddress || undefined,
+      fromIsGps,
     });
-  }, [searchCenter, zoom, radius, viewMode, centerType, allIndiaMode, searchMode]);
+  }, [searchCenter, zoom, radius, viewMode, centerType, allIndiaMode, searchMode, routeFrom, routeFromAddress, routeTo, routeToAddress, fromIsGps]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -448,10 +470,12 @@ export default function ChargersPage() {
     if (!gpsCoords) return;
     setRouteFrom({ coords: gpsCoords, address: 'Your location' });
     setRouteFromAddress('Your location');
+    setFromIsGps(true);
     setActiveRouteInput('to');
   }
 
   function handleFromAddressChange(v: string) {
+    setFromIsGps(false);
     setRouteFromAddress(v);
     if (v === '') {
       setRouteFrom(null);
@@ -672,7 +696,7 @@ export default function ChargersPage() {
                     toAddress={routeToAddress}
                     onFromAddressChange={handleFromAddressChange}
                     onToAddressChange={handleToAddressChange}
-                    onFromSelect={r => { setRouteFrom(r); setActiveRouteInput('to'); }}
+                    onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
                     onToSelect={r => setRouteTo(r)}
                     onGpsRefresh={handleGpsRouteRefresh}
                     routeLoading={routeLoading}
@@ -680,6 +704,7 @@ export default function ChargersPage() {
                     onSetActive={setActiveRouteInput}
                     fromGeocoding={geocodingPin === 'from'}
                     toGeocoding={geocodingPin === 'to'}
+                    fromIsGps={fromIsGps}
                   />
                 ) : (
                   /* Near-me: address search */

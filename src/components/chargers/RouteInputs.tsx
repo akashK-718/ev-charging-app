@@ -18,6 +18,8 @@ interface RouteInputsProps {
   onSetActive: (input: 'from' | 'to') => void;
   fromGeocoding?: boolean;
   toGeocoding?: boolean;
+  /** When true the From field shows a locked "Your location" chip instead of a text input. */
+  fromIsGps?: boolean;
 }
 
 export function RouteInputs({
@@ -33,6 +35,7 @@ export function RouteInputs({
   onSetActive,
   fromGeocoding,
   toGeocoding,
+  fromIsGps,
 }: RouteInputsProps) {
   return (
     <div className="flex flex-col gap-2">
@@ -45,15 +48,23 @@ export function RouteInputs({
           )}
           onClick={() => onSetActive('from')}
         >
-          <AddressAutocomplete
-            value={fromAddress}
-            onChange={onFromAddressChange}
-            onSelect={onFromSelect}
-            placeholder="From…"
-          />
+          {fromIsGps ? (
+            /* Locked GPS chip — not editable */
+            <div className="w-full pl-4 pr-10 py-3.5 bg-gray-100 rounded-2xl flex items-center gap-2">
+              <LocateFixed className="w-4 h-4 text-volt shrink-0" />
+              <span className="flex-1 text-sm text-ink font-medium truncate">Your location</span>
+            </div>
+          ) : (
+            <AddressAutocomplete
+              value={fromAddress}
+              onChange={onFromAddressChange}
+              onSelect={onFromSelect}
+              placeholder="From…"
+            />
+          )}
           {fromGeocoding ? (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-4 h-4 border-2 border-volt border-t-transparent rounded-full animate-spin pointer-events-none" />
-          ) : fromAddress ? (
+          ) : (fromIsGps || fromAddress) ? (
             <button
               type="button"
               onMouseDown={e => { e.preventDefault(); onFromAddressChange(''); }}
