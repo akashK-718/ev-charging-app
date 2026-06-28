@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { LocateFixed, MapPin, Route, SlidersHorizontal } from 'lucide-react';
+import { Filter, LocateFixed } from 'lucide-react';
 import { maps } from '@/lib/maps/provider';
 import { haversineKm } from '@/lib/haversine';
 import { cn } from '@/lib/utils';
-import { MapListToggle } from '@/components/chargers/MapListToggle';
+import { ModeToggle } from '@/components/chargers/ModeToggle';
+import { FloatingViewToggle } from '@/components/chargers/FloatingViewToggle';
 import { RadiusSlider, RADIUS_STEPS } from '@/components/chargers/RadiusSlider';
 import { RouteInputs } from '@/components/chargers/RouteInputs';
 import { RouteCompactSummary } from '@/components/chargers/RouteCompactSummary';
@@ -633,46 +634,22 @@ export default function ChargersPage() {
         viewMode === 'map' ? 'h-[calc(100dvh-3.5rem)]' : 'min-h-[calc(100dvh-3.5rem)]',
       )}
     >
-      {/* ── Header: mode tabs + controls in one compact row ────────────── */}
-      <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-100 bg-white shrink-0">
-        <button
-          onClick={() => handleSearchModeChange('near_me')}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
-            !isRouteMode
-              ? 'bg-volt text-ink'
-              : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
-          )}
-        >
-          <MapPin className="w-3.5 h-3.5" />
-          Near me
-        </button>
-        <button
-          onClick={() => handleSearchModeChange('along_route')}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
-            isRouteMode
-              ? 'bg-volt text-ink'
-              : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
-          )}
-        >
-          <Route className="w-3.5 h-3.5" />
-          Along route
-        </button>
+      {/* ── Header: segmented mode toggle + filters ────────────────────── */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 bg-white shrink-0">
+        <ModeToggle value={searchMode} onChange={handleSearchModeChange} />
         <div className="flex-1" />
         <button
           onClick={() => setFiltersOpen(true)}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
             activeFilterCount > 0
-              ? 'bg-ink text-white'
-              : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
+              ? 'bg-ink text-white border-ink'
+              : 'bg-gray-100 text-muted border-gray-200 hover:text-ink hover:bg-gray-200',
           )}
         >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <Filter className="w-3.5 h-3.5" />
           {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
         </button>
-        <MapListToggle mode={viewMode} onChange={handleViewModeChange} iconOnly />
       </div>
 
       {/* ── Map view ──────────────────────────────────────────────────────── */}
@@ -802,6 +779,11 @@ export default function ChargersPage() {
               <LocateFixed className="w-5 h-5" />
             </button>
           )}
+
+          {/* ── Floating view toggle ──────────────────────────────────────── */}
+          <div className="fixed bottom-20 right-4 z-30 pointer-events-auto">
+            <FloatingViewToggle value={viewMode} onChange={handleViewModeChange} />
+          </div>
 
           {/* ── Toast ─────────────────────────────────────────────────────── */}
           <div
