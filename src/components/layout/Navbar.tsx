@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Menu, X, Zap } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -233,9 +233,7 @@ export function Navbar() {
 function Logo({ href, onClick }: { href: string; onClick?: () => void }) {
   return (
     <Link href={href} onClick={onClick} className="flex items-center gap-2 shrink-0">
-      <div className="w-8 h-8 rounded-lg bg-ink grid place-items-center">
-        <Zap className="w-4 h-4 text-volt" />
-      </div>
+      <img src="/logo.png" alt="EV Charging" className="w-8 h-8 object-contain" />
       <span className="font-display font-bold text-lg text-ink leading-none">BrandName</span>
     </Link>
   );
