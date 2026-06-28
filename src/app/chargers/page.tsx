@@ -152,6 +152,8 @@ export default function ChargersPage() {
   const dragDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   /** True when routeFrom was set from GPS — renders a locked "Your location" chip instead of editable input. */
   const [fromIsGps, setFromIsGps] = useState(false);
+  /** Prevents the GPS pre-fill effect from re-firing after the user explicitly clears the From field. */
+  const userClearedFromRef = useRef(false);
 
   // ── Shared filters ────────────────────────────────────────────────────────
   const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
@@ -328,11 +330,11 @@ export default function ChargersPage() {
   // ── Pre-fill From with GPS when switching to route mode ───────────────────
 
   useEffect(() => {
-    if (searchMode === 'along_route' && gpsCoords && !routeFrom) {
+    if (searchMode === 'along_route' && gpsCoords && !routeFrom && !userClearedFromRef.current) {
       setRouteFrom({ coords: gpsCoords, address: 'Your location' });
       setRouteFromAddress('Your location');
       setFromIsGps(true);
-      setActiveRouteInput('to'); // From is set — user should fill in To next
+      setActiveRouteInput('to');
     }
   }, [searchMode, gpsCoords, routeFrom]);
 
@@ -374,7 +376,10 @@ export default function ChargersPage() {
   function handleSearchModeChange(mode: SearchMode) {
     setSearchMode(mode);
     setSelectedCharger(null);
-    if (mode === 'along_route') setActiveRouteInput('from');
+    if (mode === 'along_route') {
+      setActiveRouteInput('from');
+      userClearedFromRef.current = false; // allow GPS pre-fill on fresh entry to route mode
+    }
   }
 
   function handleAddressSelect({ coords, address }: { coords: Coords; address: string }) {
@@ -467,17 +472,37 @@ export default function ChargersPage() {
   }
 
   function handleGpsRouteRefresh() {
-    if (!gpsCoords) return;
-    setRouteFrom({ coords: gpsCoords, address: 'Your location' });
-    setRouteFromAddress('Your location');
-    setFromIsGps(true);
-    setActiveRouteInput('to');
+    function applyGps(gps: Coords) {
+      setGpsCoords(gps);
+      setGpsAvailable(true);
+      setRouteFrom({ coords: gps, address: 'Your location' });
+      setRouteFromAddress('Your location');
+      setFromIsGps(true);
+      setActiveRouteInput('to');
+      userClearedFromRef.current = false;
+    }
+
+    if (gpsCoords) {
+      applyGps(gpsCoords);
+    } else if (gpsAvailable === false) {
+      showToastMsg('Location access denied. Enable it in your browser settings.');
+    } else {
+      navigator.geolocation?.getCurrentPosition(
+        pos => applyGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {
+          setGpsAvailable(false);
+          showToastMsg('Could not get your location. Please enable location access.');
+        },
+        { timeout: 8000 },
+      );
+    }
   }
 
   function handleFromAddressChange(v: string) {
     setFromIsGps(false);
     setRouteFromAddress(v);
     if (v === '') {
+      userClearedFromRef.current = true; // suppress GPS re-fill until user re-enters route mode
       setRouteFrom(null);
       setRouteResult(null);
       setRouteChargers([]);
