@@ -4,7 +4,7 @@
  * In production, auto-generate from your Supabase schema:
  *   npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/lib/supabase/types.ts
  *
- * This is a hand-written stub that matches 001_initial_schema.sql.
+ * This is a hand-written stub that matches 001_initial_schema.sql + 008_lender_complete_flow.sql.
  */
 
 export type Database = {
@@ -15,8 +15,8 @@ export type Database = {
           id: string;
           phone: string;
           name: string | null;
-          role: 'driver' | 'lender' | 'both';
-          kyc_status: 'pending' | 'verified' | 'rejected';
+          role: 'driver' | 'lender' | 'both' | 'admin';
+          kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected';
           kyc_doc_url: string | null;
           avg_rating: number | null;
           razorpay_contact_id: string | null;
@@ -28,8 +28,8 @@ export type Database = {
           id?: string;
           phone: string;
           name?: string | null;
-          role?: 'driver' | 'lender' | 'both';
-          kyc_status?: 'pending' | 'verified' | 'rejected';
+          role?: 'driver' | 'lender' | 'both' | 'admin';
+          kyc_status?: 'not_started' | 'pending' | 'approved' | 'rejected';
           kyc_doc_url?: string | null;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
@@ -52,6 +52,7 @@ export type Database = {
           status: 'active' | 'paused' | 'suspended';
           avg_rating: number | null;
           total_sessions: number;
+          deleted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -68,6 +69,7 @@ export type Database = {
           photos?: string[];
           instructions?: string | null;
           status?: 'active' | 'paused' | 'suspended';
+          deleted_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['chargers']['Insert']>;
         Relationships: [];
@@ -124,6 +126,121 @@ export type Database = {
           confirmation_code: string;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
+        Relationships: [];
+      };
+      payments: {
+        Row: {
+          id: string;
+          booking_id: string;
+          razorpay_order_id: string | null;
+          razorpay_payment_id: string | null;
+          razorpay_transfer_id: string | null;
+          gross_amount: number;
+          platform_fee: number;
+          lender_payout: number;
+          gateway_fee: number | null;
+          status: 'created' | 'paid' | 'transferred' | 'refunded' | 'failed';
+          payout_released_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          razorpay_order_id?: string | null;
+          razorpay_payment_id?: string | null;
+          razorpay_transfer_id?: string | null;
+          gross_amount: number;
+          platform_fee: number;
+          lender_payout: number;
+          gateway_fee?: number | null;
+          status?: 'created' | 'paid' | 'transferred' | 'refunded' | 'failed';
+          payout_released_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['payments']['Insert']>;
+        Relationships: [];
+      };
+      kyc_submissions: {
+        Row: {
+          id: string;
+          user_id: string;
+          aadhaar_photo_url: string;
+          pan_photo_url: string;
+          selfie_url: string;
+          pan_number: string;
+          aadhaar_last_4: string;
+          bank_account_number: string | null;
+          bank_ifsc: string | null;
+          upi_id: string | null;
+          status: 'pending' | 'approved' | 'rejected' | 'resubmission_required';
+          rejection_reason: string | null;
+          submitted_at: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          aadhaar_photo_url: string;
+          pan_photo_url: string;
+          selfie_url: string;
+          pan_number: string;
+          aadhaar_last_4: string;
+          bank_account_number?: string | null;
+          bank_ifsc?: string | null;
+          upi_id?: string | null;
+          status: 'pending' | 'approved' | 'rejected' | 'resubmission_required';
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['kyc_submissions']['Insert']>;
+        Relationships: [];
+      };
+      payouts: {
+        Row: {
+          id: string;
+          user_id: string;
+          amount_paise: number;
+          status: 'pending' | 'processing' | 'completed' | 'failed';
+          bank_or_upi: string;
+          razorpay_payout_id: string | null;
+          booking_ids: string[];
+          created_at: string;
+          processed_at: string | null;
+          failed_reason: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          amount_paise: number;
+          status: 'pending' | 'processing' | 'completed' | 'failed';
+          bank_or_upi: string;
+          razorpay_payout_id?: string | null;
+          booking_ids: string[];
+          processed_at?: string | null;
+          failed_reason?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['payouts']['Insert']>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          data: Record<string, unknown>;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          data?: Record<string, unknown>;
+          read?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['notifications']['Insert']>;
         Relationships: [];
       };
     };
