@@ -83,7 +83,12 @@ export default async function LenderDashboardPage({
       {/* Toast banners for actions */}
       {searchParams.listed === '1' && (
         <div className="px-4 py-3 bg-volt-soft rounded-2xl border border-volt">
-          <p className="font-semibold text-ink">Charger listed! It&apos;s now visible to drivers.</p>
+          <p className="font-semibold text-ink">
+            Charger listed!{' '}
+            {kycStatus !== 'approved'
+              ? 'It will be visible to drivers once you verify your identity in Profile.'
+              : "It's now visible to drivers."}
+          </p>
         </div>
       )}
       {searchParams.kyc === 'submitted' && (
@@ -92,42 +97,40 @@ export default async function LenderDashboardPage({
         </div>
       )}
 
-      {/* KYC status banner */}
+      {/* KYC notice — informational, chargers are hidden from drivers until verified */}
       {kycStatus === 'not_started' && (
-        <div className="px-4 py-4 bg-yellow-50 rounded-2xl border border-yellow-200">
-          <p className="font-semibold text-yellow-800 mb-1">Verify your identity to start earning</p>
-          <p className="text-sm text-yellow-700 mb-3">
-            KYC verification is required before you can list chargers and receive payouts.
+        <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200 flex items-center justify-between gap-3">
+          <p className="text-sm text-yellow-800">
+            Your chargers won&apos;t appear to drivers until you verify your identity.
           </p>
           <Link
-            href="/lender/kyc"
-            className="inline-block px-4 py-2 bg-yellow-700 text-white text-sm font-bold rounded-xl hover:bg-yellow-800 transition-colors"
+            href="/profile"
+            className="shrink-0 px-3 py-1.5 bg-yellow-700 text-white text-xs font-bold rounded-xl hover:bg-yellow-800 transition-colors"
           >
-            Start verification
+            Verify
           </Link>
         </div>
       )}
 
       {kycStatus === 'pending' && (
-        <div className="px-4 py-4 bg-blue-50 rounded-2xl border border-blue-200">
-          <p className="font-semibold text-blue-800">Verification under review</p>
-          <p className="text-sm text-blue-700 mt-1">
-            Usually takes 24–48 hours. We&apos;ll notify you once it&apos;s done.
+        <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+          <p className="text-sm text-blue-800 font-semibold">Verification under review</p>
+          <p className="text-xs text-blue-700 mt-0.5">
+            Usually 24–48 hours. Your chargers will go live once approved.
           </p>
         </div>
       )}
 
       {kycStatus === 'rejected' && (
-        <div className="px-4 py-4 bg-red-50 rounded-2xl border border-red-200">
-          <p className="font-semibold text-red-800">Verification rejected</p>
-          <p className="text-sm text-red-700 mt-1 mb-3">
-            Your KYC was rejected. Please resubmit with clearer documents.
+        <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-200 flex items-center justify-between gap-3">
+          <p className="text-sm text-red-800">
+            Verification rejected — resubmit clearer documents to publish your chargers.
           </p>
           <Link
-            href="/lender/kyc"
-            className="inline-block px-4 py-2 bg-red-700 text-white text-sm font-bold rounded-xl hover:bg-red-800 transition-colors"
+            href="/profile"
+            className="shrink-0 px-3 py-1.5 bg-red-700 text-white text-xs font-bold rounded-xl hover:bg-red-800 transition-colors"
           >
-            Resubmit documents
+            Resubmit
           </Link>
         </div>
       )}
@@ -138,7 +141,7 @@ export default async function LenderDashboardPage({
       </h1>
 
       {/* Stats row */}
-      <div className={`grid grid-cols-3 gap-3 ${kycStatus !== 'approved' ? 'opacity-50' : ''}`}>
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
           <p className="text-2xl font-display font-extrabold text-ink">₹0</p>
           <p className="text-xs text-muted mt-1">This week</p>
