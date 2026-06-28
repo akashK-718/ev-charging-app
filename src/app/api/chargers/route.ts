@@ -27,6 +27,29 @@ type ConnectorType = (typeof VALID_CONNECTOR_TYPES)[number];
  *
  * Common filters (all modes): ?connector= (repeatable), ?maxPrice=
  */
+/**
+ * Post-filter: keep only chargers that are not soft-deleted and whose lender
+ * has completed KYC verification. Applied to all search modes so drivers never
+ * see listings from unverified lenders.
+ */
+async function filterPublishable(
+  chargers: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  const visible = chargers.filter(c => c.deleted_at == null);
+  if (visible.length === 0) return [];
+
+  const lenderIds = [...new Set(visible.map(c => c.lender_id as string))];
+  const adminSupabase = createAdminClient();
+  const { data } = await adminSupabase
+    .from('users')
+    .select('id')
+    .in('id', lenderIds)
+    .eq('kyc_status', 'approved');
+
+  const approved = new Set((data ?? []).map(u => u.id as string));
+  return visible.filter(c => approved.has(c.lender_id as string));
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const routeStr = searchParams.get('route');
@@ -84,7 +107,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let chargers = data ?? [];
+    let chargers = await filterPublishable(data ?? []);
     if (connectors.length > 0) {
       chargers = chargers.filter(c =>
         (c.connector_types as string[]).some(ct => connectors.includes(ct)),
@@ -103,6 +126,7 @@ export async function GET(request: NextRequest) {
       .from('chargers')
       .select('*')
       .eq('status', 'active')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -122,7 +146,8 @@ export async function GET(request: NextRequest) {
         { status: 500 },
       );
     }
-    return NextResponse.json({ chargers: data ?? [], total: data?.length ?? 0 });
+    const chargers = await filterPublishable((data ?? []) as Record<string, unknown>[]);
+    return NextResponse.json({ chargers, total: chargers.length });
   }
 
   // ── Spatial mode ────────────────────────────────────────────────────────────
@@ -148,7 +173,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let chargers = data ?? [];
+    let chargers = await filterPublishable(data ?? []);
     if (connectors.length > 0) {
       chargers = chargers.filter(c =>
         (c.connector_types as string[]).some(ct => connectors.includes(ct)),
@@ -162,7 +187,7 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Non-spatial mode ────────────────────────────────────────────────────────
-  let query = supabase.from('chargers').select('*').eq('status', 'active');
+  let query = supabase.from('chargers').select('*').eq('status', 'active').is('deleted_at', null);
 
   if (connectors.length === 1) {
     query = query.contains('connector_types', connectors);
@@ -182,7 +207,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ chargers: data });
+  const chargers = await filterPublishable((data ?? []) as Record<string, unknown>[]);
+  return NextResponse.json({ chargers });
 }
 
 /**
