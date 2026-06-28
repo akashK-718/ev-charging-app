@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
-const VALID_ROLES = ['driver', 'lender', 'both'] as const;
-type Role = (typeof VALID_ROLES)[number];
-
 // Allows letters (including Unicode for Indian scripts) and spaces, 2–50 chars
 const NAME_REGEX = /^[\p{L}\s]{2,50}$/u;
 
@@ -16,7 +13,7 @@ function validateName(v: unknown): string | null {
   return null;
 }
 
-export async function POST(request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   const supabase = createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -31,38 +28,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const role = (body as Record<string, unknown>)?.role;
-  if (typeof role !== 'string' || !VALID_ROLES.includes(role as Role)) {
-    return NextResponse.json(
-      { error: 'Invalid role. Must be driver, lender, or both.' },
-      { status: 400 },
-    );
-  }
-
   const name = (body as Record<string, unknown>)?.name;
   const nameError = validateName(name);
   if (nameError) {
     return NextResponse.json({ error: nameError }, { status: 400 });
   }
 
+  const trimmedName = (name as string).trim();
   const adminSupabase = createAdminClient();
 
   const { error: updateError } = await adminSupabase
     .from('users')
-    .update({ role: role as Role, name: (name as string).trim() })
+    .update({ name: trimmedName })
     .eq('id', user.id);
 
   if (updateError) {
-    return NextResponse.json(
-      { error: 'Could not save your choice. Please try again.' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Could not save name. Please try again.' }, { status: 500 });
   }
 
-  // Sync role + name into user_metadata so middleware/useAuth can read without a DB round-trip
+  // Keep user_metadata in sync
   await adminSupabase.auth.admin.updateUserById(user.id, {
-    user_metadata: { role, name: (name as string).trim() },
+    user_metadata: { name: trimmedName },
   });
 
-  return NextResponse.json({ data: { role, name: (name as string).trim() } });
+  return NextResponse.json({ data: { name: trimmedName } });
 }

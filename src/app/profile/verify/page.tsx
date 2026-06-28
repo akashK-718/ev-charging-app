@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, CreditCard, User, Building2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -283,7 +283,7 @@ function ReviewSection({ icon, label, onEdit, children }: { icon: React.ReactNod
   );
 }
 
-function StepReview({ draft, onEditStep, onValidChange }: { draft: KycDraft; onEditStep: (s: number) => void; onValidChange: (v: boolean) => void }) {
+function StepReview({ draft, onEditStep, onValidChange, displayName }: { draft: KycDraft; onEditStep: (s: number) => void; onValidChange: (v: boolean) => void; displayName: string | null }) {
   if (typeof window !== 'undefined') setTimeout(() => onValidChange(true), 0);
 
   return (
@@ -293,6 +293,15 @@ function StepReview({ draft, onEditStep, onValidChange }: { draft: KycDraft; onE
         <p className="mt-2 text-muted">Check everything before submitting.</p>
       </div>
       <div className="space-y-3">
+        {displayName && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center gap-2 text-ink font-semibold text-sm mb-2">
+              <User className="w-4 h-4" />Display name
+            </div>
+            <p className="text-sm text-muted">{displayName}</p>
+            <p className="text-xs text-muted mt-1">We&apos;ll verify this name against your documents during review.</p>
+          </div>
+        )}
         <ReviewSection icon={<User className="w-4 h-4" />} label="Aadhaar" onEdit={() => onEditStep(1)}>
           <p className="text-sm text-muted">Last 4 digits: ****{draft.aadhaar_last_4}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -332,6 +341,16 @@ export default function ProfileVerifyPage() {
   const [stepValid, setStepValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then((d: { data?: { name?: string | null } }) => {
+        if (d.data?.name) setDisplayName(d.data.name);
+      })
+      .catch(() => { /* non-critical */ });
+  }, []);
 
   function updateDraft(updates: Partial<KycDraft>) {
     setDraft(prev => ({ ...prev, ...updates }));
@@ -403,7 +422,7 @@ export default function ProfileVerifyPage() {
         {step === 2 && <StepPan draft={draft} onChange={updateDraft} onValidChange={setStepValid} />}
         {step === 3 && <StepSelfie draft={draft} onChange={updateDraft} onValidChange={setStepValid} />}
         {step === 4 && <StepBankUpi draft={draft} onChange={updateDraft} onValidChange={setStepValid} />}
-        {step === 5 && <StepReview draft={draft} onEditStep={goToStep} onValidChange={setStepValid} />}
+        {step === 5 && <StepReview draft={draft} onEditStep={goToStep} onValidChange={setStepValid} displayName={displayName} />}
       </div>
 
       {submitError && (
