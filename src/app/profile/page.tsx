@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ShieldCheck, ShieldX, Clock, ShieldAlert } from 'lucide-react';
+import { NameEditor } from '@/components/profile/NameEditor';
 
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
@@ -85,10 +86,7 @@ export default async function ProfilePage({
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
         <h2 className="font-semibold text-base text-ink">Account</h2>
         <div className="space-y-3">
-          <div>
-            <p className="text-xs text-muted mb-0.5">Name</p>
-            <p className="text-sm font-semibold text-ink">{profile.name ?? '—'}</p>
-          </div>
+          <NameEditor initialName={profile.name} />
           <div>
             <p className="text-xs text-muted mb-0.5">Phone</p>
             <p className="text-sm font-semibold text-ink">{profile.phone}</p>
