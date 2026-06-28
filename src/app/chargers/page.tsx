@@ -780,11 +780,6 @@ export default function ChargersPage() {
             </button>
           )}
 
-          {/* ── Floating view toggle ──────────────────────────────────────── */}
-          <div className="fixed bottom-20 right-4 z-30 pointer-events-auto">
-            <FloatingViewToggle value={viewMode} onChange={handleViewModeChange} />
-          </div>
-
           {/* ── Toast ─────────────────────────────────────────────────────── */}
           <div
             className={cn(
@@ -852,7 +847,61 @@ export default function ChargersPage() {
 
       {/* ── List view ─────────────────────────────────────────────────────── */}
       {viewMode === 'list' && (
-        <div className="flex-1 px-4 sm:px-6 py-6 max-w-5xl mx-auto w-full">
+        <div className="flex-1 px-4 sm:px-6 py-4 max-w-5xl mx-auto w-full">
+          {/* Search controls — same logic as map overlay but inline */}
+          <div className="mb-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 space-y-2">
+            {isRouteMode ? (
+              routeResult && !routeEditOpen ? (
+                <RouteCompactSummary
+                  fromAddress={routeFromAddress}
+                  toAddress={routeToAddress}
+                  distanceMeters={routeResult.distanceMeters}
+                  durationSeconds={routeResult.durationSeconds}
+                  chargerCount={visibleRouteChargers.length}
+                  chargerCountLoading={routeFetchLoading}
+                  routeLoading={routeLoading}
+                  bufferValue={routeBuffer}
+                  onBufferChange={setRouteBuffer}
+                  onEdit={() => setRouteEditOpen(true)}
+                />
+              ) : (
+                <RouteInputs
+                  fromAddress={routeFromAddress}
+                  toAddress={routeToAddress}
+                  onFromAddressChange={handleFromAddressChange}
+                  onToAddressChange={handleToAddressChange}
+                  onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
+                  onToSelect={r => setRouteTo(r)}
+                  onGpsRefresh={handleGpsRouteRefresh}
+                  activeInput={activeRouteInput}
+                  onSetActive={setActiveRouteInput}
+                  fromGeocoding={geocodingPin === 'from'}
+                  toGeocoding={geocodingPin === 'to'}
+                  fromIsGps={fromIsGps}
+                  onSwap={handleSwap}
+                  canSwap={!!(routeFrom && routeTo) && !isSwapping}
+                  isSwapping={isSwapping}
+                  routeLoading={routeLoading}
+                  onDone={routeEditOpen ? () => setRouteEditOpen(false) : undefined}
+                />
+              )
+            ) : (
+              <>
+                <AddressAutocomplete
+                  value={searchAddress}
+                  onChange={handleAddressChange}
+                  onSelect={handleAddressSelect}
+                  placeholder="Search a location…"
+                />
+                <RadiusSlider
+                  value={allIndiaMode ? Infinity : radius}
+                  onChange={handleRadiusChange}
+                  isLoading={fetchLoading}
+                />
+              </>
+            )}
+          </div>
+
           {!isRouteMode && allIndiaMode && chargers.length >= 100 && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-volt-soft border border-volt/20 text-volt-deep text-xs font-semibold">
               Showing 100 of many chargers — narrow your radius to see more.
@@ -870,6 +919,11 @@ export default function ChargersPage() {
           />
         </div>
       )}
+
+      {/* ── Floating view toggle (always visible, fixed over map or list) ── */}
+      <div className="fixed bottom-20 right-4 z-30">
+        <FloatingViewToggle value={viewMode} onChange={handleViewModeChange} />
+      </div>
 
       {/* Filter sheet */}
       <FilterSheet
