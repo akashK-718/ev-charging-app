@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { X, LocateFixed } from 'lucide-react';
 import { AddressAutocomplete } from '@/components/maps/AddressAutocomplete';
 import type { Coords } from '@/lib/maps/types';
@@ -37,6 +38,15 @@ export function RouteInputs({
   toGeocoding,
   fromIsGps,
 }: RouteInputsProps) {
+  // When the GPS chip is clicked we clear it and auto-focus the revealed input.
+  // autoFocus only fires on DOM mount so no reset needed — future re-renders are safe.
+  const [autoFocusFrom, setAutoFocusFrom] = useState(false);
+
+  function handleChipClick() {
+    setAutoFocusFrom(true);
+    onFromAddressChange('');
+  }
+
   return (
     <div className="flex flex-col gap-2">
       {/* From */}
@@ -49,8 +59,15 @@ export function RouteInputs({
           onClick={() => onSetActive('from')}
         >
           {fromIsGps ? (
-            /* Locked GPS chip — not editable */
-            <div className="w-full pl-4 pr-10 py-3.5 bg-gray-100 rounded-2xl flex items-center gap-2">
+            /* GPS chip — click anywhere on it to switch to editable input */
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Change start location"
+              onClick={handleChipClick}
+              onKeyDown={e => e.key === 'Enter' && handleChipClick()}
+              className="w-full pl-4 pr-10 py-3.5 bg-gray-100 rounded-2xl flex items-center gap-2 cursor-text"
+            >
               <LocateFixed className="w-4 h-4 text-volt shrink-0" />
               <span className="flex-1 text-sm text-ink font-medium truncate">Your location</span>
             </div>
@@ -60,6 +77,7 @@ export function RouteInputs({
               onChange={onFromAddressChange}
               onSelect={onFromSelect}
               placeholder="From…"
+              autoFocus={autoFocusFrom}
             />
           )}
           {fromGeocoding ? (
