@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ShieldCheck, ShieldX, Clock, ShieldAlert } from 'lucide-react';
 import { NameEditor } from '@/components/profile/NameEditor';
+import { RoleEditor } from '@/components/profile/RoleEditor';
 
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
@@ -90,11 +91,17 @@ export default async function ProfilePage({
           <div>
             <p className="text-xs text-muted mb-0.5">Phone</p>
             <p className="text-sm font-semibold text-ink">{profile.phone}</p>
+            {/* TODO: Implement phone change flow in future PR (Module 5+) */}
+            {/* Requires: OTP verification on both numbers, uniqueness check, auth provider sync */}
+            <p className="text-xs text-muted mt-1">
+              To change your phone number,{' '}
+              <a href="mailto:support@example.com" className="underline hover:text-ink transition-colors">
+                contact support
+              </a>
+              .
+            </p>
           </div>
-          <div>
-            <p className="text-xs text-muted mb-0.5">Role</p>
-            <p className="text-sm font-semibold text-ink capitalize">{profile.role}</p>
-          </div>
+          <RoleEditor initialRole={profile.role as 'driver' | 'lender' | 'both'} />
           <div>
             <p className="text-xs text-muted mb-0.5">Member since</p>
             <p className="text-sm font-semibold text-ink">{formatDate(profile.created_at)}</p>
