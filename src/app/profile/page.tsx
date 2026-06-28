@@ -73,8 +73,8 @@ export default async function ProfilePage({
     <main className="min-h-screen px-6 py-10 space-y-6 max-w-lg mx-auto">
       <h1 className="font-display font-extrabold text-3xl text-ink">Profile</h1>
 
-      {/* Submission success toast */}
-      {searchParams.verified === 'submitted' && (
+      {/* Submission success toast — only while still pending; hide once approved/rejected */}
+      {searchParams.verified === 'submitted' && kycStatus === 'pending' && (
         <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
           <p className="font-semibold text-blue-800">Verification submitted!</p>
           <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
