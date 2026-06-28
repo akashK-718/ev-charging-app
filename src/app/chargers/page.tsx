@@ -8,9 +8,8 @@ import { haversineKm } from '@/lib/haversine';
 import { cn } from '@/lib/utils';
 import { MapListToggle } from '@/components/chargers/MapListToggle';
 import { RadiusSlider, RADIUS_STEPS } from '@/components/chargers/RadiusSlider';
-import { BufferSlider } from '@/components/chargers/BufferSlider';
 import { RouteInputs } from '@/components/chargers/RouteInputs';
-import { RouteInfoPanel } from '@/components/chargers/RouteInfoPanel';
+import { RouteCompactSummary } from '@/components/chargers/RouteCompactSummary';
 import { ChargerBottomSheet } from '@/components/chargers/ChargerBottomSheet';
 import { ChargerListView } from '@/components/chargers/ChargerListView';
 import { FilterSheet } from '@/components/chargers/FilterSheet';
@@ -154,6 +153,10 @@ export default function ChargersPage() {
   const [fromIsGps, setFromIsGps] = useState(false);
   /** Prevents the GPS pre-fill effect from re-firing after the user explicitly clears the From field. */
   const userClearedFromRef = useRef(false);
+  /** Whether the user is in edit mode for an already-calculated route (State 4). */
+  const [routeEditOpen, setRouteEditOpen] = useState(false);
+  /** Brief animation flag for the From/To swap — fades fields out, swaps, fades back. */
+  const [isSwapping, setIsSwapping] = useState(false);
 
   // ── Shared filters ────────────────────────────────────────────────────────
   const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
@@ -376,6 +379,7 @@ export default function ChargersPage() {
   function handleSearchModeChange(mode: SearchMode) {
     setSearchMode(mode);
     setSelectedCharger(null);
+    setRouteEditOpen(false);
     if (mode === 'along_route') {
       setActiveRouteInput('from');
       userClearedFromRef.current = false; // allow GPS pre-fill on fresh entry to route mode
@@ -518,6 +522,21 @@ export default function ChargersPage() {
     }
   }
 
+  function handleSwap() {
+    if (!routeFrom || !routeTo || isSwapping) return;
+    setIsSwapping(true);
+    setTimeout(() => {
+      const prevFrom = routeFrom;
+      const prevFromAddr = routeFromAddress;
+      setFromIsGps(false); // new From (was To) was never GPS
+      setRouteFrom(routeTo);
+      setRouteFromAddress(routeToAddress);
+      setRouteTo(prevFrom);
+      setRouteToAddress(prevFromAddr);
+      setIsSwapping(false);
+    }, 120);
+  }
+
   function handleApplyFilters({ connectors, maxPrice: mp }: { connectors: Set<string>; maxPrice: number }) {
     setSelectedConnectors(connectors);
     setMaxPrice(mp);
@@ -573,17 +592,11 @@ export default function ChargersPage() {
 
   const counterLabel = activeFetchLoading
     ? 'Searching…'
-    : isRouteMode
-      ? routeResult
-        ? hiddenByFilters > 0
-          ? `${visibleRouteChargers.length} of ${routeChargers.length} charger${routeChargers.length === 1 ? '' : 's'} (${hiddenByFilters} hidden)`
-          : `${visibleRouteChargers.length} charger${visibleRouteChargers.length === 1 ? '' : 's'} along route`
-        : 'Enter a destination to search'
-      : allIndiaMode
-        ? `${chargers.length.toLocaleString('en-IN')} chargers across India`
-        : hiddenByFilters > 0
-          ? `${visibleChargers.length} of ${chargers.length} charger${chargers.length === 1 ? '' : 's'} (${hiddenByFilters} hidden)`
-          : `${visibleChargers.length} charger${visibleChargers.length === 1 ? '' : 's'} within ${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(1)} km`;
+    : allIndiaMode
+      ? `${chargers.length.toLocaleString('en-IN')} chargers across India`
+      : hiddenByFilters > 0
+        ? `${visibleChargers.length} of ${chargers.length} charger${chargers.length === 1 ? '' : 's'} (${hiddenByFilters} hidden)`
+        : `${visibleChargers.length} charger${visibleChargers.length === 1 ? '' : 's'} within ${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(1)} km`;
 
   const mapCenter = searchCenter ?? DELHI_NCR;
 
@@ -620,56 +633,46 @@ export default function ChargersPage() {
         viewMode === 'map' ? 'h-[calc(100dvh-3.5rem)]' : 'min-h-[calc(100dvh-3.5rem)]',
       )}
     >
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col border-b border-gray-100 bg-white shrink-0">
-        <div className="flex items-center gap-3 px-4 pt-3 pb-2">
-          <h1 className="font-display font-extrabold text-lg text-ink leading-tight shrink-0">
-            Find a charger
-          </h1>
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              onClick={() => setFiltersOpen(true)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
-                activeFilterCount > 0
-                  ? 'bg-ink text-white'
-                  : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
-              )}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
-            </button>
-            <MapListToggle mode={viewMode} onChange={handleViewModeChange} />
-          </div>
-        </div>
-
-        {/* Search mode tabs */}
-        <div className="flex gap-1.5 px-4 pb-3">
-          <button
-            onClick={() => handleSearchModeChange('near_me')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
-              !isRouteMode
-                ? 'bg-volt text-ink'
-                : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
-            )}
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            Near me
-          </button>
-          <button
-            onClick={() => handleSearchModeChange('along_route')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
-              isRouteMode
-                ? 'bg-volt text-ink'
-                : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
-            )}
-          >
-            <Route className="w-3.5 h-3.5" />
-            Along route
-          </button>
-        </div>
+      {/* ── Header: mode tabs + controls in one compact row ────────────── */}
+      <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-gray-100 bg-white shrink-0">
+        <button
+          onClick={() => handleSearchModeChange('near_me')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
+            !isRouteMode
+              ? 'bg-volt text-ink'
+              : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
+          )}
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          Near me
+        </button>
+        <button
+          onClick={() => handleSearchModeChange('along_route')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
+            isRouteMode
+              ? 'bg-volt text-ink'
+              : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
+          )}
+        >
+          <Route className="w-3.5 h-3.5" />
+          Along route
+        </button>
+        <div className="flex-1" />
+        <button
+          onClick={() => setFiltersOpen(true)}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors',
+            activeFilterCount > 0
+              ? 'bg-ink text-white'
+              : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
+          )}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
+        </button>
+        <MapListToggle mode={viewMode} onChange={handleViewModeChange} />
       </div>
 
       {/* ── Map view ──────────────────────────────────────────────────────── */}
@@ -712,66 +715,69 @@ export default function ChargersPage() {
           {/* ── Map overlay: controls ─────────────────────────────────────── */}
           {!locationLoading && (
             <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-3 pointer-events-auto space-y-2">
-
-                {/* Route mode: From/To inputs */}
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-3 pointer-events-auto">
                 {isRouteMode ? (
-                  <RouteInputs
-                    fromAddress={routeFromAddress}
-                    toAddress={routeToAddress}
-                    onFromAddressChange={handleFromAddressChange}
-                    onToAddressChange={handleToAddressChange}
-                    onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
-                    onToSelect={r => setRouteTo(r)}
-                    onGpsRefresh={handleGpsRouteRefresh}
-                    routeLoading={routeLoading}
-                    activeInput={activeRouteInput}
-                    onSetActive={setActiveRouteInput}
-                    fromGeocoding={geocodingPin === 'from'}
-                    toGeocoding={geocodingPin === 'to'}
-                    fromIsGps={fromIsGps}
-                  />
+                  routeResult && !routeEditOpen ? (
+                    /* State 3: compact summary */
+                    <RouteCompactSummary
+                      fromAddress={routeFromAddress}
+                      toAddress={routeToAddress}
+                      distanceMeters={routeResult.distanceMeters}
+                      durationSeconds={routeResult.durationSeconds}
+                      chargerCount={visibleRouteChargers.length}
+                      chargerCountLoading={routeFetchLoading}
+                      routeLoading={routeLoading}
+                      bufferValue={routeBuffer}
+                      onBufferChange={setRouteBuffer}
+                      onEdit={() => setRouteEditOpen(true)}
+                    />
+                  ) : (
+                    /* States 1/2/4: From + To inputs with swap */
+                    <RouteInputs
+                      fromAddress={routeFromAddress}
+                      toAddress={routeToAddress}
+                      onFromAddressChange={handleFromAddressChange}
+                      onToAddressChange={handleToAddressChange}
+                      onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
+                      onToSelect={r => setRouteTo(r)}
+                      onGpsRefresh={handleGpsRouteRefresh}
+                      activeInput={activeRouteInput}
+                      onSetActive={setActiveRouteInput}
+                      fromGeocoding={geocodingPin === 'from'}
+                      toGeocoding={geocodingPin === 'to'}
+                      fromIsGps={fromIsGps}
+                      onSwap={handleSwap}
+                      canSwap={!!(routeFrom && routeTo) && !isSwapping}
+                      isSwapping={isSwapping}
+                      routeLoading={routeLoading}
+                      onDone={routeEditOpen ? () => setRouteEditOpen(false) : undefined}
+                    />
+                  )
                 ) : (
-                  /* Near-me: address search */
-                  <AddressAutocomplete
-                    value={searchAddress}
-                    onChange={handleAddressChange}
-                    onSelect={handleAddressSelect}
-                    placeholder="Search a location…"
-                  />
-                )}
-
-                {/* Counter */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      'text-xs font-semibold transition-colors',
-                      activeFetchLoading ? 'text-muted' : 'text-ink',
-                    )}
-                  >
-                    {counterLabel}
-                  </span>
-                </div>
-
-                {/* Slider: radius (near-me) or buffer (route) */}
-                {isRouteMode ? (
-                  <>
-                    <BufferSlider value={routeBuffer} onChange={setRouteBuffer} />
-                    {routeResult && (
-                      <RouteInfoPanel
-                        distanceMeters={routeResult.distanceMeters}
-                        durationSeconds={routeResult.durationSeconds}
-                        chargerCount={visibleRouteChargers.length}
-                        isLoading={routeFetchLoading}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <RadiusSlider
-                    value={allIndiaMode ? Infinity : radius}
-                    onChange={handleRadiusChange}
-                    isLoading={fetchLoading}
-                  />
+                  /* Near-me mode */
+                  <div className="space-y-2">
+                    <AddressAutocomplete
+                      value={searchAddress}
+                      onChange={handleAddressChange}
+                      onSelect={handleAddressSelect}
+                      placeholder="Search a location…"
+                    />
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={cn(
+                          'text-xs font-semibold transition-colors',
+                          activeFetchLoading ? 'text-muted' : 'text-ink',
+                        )}
+                      >
+                        {counterLabel}
+                      </span>
+                    </div>
+                    <RadiusSlider
+                      value={allIndiaMode ? Infinity : radius}
+                      onChange={handleRadiusChange}
+                      isLoading={fetchLoading}
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -811,27 +817,22 @@ export default function ChargersPage() {
 
           {/* ── Empty state ───────────────────────────────────────────────── */}
           {!activeFetchLoading && !locationLoading &&
-            (isRouteMode ? visibleRouteChargers.length === 0 : visibleChargers.length === 0) && (
+            (isRouteMode
+              ? visibleRouteChargers.length === 0 && routeResult !== null
+              : visibleChargers.length === 0) && (
             <div className="absolute inset-0 flex items-end justify-center pb-28 pointer-events-none z-10">
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-5 py-4 mx-4 text-center pointer-events-auto">
                 {isRouteMode ? (
-                  routeResult ? (
-                    <>
-                      <p className="font-semibold text-ink text-sm">No chargers along this route</p>
-                      {activeFilterCount > 0 ? (
-                        <button onClick={clearFilters} className="mt-2 text-xs font-semibold text-volt-deep underline">
-                          Clear filters
-                        </button>
-                      ) : (
-                        <p className="text-xs text-muted mt-1">Try increasing the buffer radius.</p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-semibold text-ink text-sm">Enter a destination</p>
-                      <p className="text-xs text-muted mt-1">Set From and To to find chargers along your route.</p>
-                    </>
-                  )
+                  <>
+                    <p className="font-semibold text-ink text-sm">No chargers along this route</p>
+                    {activeFilterCount > 0 ? (
+                      <button onClick={clearFilters} className="mt-2 text-xs font-semibold text-volt-deep underline">
+                        Clear filters
+                      </button>
+                    ) : (
+                      <p className="text-xs text-muted mt-1">Try increasing the buffer radius.</p>
+                    )}
+                  </>
                 ) : (
                   <>
                     <p className="font-semibold text-ink text-sm">

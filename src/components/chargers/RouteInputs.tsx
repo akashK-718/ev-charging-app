@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, LocateFixed } from 'lucide-react';
+import { X, LocateFixed, ArrowUpDown, Check } from 'lucide-react';
 import { AddressAutocomplete } from '@/components/maps/AddressAutocomplete';
 import type { Coords } from '@/lib/maps/types';
 import { cn } from '@/lib/utils';
@@ -14,13 +14,18 @@ interface RouteInputsProps {
   onFromSelect: (result: { coords: Coords; address: string }) => void;
   onToSelect: (result: { coords: Coords; address: string }) => void;
   onGpsRefresh: () => void;
-  routeLoading: boolean;
   activeInput: 'from' | 'to';
   onSetActive: (input: 'from' | 'to') => void;
   fromGeocoding?: boolean;
   toGeocoding?: boolean;
   /** When true the From field shows a locked "Your location" chip instead of a text input. */
   fromIsGps?: boolean;
+  onSwap: () => void;
+  canSwap: boolean;
+  isSwapping?: boolean;
+  routeLoading?: boolean;
+  /** When provided, a "Done" button appears — used when editing an already-calculated route. */
+  onDone?: () => void;
 }
 
 export function RouteInputs({
@@ -31,15 +36,18 @@ export function RouteInputs({
   onFromSelect,
   onToSelect,
   onGpsRefresh,
-  routeLoading,
   activeInput,
   onSetActive,
   fromGeocoding,
   toGeocoding,
   fromIsGps,
+  onSwap,
+  canSwap,
+  isSwapping = false,
+  routeLoading,
+  onDone,
 }: RouteInputsProps) {
-  // When the GPS chip is clicked we clear it and auto-focus the revealed input.
-  // autoFocus only fires on DOM mount so no reset needed — future re-renders are safe.
+  // autoFocus only fires on DOM mount — safe to leave true after initial focus
   const [autoFocusFrom, setAutoFocusFrom] = useState(false);
 
   function handleChipClick() {
@@ -49,17 +57,17 @@ export function RouteInputs({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* From */}
+      {/* From row */}
       <div className="flex items-center gap-2">
         <div
           className={cn(
-            'relative flex-1 rounded-2xl ring-2 transition-colors',
+            'relative flex-1 rounded-2xl ring-2 transition-all duration-150',
             activeInput === 'from' ? 'ring-volt' : 'ring-gray-200',
+            isSwapping && 'opacity-0',
           )}
           onClick={() => onSetActive('from')}
         >
           {fromIsGps ? (
-            /* GPS chip — click anywhere on it to switch to editable input */
             <div
               role="button"
               tabIndex={0}
@@ -93,53 +101,88 @@ export function RouteInputs({
             </button>
           ) : null}
         </div>
+
+        {/* GPS button — right of From field */}
         <button
           type="button"
           onClick={onGpsRefresh}
           title="Use my location as start"
-          className="shrink-0 p-2.5 rounded-xl bg-volt-soft hover:bg-volt/20 transition-colors"
+          className="shrink-0 w-9 h-9 rounded-xl bg-volt-soft hover:bg-volt/20 transition-colors flex items-center justify-center"
           aria-label="Use current location as start"
         >
           <LocateFixed className="w-4 h-4 text-volt-deep" />
         </button>
       </div>
 
-      {/* To */}
-      <div
-        className={cn(
-          'relative rounded-2xl ring-2 transition-colors',
-          activeInput === 'to' ? 'ring-volt' : 'ring-gray-200',
-        )}
-        onClick={() => onSetActive('to')}
-      >
-        <AddressAutocomplete
-          value={toAddress}
-          onChange={onToAddressChange}
-          onSelect={onToSelect}
-          placeholder="To…"
-        />
-        {toGeocoding ? (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-4 h-4 border-2 border-volt border-t-transparent rounded-full animate-spin pointer-events-none" />
-        ) : toAddress ? (
-          <button
-            type="button"
-            onMouseDown={e => { e.preventDefault(); onToAddressChange(''); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-            aria-label="Clear To"
-          >
-            <X className="w-3.5 h-3.5 text-muted" />
-          </button>
-        ) : null}
+      {/* To row */}
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            'relative flex-1 rounded-2xl ring-2 transition-all duration-150',
+            activeInput === 'to' ? 'ring-volt' : 'ring-gray-200',
+            isSwapping && 'opacity-0',
+          )}
+          onClick={() => onSetActive('to')}
+        >
+          <AddressAutocomplete
+            value={toAddress}
+            onChange={onToAddressChange}
+            onSelect={onToSelect}
+            placeholder="To…"
+          />
+          {toGeocoding ? (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-4 h-4 border-2 border-volt border-t-transparent rounded-full animate-spin pointer-events-none" />
+          ) : toAddress ? (
+            <button
+              type="button"
+              onMouseDown={e => { e.preventDefault(); onToAddressChange(''); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+              aria-label="Clear To"
+            >
+              <X className="w-3.5 h-3.5 text-muted" />
+            </button>
+          ) : null}
+        </div>
+
+        {/* Swap button — right of To field, same column as GPS button */}
+        <button
+          type="button"
+          onClick={onSwap}
+          disabled={!canSwap || isSwapping}
+          title="Swap From and To"
+          aria-label="Swap From and To"
+          className={cn(
+            'shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200',
+            canSwap && !isSwapping
+              ? 'bg-volt-soft hover:bg-volt/20 hover:scale-105 active:scale-95'
+              : 'bg-gray-100 cursor-not-allowed',
+          )}
+        >
+          <ArrowUpDown
+            className={cn(
+              'w-4 h-4 transition-colors',
+              canSwap && !isSwapping ? 'text-volt-deep' : 'text-gray-400',
+            )}
+          />
+        </button>
       </div>
 
-      {/* Status line */}
-      {routeLoading ? (
-        <p className="text-[11px] text-muted text-center">Finding route…</p>
-      ) : (
-        <p className="text-[11px] text-muted text-center">
-          Tap an input, then long-press the map to drop a pin
+      {/* Helper row: hint text + Done button */}
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] text-muted">
+          {routeLoading ? 'Finding route…' : 'Long-press map to drop a pin'}
         </p>
-      )}
+        {onDone && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="flex items-center gap-1 text-xs font-semibold text-volt-deep"
+          >
+            <Check className="w-3.5 h-3.5" />
+            Done
+          </button>
+        )}
+      </div>
     </div>
   );
 }
