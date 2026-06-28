@@ -3,13 +3,27 @@
 
 -- Step 1: Reset phantom-pending users (created before kyc_submissions table,
 -- where the original schema defaulted kyc_status = 'pending' for all new rows).
--- These users never submitted KYC — their status should be 'not_started'.
-UPDATE public.users
-SET kyc_status = 'not_started'
-WHERE kyc_status = 'pending'
-  AND NOT EXISTS (
-    SELECT 1 FROM public.kyc_submissions WHERE user_id = users.id
-  );
+-- Guard against kyc_submissions not existing yet (if migration 008 hasn't run).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'kyc_submissions'
+  ) THEN
+    -- Table exists: only reset users who have no actual submission
+    UPDATE public.users
+    SET kyc_status = 'not_started'
+    WHERE kyc_status = 'pending'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.kyc_submissions WHERE user_id = users.id
+      );
+  ELSE
+    -- Table doesn't exist yet: no user can have a real submission, reset all
+    UPDATE public.users
+    SET kyc_status = 'not_started'
+    WHERE kyc_status = 'pending';
+  END IF;
+END $$;
 
 -- Step 2: Add 'draft' to charger status enum so unverified lenders can save
 -- listings that stay invisible to drivers until KYC is approved.
