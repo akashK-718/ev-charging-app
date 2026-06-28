@@ -3,15 +3,16 @@
 -- Designed to work whether or not migration 008 has been run first.
 
 -- Step 1: Expand users.kyc_status to include 'not_started' and 'approved'.
--- Drop whichever constraint exists (original schema had 'pending'|'verified'|'rejected';
--- migration 008 would have replaced it). Either way, drop and recreate.
+-- Drop the old constraint first so we can backfill legacy values without conflicts.
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_kyc_status_check;
+
+-- Remap legacy 'verified' → 'approved' while no constraint is active.
+UPDATE public.users SET kyc_status = 'approved' WHERE kyc_status = 'verified';
+
+-- Now all rows are in the new value set — safe to add the new constraint.
 ALTER TABLE public.users ALTER COLUMN kyc_status SET DEFAULT 'not_started';
 ALTER TABLE public.users ADD CONSTRAINT users_kyc_status_check
   CHECK (kyc_status IN ('not_started', 'pending', 'approved', 'rejected'));
-
--- Remap any 'verified' values from the original schema to 'approved'.
-UPDATE public.users SET kyc_status = 'approved' WHERE kyc_status = 'verified';
 
 -- Step 2: Reset phantom-pending users (created before kyc_submissions existed,
 -- where the original schema defaulted kyc_status = 'pending' for all new rows).
