@@ -13,6 +13,7 @@ export type AddressAutocompleteProps = {
   placeholder?: string;
   /** ISO 3166-1 alpha-2 country code. Defaults to 'IN'. */
   country?: string;
+  autoFocus?: boolean;
 };
 
 export function AddressAutocomplete({
@@ -21,6 +22,7 @@ export function AddressAutocomplete({
   onSelect,
   placeholder = 'Search for an address…',
   country = 'IN',
+  autoFocus = false,
 }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -81,6 +83,7 @@ export function AddressAutocomplete({
         <input
           type="text"
           autoComplete="off"
+          autoFocus={autoFocus}
           value={value}
           onChange={handleInputChange}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
