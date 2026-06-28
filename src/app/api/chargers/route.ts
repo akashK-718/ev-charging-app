@@ -66,6 +66,11 @@ export async function GET(request: NextRequest) {
 
     const bufferM = Math.min(25000, Math.max(500, Number(bufferStr) || 2500));
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[chargers-along-route] points:', parsedRoute.coordinates.length, 'buffer_m:', bufferM);
+      console.log('[chargers-along-route] SQL test:\nSELECT id, title, distance_from_route_m FROM chargers_along_route(\'' + routeStr.replace(/'/g, "''") + '\'::text, ' + bufferM + ');');
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any).rpc('chargers_along_route', {
       route_geojson: routeStr,
