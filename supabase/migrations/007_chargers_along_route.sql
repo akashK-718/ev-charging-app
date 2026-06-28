@@ -53,7 +53,7 @@ AS $$
     c.updated_at,
     ST_Distance(
       c.location,
-      ST_GeomFromGeoJSON(route_geojson)::geography
+      ST_SetSRID(ST_GeomFromGeoJSON(route_geojson), 4326)::geography
     ) AS distance_from_route_m
   FROM public.chargers c
   WHERE
@@ -61,7 +61,7 @@ AS $$
     AND c.location IS NOT NULL
     AND ST_DWithin(
       c.location,
-      ST_GeomFromGeoJSON(route_geojson)::geography,
+      ST_SetSRID(ST_GeomFromGeoJSON(route_geojson), 4326)::geography,
       buffer_m
     )
   ORDER BY distance_from_route_m ASC;

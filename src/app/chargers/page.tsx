@@ -31,6 +31,26 @@ const AddressAutocomplete = dynamic(
   { ssr: false },
 );
 
+// ── Route geometry simplification ────────────────────────────────────────────
+// Mapbox overview=full returns 1000+ points for long routes. URL-encoding that
+// as a query param can exceed Vercel's 4 KB limit, causing silent 400 errors.
+// We keep at most maxPoints coords — sufficient for ST_DWithin proximity checks.
+function simplifyRouteGeoJSON(geojson: string, maxPoints: number): string {
+  try {
+    const route = JSON.parse(geojson) as { type: string; coordinates: number[][] };
+    const coords = route.coordinates;
+    if (coords.length <= maxPoints) return geojson;
+    const step = Math.ceil(coords.length / maxPoints);
+    const simplified: number[][] = [];
+    for (let i = 0; i < coords.length; i++) {
+      if (i % step === 0 || i === coords.length - 1) simplified.push(coords[i]);
+    }
+    return JSON.stringify({ type: 'LineString', coordinates: simplified });
+  } catch {
+    return geojson;
+  }
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DELHI_NCR: Coords = { lat: 28.6139, lng: 77.209 };
@@ -120,6 +140,11 @@ export default function ChargersPage() {
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeChargers, setRouteChargers] = useState<RouteCharger[]>([]);
   const [routeFetchLoading, setRouteFetchLoading] = useState(false);
+  /** Which From/To input is targeted by the next long-press pin drop. */
+  const [activeRouteInput, setActiveRouteInput] = useState<'from' | 'to'>('from');
+  /** Which pin is currently being reverse-geocoded after a drop or drag. */
+  const [geocodingPin, setGeocodingPin] = useState<'from' | 'to' | null>(null);
+  const dragDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // ── Shared filters ────────────────────────────────────────────────────────
   const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
@@ -172,9 +197,18 @@ export default function ChargersPage() {
   const fetchRouteChargers = useCallback(async (geojson: string, bufferM: number) => {
     setRouteFetchLoading(true);
     try {
-      const params = new URLSearchParams({ route: geojson, buffer: String(bufferM) });
+      // Simplify geometry before sending — full Mapbox routes can be 1000+ points,
+      // easily exceeding Vercel's 4 KB query-string limit and causing silent 400s.
+      const simplified = simplifyRouteGeoJSON(geojson, 100);
+      const params = new URLSearchParams({ route: simplified, buffer: String(bufferM) });
       const res = await fetch(`/api/chargers?${params}`);
-      const json = await res.json() as { chargers?: RouteCharger[] };
+      if (!res.ok) {
+        console.error('[fetchRouteChargers] API error', res.status, await res.text().catch(() => ''));
+        setRouteChargers([]);
+        return;
+      }
+      const json = await res.json() as { chargers?: RouteCharger[]; error?: string };
+      if (json.error) console.error('[fetchRouteChargers] RPC error:', json.error);
       setRouteChargers(json.chargers ?? []);
     } catch {
       setRouteChargers([]);
@@ -261,7 +295,8 @@ export default function ChargersPage() {
         const result = await maps.getRoute(routeFrom.coords, routeTo.coords);
         if (cancelled) return;
         setRouteResult(result);
-        await fetchRouteChargers(result.geojson, routeBuffer);
+        // fetchRouteChargers is triggered by the useEffect watching routeResult —
+        // don't call it here too or we get two simultaneous requests.
       } catch {
         if (!cancelled) { setRouteResult(null); setRouteChargers([]); }
       } finally {
@@ -280,6 +315,7 @@ export default function ChargersPage() {
     if (searchMode === 'along_route' && gpsCoords && !routeFrom) {
       setRouteFrom({ coords: gpsCoords, address: 'Your location' });
       setRouteFromAddress('Your location');
+      setActiveRouteInput('to'); // From is set — user should fill in To next
     }
   }, [searchMode, gpsCoords, routeFrom]);
 
@@ -316,6 +352,7 @@ export default function ChargersPage() {
   function handleSearchModeChange(mode: SearchMode) {
     setSearchMode(mode);
     setSelectedCharger(null);
+    if (mode === 'along_route') setActiveRouteInput('from');
   }
 
   function handleAddressSelect({ coords, address }: { coords: Coords; address: string }) {
@@ -333,14 +370,59 @@ export default function ChargersPage() {
   }
 
   async function handleLongPress(coords: Coords) {
-    setSearchCenter(coords);
-    setCenterType('manual');
-    try {
-      const result = await maps.reverseGeocode(coords);
-      setSearchAddress(result.formattedAddress);
-    } catch {
-      setSearchAddress(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+    if (isRouteMode) {
+      const target = activeRouteInput;
+      setGeocodingPin(target);
+      let address: string;
+      try {
+        const result = await maps.reverseGeocode(coords);
+        address = result.formattedAddress;
+      } catch {
+        address = `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+      } finally {
+        setGeocodingPin(null);
+      }
+      if (target === 'from') {
+        setRouteFrom({ coords, address });
+        setRouteFromAddress(address);
+        setActiveRouteInput('to');
+      } else {
+        setRouteTo({ coords, address });
+        setRouteToAddress(address);
+      }
+    } else {
+      setSearchCenter(coords);
+      setCenterType('manual');
+      try {
+        const result = await maps.reverseGeocode(coords);
+        setSearchAddress(result.formattedAddress);
+      } catch {
+        setSearchAddress(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+      }
     }
+  }
+
+  async function handlePinDragEnd(pinId: 'from' | 'to', coords: Coords) {
+    clearTimeout(dragDebounceRef.current);
+    dragDebounceRef.current = setTimeout(async () => {
+      setGeocodingPin(pinId);
+      let address: string;
+      try {
+        const result = await maps.reverseGeocode(coords);
+        address = result.formattedAddress;
+      } catch {
+        address = `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+      } finally {
+        setGeocodingPin(null);
+      }
+      if (pinId === 'from') {
+        setRouteFrom({ coords, address });
+        setRouteFromAddress(address);
+      } else {
+        setRouteTo({ coords, address });
+        setRouteToAddress(address);
+      }
+    }, 300);
   }
 
   function handleRecenter() {
@@ -366,6 +448,25 @@ export default function ChargersPage() {
     if (!gpsCoords) return;
     setRouteFrom({ coords: gpsCoords, address: 'Your location' });
     setRouteFromAddress('Your location');
+    setActiveRouteInput('to');
+  }
+
+  function handleFromAddressChange(v: string) {
+    setRouteFromAddress(v);
+    if (v === '') {
+      setRouteFrom(null);
+      setRouteResult(null);
+      setRouteChargers([]);
+    }
+  }
+
+  function handleToAddressChange(v: string) {
+    setRouteToAddress(v);
+    if (v === '') {
+      setRouteTo(null);
+      setRouteResult(null);
+      setRouteChargers([]);
+    }
   }
 
   function handleApplyFilters({ connectors, maxPrice: mp }: { connectors: Set<string>; maxPrice: number }) {
@@ -540,8 +641,14 @@ export default function ChargersPage() {
               manualCenter={!isRouteMode && centerType === 'manual' ? mapCenter : undefined}
               routeGeometry={routeResult?.geometry}
               routeBuffer={routeBuffer}
+              routeRecalculating={isRouteMode && routeLoading}
               fromCoords={routeFrom?.coords}
               toCoords={routeTo?.coords}
+              fromAddress={routeFrom?.address}
+              toAddress={routeTo?.address}
+              activeRoutePin={isRouteMode ? activeRouteInput : undefined}
+              onFromPinDragEnd={isRouteMode && routeFrom ? c => handlePinDragEnd('from', c) : undefined}
+              onToPinDragEnd={isRouteMode && routeTo ? c => handlePinDragEnd('to', c) : undefined}
               fitBoundsTarget={fitBoundsTarget}
               onChargerClick={id => {
                 const source = isRouteMode ? routeChargers : chargers;
@@ -549,7 +656,7 @@ export default function ChargersPage() {
                 if (found) setSelectedCharger(found);
               }}
               onMapClick={() => setSelectedCharger(null)}
-              onLongPress={!isRouteMode ? handleLongPress : undefined}
+              onLongPress={handleLongPress}
             />
           )}
 
@@ -563,12 +670,16 @@ export default function ChargersPage() {
                   <RouteInputs
                     fromAddress={routeFromAddress}
                     toAddress={routeToAddress}
-                    onFromAddressChange={setRouteFromAddress}
-                    onToAddressChange={setRouteToAddress}
-                    onFromSelect={r => setRouteFrom(r)}
+                    onFromAddressChange={handleFromAddressChange}
+                    onToAddressChange={handleToAddressChange}
+                    onFromSelect={r => { setRouteFrom(r); setActiveRouteInput('to'); }}
                     onToSelect={r => setRouteTo(r)}
                     onGpsRefresh={handleGpsRouteRefresh}
                     routeLoading={routeLoading}
+                    activeInput={activeRouteInput}
+                    onSetActive={setActiveRouteInput}
+                    fromGeocoding={geocodingPin === 'from'}
+                    toGeocoding={geocodingPin === 'to'}
                   />
                 ) : (
                   /* Near-me: address search */

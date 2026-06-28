@@ -10,6 +10,7 @@ import type { MapRef, MapMouseEvent, MapTouchEvent, MarkerDragEvent, LayerProps 
 import { MapPin, Crosshair } from 'lucide-react';
 import type { Coords } from '@/lib/maps/types';
 import { makeCircleGeoJSON } from '@/lib/maps/mapbox';
+import { cn } from '@/lib/utils';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
@@ -54,10 +55,22 @@ export type MapViewProps = {
   routeGeometry?: Coords[];
   /** Route buffer radius in meters — controls width of the buffer visualisation. */
   routeBuffer?: number;
+  /** When true, route line is shown at reduced opacity to indicate recalculation. */
+  routeRecalculating?: boolean;
   /** Green A-marker at the route start. */
   fromCoords?: Coords;
   /** Red B-marker at the route end. */
   toCoords?: Coords;
+  /** Address label for A-pin tooltip. */
+  fromAddress?: string;
+  /** Address label for B-pin tooltip. */
+  toAddress?: string;
+  /** Which route input is active — controls A/B pin size. */
+  activeRoutePin?: 'from' | 'to';
+  /** If provided, A pin becomes draggable; fires on drag end. */
+  onFromPinDragEnd?: (coords: Coords) => void;
+  /** If provided, B pin becomes draggable; fires on drag end. */
+  onToPinDragEnd?: (coords: Coords) => void;
   /**
    * When this value changes the map camera fits these bounds.
    * Format: [[minLng, minLat], [maxLng, maxLat]]
@@ -132,13 +145,15 @@ const radiusOutlineLayer: LayerProps = {
   paint: { 'line-color': VOLT, 'line-opacity': 0.6, 'line-width': 1.5 },
 };
 
-const routeLineLayer: LayerProps = {
-  id: 'route-line',
-  type: 'line',
-  source: 'route',
-  layout: { 'line-cap': 'round', 'line-join': 'round' },
-  paint: { 'line-color': VOLT, 'line-width': 4, 'line-opacity': 0.9 },
-};
+function makeRouteLineLayer(recalculating: boolean): LayerProps {
+  return {
+    id: 'route-line',
+    type: 'line',
+    source: 'route',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': VOLT, 'line-width': 4, 'line-opacity': recalculating ? 0.35 : 0.9 },
+  };
+}
 
 function makeRouteBufferLayer(bufferM: number): LayerProps {
   const km = bufferM / 1000;
@@ -171,8 +186,14 @@ export function MapView({
   manualCenter,
   routeGeometry,
   routeBuffer = 2500,
+  routeRecalculating = false,
   fromCoords,
   toCoords,
+  fromAddress,
+  toAddress,
+  activeRoutePin,
+  onFromPinDragEnd,
+  onToPinDragEnd,
   fitBoundsTarget,
   onChargerClick,
   onLongPress,
@@ -373,6 +394,7 @@ export function MapView({
   );
 
   const bufferLayer = makeRouteBufferLayer(routeBuffer);
+  const routeLineLayer = makeRouteLineLayer(routeRecalculating);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -424,19 +446,49 @@ export function MapView({
         <Layer {...unclusteredLayer} />
       </Source>
 
-      {/* Route From (A) endpoint */}
+      {/* Route From (A) endpoint — draggable when onFromPinDragEnd is provided */}
       {fromCoords && (
-        <Marker latitude={fromCoords.lat} longitude={fromCoords.lng} anchor="bottom">
-          <div className="w-7 h-7 rounded-full bg-volt border-2 border-white shadow-md flex items-center justify-center">
+        <Marker
+          latitude={fromCoords.lat}
+          longitude={fromCoords.lng}
+          anchor="bottom"
+          draggable={!!onFromPinDragEnd}
+          onDragEnd={onFromPinDragEnd
+            ? (e: MarkerDragEvent) => onFromPinDragEnd({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+            : undefined}
+        >
+          <div
+            title={fromAddress}
+            className={cn(
+              'rounded-full bg-volt border-2 border-white shadow-lg flex items-center justify-center transition-all duration-150',
+              activeRoutePin === 'from' ? 'w-9 h-9' : 'w-7 h-7',
+              onFromPinDragEnd ? 'cursor-grab active:cursor-grabbing' : '',
+            )}
+          >
             <span className="text-ink text-xs font-bold leading-none">A</span>
           </div>
         </Marker>
       )}
 
-      {/* Route To (B) endpoint */}
+      {/* Route To (B) endpoint — draggable when onToPinDragEnd is provided */}
       {toCoords && (
-        <Marker latitude={toCoords.lat} longitude={toCoords.lng} anchor="bottom">
-          <div className="w-7 h-7 rounded-full bg-red-500 border-2 border-white shadow-md flex items-center justify-center">
+        <Marker
+          latitude={toCoords.lat}
+          longitude={toCoords.lng}
+          anchor="bottom"
+          draggable={!!onToPinDragEnd}
+          onDragEnd={onToPinDragEnd
+            ? (e: MarkerDragEvent) => onToPinDragEnd({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+            : undefined}
+        >
+          <div
+            title={toAddress}
+            className={cn(
+              'rounded-full bg-red-500 border-2 border-white shadow-lg flex items-center justify-center transition-all duration-150',
+              activeRoutePin === 'to' ? 'w-9 h-9' : 'w-7 h-7',
+              onToPinDragEnd ? 'cursor-grab active:cursor-grabbing' : '',
+            )}
+          >
             <span className="text-white text-xs font-bold leading-none">B</span>
           </div>
         </Marker>
