@@ -33,7 +33,7 @@ SELECT
     'Pooja Mishra','Sneha Kulkarni','Aditi Shah','Meera Pillai','Tanvi Bhatt'
   ])[n] AS name,
   'lender',
-  CASE WHEN n <= 15 THEN 'approved' ELSE 'pending' END,
+  CASE WHEN n <= 15 THEN 'verified' ELSE 'pending' END,
   ROUND((3.5 + (ABS(hashtext('rating' || n::text)) % 15) * 0.1)::numeric, 2),
   NOW() - ((ABS(hashtext('age' || n::text)) % 365 + 30) || ' days')::interval,
   NOW()
