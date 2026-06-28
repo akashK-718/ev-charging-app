@@ -22,7 +22,8 @@ async function getLenderData(userId: string) {
       .from('chargers')
       .select('id, status')
       .eq('lender_id', userId)
-      .is('deleted_at', null),
+      .is('deleted_at', null)
+      .in('status', ['draft', 'active', 'paused']),
 
     adminSupabase
       .from('bookings')
@@ -75,6 +76,7 @@ export default async function LenderDashboardPage({
   if (!profile) redirect('/login');
 
   const kycStatus = (profile.kyc_status ?? 'not_started') as string;
+  const draftChargers = chargers.filter(c => c.status === 'draft').length;
   const activeChargers = chargers.filter(c => c.status === 'active').length;
   const pendingBookings = bookings.filter(b => b.status === 'pending').length;
 
@@ -84,10 +86,9 @@ export default async function LenderDashboardPage({
       {searchParams.listed === '1' && (
         <div className="px-4 py-3 bg-volt-soft rounded-2xl border border-volt">
           <p className="font-semibold text-ink">
-            Charger listed!{' '}
-            {kycStatus !== 'approved'
-              ? 'It will be visible to drivers once you verify your identity in Profile.'
-              : "It's now visible to drivers."}
+            {kycStatus === 'approved'
+              ? 'Charger listed! It\'s now live for drivers.'
+              : 'Charger saved as draft. Complete verification in Profile to publish it.'}
           </p>
         </div>
       )}
@@ -97,18 +98,16 @@ export default async function LenderDashboardPage({
         </div>
       )}
 
-      {/* KYC notice — informational, chargers are hidden from drivers until verified */}
-      {kycStatus === 'not_started' && (
+      {/* KYC notice — only shown when relevant, not a blocker */}
+      {kycStatus === 'not_started' && draftChargers > 0 && (
         <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200 flex items-center justify-between gap-3">
           <p className="text-sm text-yellow-800">
-            Your chargers won&apos;t appear to drivers until you verify your identity.
+            Your {draftChargers} charger{draftChargers > 1 ? 's are' : ' is'} ready.{' '}
+            <Link href="/profile" className="font-semibold underline underline-offset-2">
+              Complete verification in Profile
+            </Link>{' '}
+            to start earning.
           </p>
-          <Link
-            href="/profile"
-            className="shrink-0 px-3 py-1.5 bg-yellow-700 text-white text-xs font-bold rounded-xl hover:bg-yellow-800 transition-colors"
-          >
-            Verify
-          </Link>
         </div>
       )}
 
@@ -116,7 +115,7 @@ export default async function LenderDashboardPage({
         <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
           <p className="text-sm text-blue-800 font-semibold">Verification under review</p>
           <p className="text-xs text-blue-700 mt-0.5">
-            Usually 24–48 hours. Your chargers will go live once approved.
+            Usually 24–48 hours.{draftChargers > 0 && ` Your ${draftChargers} draft charger${draftChargers > 1 ? 's' : ''} will publish automatically once approved.`}
           </p>
         </div>
       )}
@@ -124,14 +123,10 @@ export default async function LenderDashboardPage({
       {kycStatus === 'rejected' && (
         <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-200 flex items-center justify-between gap-3">
           <p className="text-sm text-red-800">
-            Verification rejected — resubmit clearer documents to publish your chargers.
+            Verification rejected — update your details in{' '}
+            <Link href="/profile" className="font-semibold underline underline-offset-2">Profile</Link>{' '}
+            to resubmit.
           </p>
-          <Link
-            href="/profile"
-            className="shrink-0 px-3 py-1.5 bg-red-700 text-white text-xs font-bold rounded-xl hover:bg-red-800 transition-colors"
-          >
-            Resubmit
-          </Link>
         </div>
       )}
 

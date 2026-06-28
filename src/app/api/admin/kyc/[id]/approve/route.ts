@@ -63,6 +63,14 @@ export async function POST(
     .update({ kyc_status: 'approved' })
     .eq('id', sub.user_id);
 
+  // Promote all draft chargers for this lender to active — they go live immediately.
+  await adminSupabase
+    .from('chargers')
+    .update({ status: 'active' })
+    .eq('lender_id', sub.user_id)
+    .eq('status', 'draft')
+    .is('deleted_at', null);
+
   await notify(sub.user_id, 'kyc_approved', { submission_id: params.id });
 
   return NextResponse.json({ ok: true });
