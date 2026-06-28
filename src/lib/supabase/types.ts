@@ -49,7 +49,7 @@ export type Database = {
           location: unknown;
           photos: string[];
           instructions: string | null;
-          status: 'active' | 'paused' | 'suspended';
+          status: 'draft' | 'active' | 'paused' | 'suspended';
           avg_rating: number | null;
           total_sessions: number;
           deleted_at: string | null;

@@ -5,72 +5,81 @@ import { ShieldCheck, ShieldX, Clock, ShieldAlert } from 'lucide-react';
 
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
-  const { data } = await adminSupabase
-    .from('users')
-    .select('id, name, phone, role, kyc_status')
-    .eq('id', userId)
-    .single();
-  return data as {
-    id: string;
-    name: string | null;
-    phone: string;
-    role: string;
-    kyc_status: string;
-  } | null;
+
+  const [userResult, submissionResult, draftResult] = await Promise.all([
+    adminSupabase
+      .from('users')
+      .select('id, name, phone, role, kyc_status, created_at')
+      .eq('id', userId)
+      .single(),
+
+    // Fetch the most recent submission to show accurate status + date
+    adminSupabase
+      .from('kyc_submissions')
+      .select('id, status, submitted_at, rejection_reason')
+      .eq('user_id', userId)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+
+    // Draft charger count
+    adminSupabase
+      .from('chargers')
+      .select('id', { count: 'exact', head: true })
+      .eq('lender_id', userId)
+      .eq('status', 'draft')
+      .is('deleted_at', null),
+  ]);
+
+  return {
+    user: userResult.data as {
+      id: string; name: string | null; phone: string;
+      role: string; kyc_status: string; created_at: string;
+    } | null,
+    submission: submissionResult.data as {
+      id: string; status: string; submitted_at: string; rejection_reason: string | null;
+    } | null,
+    draftCount: draftResult.count ?? 0,
+  };
 }
 
-const KYC_CONFIG = {
-  not_started: {
-    icon: ShieldAlert,
-    iconClass: 'text-yellow-600',
-    bg: 'bg-yellow-50 border-yellow-200',
-    title: 'Identity not verified',
-    body: 'Your chargers are saved but hidden from drivers. Complete verification to publish them.',
-    action: { href: '/lender/kyc', label: 'Start verification', className: 'bg-yellow-700 hover:bg-yellow-800' },
-  },
-  pending: {
-    icon: Clock,
-    iconClass: 'text-blue-600',
-    bg: 'bg-blue-50 border-blue-200',
-    title: 'Verification under review',
-    body: 'We\'re reviewing your documents — usually 24–48 hours. Your chargers will go live once approved.',
-    action: null,
-  },
-  approved: {
-    icon: ShieldCheck,
-    iconClass: 'text-green-600',
-    bg: 'bg-green-50 border-green-200',
-    title: 'Identity verified',
-    body: 'Your chargers are visible to drivers and you can receive payouts.',
-    action: null,
-  },
-  rejected: {
-    icon: ShieldX,
-    iconClass: 'text-red-600',
-    bg: 'bg-red-50 border-red-200',
-    title: 'Verification rejected',
-    body: 'Please resubmit with clearer, well-lit photos of your documents.',
-    action: { href: '/lender/kyc', label: 'Resubmit documents', className: 'bg-red-700 hover:bg-red-800' },
-  },
-} as const;
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: { verified?: string };
+}) {
   const supabase = createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
-
   if (error || !user) redirect('/login');
 
-  const profile = await getProfileData(user.id);
+  const { user: profile, submission, draftCount } = await getProfileData(user.id);
   if (!profile) redirect('/login');
 
   const isLender = profile.role === 'lender' || profile.role === 'both';
-  const kycStatus = (profile.kyc_status ?? 'not_started') as keyof typeof KYC_CONFIG;
-  const kyc = KYC_CONFIG[kycStatus] ?? KYC_CONFIG.not_started;
-  const KycIcon = kyc.icon;
+
+  // Derive effective KYC status from DB (migration 009 fixes phantom-pending, but be defensive)
+  // If user has kyc_status='pending' but no submission row → treat as not_started
+  const rawKycStatus = profile.kyc_status as string;
+  const kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected' = (() => {
+    if (rawKycStatus === 'pending' && !submission) return 'not_started';
+    return rawKycStatus as 'not_started' | 'pending' | 'approved' | 'rejected';
+  })();
 
   return (
     <main className="min-h-screen px-6 py-10 space-y-6 max-w-lg mx-auto">
       <h1 className="font-display font-extrabold text-3xl text-ink">Profile</h1>
+
+      {/* Submission success toast */}
+      {searchParams.verified === 'submitted' && (
+        <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+          <p className="font-semibold text-blue-800">Verification submitted!</p>
+          <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
+        </div>
+      )}
 
       {/* Account info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
@@ -88,6 +97,10 @@ export default async function ProfilePage() {
             <p className="text-xs text-muted mb-0.5">Role</p>
             <p className="text-sm font-semibold text-ink capitalize">{profile.role}</p>
           </div>
+          <div>
+            <p className="text-xs text-muted mb-0.5">Member since</p>
+            <p className="text-sm font-semibold text-ink">{formatDate(profile.created_at)}</p>
+          </div>
         </div>
       </div>
 
@@ -96,21 +109,73 @@ export default async function ProfilePage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-base text-ink">Identity verification</h2>
 
-          <div className={`flex gap-3 p-4 rounded-xl border ${kyc.bg}`}>
-            <KycIcon className={`w-5 h-5 shrink-0 mt-0.5 ${kyc.iconClass}`} />
-            <div className="flex-1 min-w-0">
-              <p className={`font-semibold text-sm ${kyc.iconClass}`}>{kyc.title}</p>
-              <p className="text-xs text-muted mt-1 leading-relaxed">{kyc.body}</p>
-              {kyc.action && (
-                <Link
-                  href={kyc.action.href}
-                  className={`inline-block mt-3 px-4 py-2 text-white text-xs font-bold rounded-xl transition-colors ${kyc.action.className}`}
-                >
-                  {kyc.action.label}
-                </Link>
-              )}
+          {kycStatus === 'not_started' && (
+            <div className="space-y-4">
+              <div className="flex gap-3 p-4 rounded-xl border bg-yellow-50 border-yellow-200">
+                <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5 text-yellow-600" />
+                <div>
+                  <p className="font-semibold text-sm text-yellow-700">Not verified</p>
+                  <p className="text-xs text-muted mt-1 leading-relaxed">
+                    {draftCount > 0
+                      ? `You have ${draftCount} charger${draftCount > 1 ? 's' : ''} awaiting publish. Verify your identity to make them visible to drivers.`
+                      : 'Verify your identity to publish chargers and receive payouts.'}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/profile/verify"
+                className="block w-full text-center px-4 py-3 bg-ink text-white text-sm font-bold rounded-2xl hover:bg-ink/90 transition-colors"
+              >
+                Start verification
+              </Link>
             </div>
-          </div>
+          )}
+
+          {kycStatus === 'pending' && submission && (
+            <div className="flex gap-3 p-4 rounded-xl border bg-blue-50 border-blue-200">
+              <Clock className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+              <div>
+                <p className="font-semibold text-sm text-blue-700">Under review</p>
+                <p className="text-xs text-muted mt-1">
+                  Submitted {formatDate(submission.submitted_at)} · Usually 24–48 hours.
+                  {draftCount > 0 && ` Your ${draftCount} charger${draftCount > 1 ? 's' : ''} will go live automatically once approved.`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {kycStatus === 'approved' && (
+            <div className="flex gap-3 p-4 rounded-xl border bg-green-50 border-green-200">
+              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-green-600" />
+              <div>
+                <p className="font-semibold text-sm text-green-700">Verified</p>
+                {submission && (
+                  <p className="text-xs text-muted mt-1">Verified on {formatDate(submission.submitted_at)}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {kycStatus === 'rejected' && (
+            <div className="space-y-4">
+              <div className="flex gap-3 p-4 rounded-xl border bg-red-50 border-red-200">
+                <ShieldX className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
+                <div>
+                  <p className="font-semibold text-sm text-red-700">Verification rejected</p>
+                  {submission?.rejection_reason && (
+                    <p className="text-xs text-muted mt-1">Reason: {submission.rejection_reason}</p>
+                  )}
+                  <p className="text-xs text-muted mt-1">Please resubmit with clearer, well-lit photos.</p>
+                </div>
+              </div>
+              <Link
+                href="/profile/verify"
+                className="block w-full text-center px-4 py-3 bg-red-700 text-white text-sm font-bold rounded-2xl hover:bg-red-800 transition-colors"
+              >
+                Resubmit documents
+              </Link>
+            </div>
+          )}
 
           <p className="text-xs text-muted">
             We collect Aadhaar and PAN for identity verification as required by Indian payment regulations.

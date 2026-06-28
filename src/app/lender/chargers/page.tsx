@@ -12,7 +12,7 @@ type Charger = {
   title: string;
   address: string;
   price_per_kwh: number;
-  status: 'active' | 'paused' | 'suspended';
+  status: 'draft' | 'active' | 'paused' | 'suspended';
   total_sessions: number;
   charger_type: string;
   connector_types: string[];
@@ -65,7 +65,8 @@ function ActionMenu({
             Edit
           </Link>
 
-          {charger.status === 'active' ? (
+          {/* Pause/Unpause only for active chargers — drafts are already not visible */}
+          {charger.status === 'active' && (
             <button
               type="button"
               onClick={() => { setOpen(false); onPause(); }}
@@ -74,7 +75,8 @@ function ActionMenu({
               <Pause className="w-4 h-4 text-muted" />
               Pause
             </button>
-          ) : charger.status === 'paused' ? (
+          )}
+          {charger.status === 'paused' && (
             <button
               type="button"
               onClick={() => { setOpen(false); onUnpause(); }}
@@ -83,7 +85,7 @@ function ActionMenu({
               <Play className="w-4 h-4 text-muted" />
               Unpause
             </button>
-          ) : null}
+          )}
 
           <button
             type="button"
@@ -115,7 +117,9 @@ function DeleteModal({
       <div className="bg-white rounded-3xl p-6 w-full max-w-sm">
         <h2 className="font-display font-extrabold text-xl text-ink">Delete charger?</h2>
         <p className="text-sm text-muted mt-2">
-          &ldquo;{charger.title}&rdquo; will be removed. Active bookings will still be honored.
+          {charger.status === 'draft'
+            ? `"${charger.title}" is a draft and will be deleted. You can recreate it anytime.`
+            : `"${charger.title}" will be removed. Active bookings will still be honored.`}
         </p>
         <div className="flex gap-3 mt-6">
           <button
@@ -294,9 +298,13 @@ export default function LenderChargersPage() {
                       'px-2 py-0.5 rounded-full text-xs font-semibold shrink-0',
                       charger.status === 'active' ? 'bg-volt-soft text-volt-deep' :
                       charger.status === 'paused' ? 'bg-yellow-50 text-yellow-700' :
+                      charger.status === 'draft' ? 'bg-gray-100 text-muted' :
                       'bg-red-50 text-red-700',
                     )}>
-                      {charger.status === 'active' ? 'Active' : charger.status === 'paused' ? 'Paused' : 'Suspended'}
+                      {charger.status === 'active' ? 'Live' :
+                       charger.status === 'paused' ? 'Paused' :
+                       charger.status === 'draft' ? 'Awaiting verification' :
+                       'Suspended'}
                     </span>
                   </div>
                   <p className="text-xs text-muted truncate">{charger.address}</p>

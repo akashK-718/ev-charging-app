@@ -28,26 +28,13 @@ type ConnectorType = (typeof VALID_CONNECTOR_TYPES)[number];
  * Common filters (all modes): ?connector= (repeatable), ?maxPrice=
  */
 /**
- * Post-filter: keep only chargers that are not soft-deleted and whose lender
- * has completed KYC verification. Applied to all search modes so drivers never
- * see listings from unverified lenders.
+ * Post-filter: strip soft-deleted chargers from RPC results.
+ * Driver-facing queries already filter status='active', so draft chargers
+ * from unverified lenders are naturally excluded. We only need to guard
+ * against deleted_at since the PostGIS RPC functions don't filter that column.
  */
-async function filterPublishable(
-  chargers: Record<string, unknown>[],
-): Promise<Record<string, unknown>[]> {
-  const visible = chargers.filter(c => c.deleted_at == null);
-  if (visible.length === 0) return [];
-
-  const lenderIds = [...new Set(visible.map(c => c.lender_id as string))];
-  const adminSupabase = createAdminClient();
-  const { data } = await adminSupabase
-    .from('users')
-    .select('id')
-    .in('id', lenderIds)
-    .eq('kyc_status', 'approved');
-
-  const approved = new Set((data ?? []).map(u => u.id as string));
-  return visible.filter(c => approved.has(c.lender_id as string));
+function filterPublishable(chargers: Record<string, unknown>[]): Record<string, unknown>[] {
+  return chargers.filter(c => c.deleted_at == null);
 }
 
 export async function GET(request: NextRequest) {
@@ -107,7 +94,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let chargers = await filterPublishable(data ?? []);
+    let chargers = filterPublishable(data ?? []);
     if (connectors.length > 0) {
       chargers = chargers.filter(c =>
         (c.connector_types as string[]).some(ct => connectors.includes(ct)),
@@ -146,7 +133,7 @@ export async function GET(request: NextRequest) {
         { status: 500 },
       );
     }
-    const chargers = await filterPublishable((data ?? []) as Record<string, unknown>[]);
+    const chargers = filterPublishable((data ?? []) as Record<string, unknown>[]);
     return NextResponse.json({ chargers, total: chargers.length });
   }
 
@@ -173,7 +160,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let chargers = await filterPublishable(data ?? []);
+    let chargers = filterPublishable(data ?? []);
     if (connectors.length > 0) {
       chargers = chargers.filter(c =>
         (c.connector_types as string[]).some(ct => connectors.includes(ct)),
@@ -207,7 +194,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const chargers = await filterPublishable((data ?? []) as Record<string, unknown>[]);
+  const chargers = filterPublishable((data ?? []) as Record<string, unknown>[]);
   return NextResponse.json({ chargers });
 }
 
@@ -244,15 +231,15 @@ async function postHandler(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  // Role check — use admin client to bypass RLS (no SELECT policy on users table).
+  // Role + KYC check — use admin client to bypass RLS.
   // User identity is already verified by getUser() above.
   const adminSupabase = createAdminClient();
   const { data: profileRaw } = await adminSupabase
     .from('users')
-    .select('role')
+    .select('role, kyc_status')
     .eq('id', user.id)
     .single();
-  const profile = profileRaw as { role: string } | null;
+  const profile = profileRaw as { role: string; kyc_status: string } | null;
 
   if (!profile || !['lender', 'both'].includes(profile.role)) {
     return NextResponse.json(
@@ -398,5 +385,40 @@ async function postHandler(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ data: { id: chargerId } }, { status: 201 });
+  // If lender is not KYC-approved, save as draft (invisible to drivers until approved).
+  // Enforce a 5-draft cap to limit spam from unverified accounts.
+  if (profile.kyc_status !== 'approved') {
+    const { count: draftCount } = await adminSupabase
+      .from('chargers')
+      .select('id', { count: 'exact', head: true })
+      .eq('lender_id', user.id)
+      .eq('status', 'draft')
+      .is('deleted_at', null);
+
+    // The RPC already inserted the charger (as 'active' by default).
+    // Count includes the just-inserted one, so compare > 5 not >= 5.
+    if ((draftCount ?? 0) > 5) {
+      // Over cap — soft-delete the just-created charger and reject.
+      if (chargerId) {
+        await adminSupabase
+          .from('chargers')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', chargerId);
+      }
+      return NextResponse.json(
+        { error: 'Draft limit reached (5). Verify your account in Profile to list more chargers.' },
+        { status: 403 },
+      );
+    }
+
+    if (chargerId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (adminSupabase as any)
+        .from('chargers')
+        .update({ status: 'draft' })
+        .eq('id', chargerId);
+    }
+  }
+
+  return NextResponse.json({ data: { id: chargerId }, draft: profile.kyc_status !== 'approved' }, { status: 201 });
 }
