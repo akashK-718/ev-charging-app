@@ -34,6 +34,19 @@ export default function NewChargerPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isInitialized = useRef(false);
 
+  // KYC gate: check kyc_status on mount, redirect if not approved
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then((body: { data?: { kyc_status?: string } }) => {
+        const status = body.data?.kyc_status;
+        if (status && status !== 'approved') {
+          router.replace('/lender/kyc?reason=required');
+        }
+      })
+      .catch(() => { /* non-fatal, let user proceed */ });
+  }, [router]);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
