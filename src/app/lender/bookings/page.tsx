@@ -3,25 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { StatusBadge } from '@/components/bookings/StatusBadge';
 
-type FilterTab = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
+type FilterTab = 'active' | 'past' | 'cancelled' | 'all';
 
 const TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'confirmed', label: 'Confirmed' },
-  { key: 'completed', label: 'Completed' },
+  { key: 'active', label: 'Active' },
+  { key: 'past', label: 'Past' },
   { key: 'cancelled', label: 'Cancelled' },
+  { key: 'all', label: 'All' },
 ];
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-50 text-yellow-700',
-  confirmed: 'bg-volt-soft text-volt-deep',
-  active: 'bg-blue-50 text-blue-700',
-  completed: 'bg-gray-100 text-muted',
-  cancelled: 'bg-red-50 text-red-700',
-  disputed: 'bg-orange-50 text-orange-700',
-};
 
 type BookingRow = {
   id: string;
@@ -35,6 +26,8 @@ type BookingRow = {
   created_at: string;
 };
 
+const POLL_MS = 10000;
+
 function formatDuration(start: string, end: string) {
   const diffMs = new Date(end).getTime() - new Date(start).getTime();
   const h = Math.floor(diffMs / 1000 / 60 / 60);
@@ -45,16 +38,16 @@ function formatDuration(start: string, end: string) {
 }
 
 export default function LenderBookingsPage() {
-  const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [activeTab, setActiveTab] = useState<FilterTab>('active');
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBookings = useCallback(async (status: FilterTab) => {
-    setLoading(true);
+  const fetchBookings = useCallback(async (filter: FilterTab, withSpinner = true) => {
+    if (withSpinner) setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/lender/bookings?status=${status}`);
+      const res = await fetch(`/api/lender/bookings?filter=${filter}`);
       if (!res.ok) {
         setError('Failed to load bookings');
         return;
@@ -64,12 +57,18 @@ export default function LenderBookingsPage() {
     } catch {
       setError('Failed to load bookings');
     } finally {
-      setLoading(false);
+      if (withSpinner) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void fetchBookings(activeTab);
+  }, [activeTab, fetchBookings]);
+
+  useEffect(() => {
+    if (activeTab !== 'active') return;
+    const interval = setInterval(() => { void fetchBookings(activeTab, false); }, POLL_MS);
+    return () => clearInterval(interval);
   }, [activeTab, fetchBookings]);
 
   return (
@@ -139,11 +138,7 @@ export default function LenderBookingsPage() {
                 </p>
               </div>
               <div className="ml-3 flex flex-col items-end gap-1 shrink-0">
-                <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[booking.status] ?? 'bg-gray-100 text-muted'}`}
-                >
-                  {booking.status}
-                </span>
+                <StatusBadge status={booking.status} />
                 {booking.payment && (
                   <p className="text-xs font-semibold text-ink">
                     ₹{(booking.payment.lender_payout / 100).toFixed(0)}

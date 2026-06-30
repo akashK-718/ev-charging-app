@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
 import { BOOKING_AUTO_CANCEL_MINUTES } from '@/lib/constants';
+import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
 
 export async function POST(
   _request: NextRequest,
@@ -15,6 +16,7 @@ export async function POST(
   }
 
   const adminSupabase = createAdminClient();
+  await runAutoRejectSweep(adminSupabase);
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
@@ -27,17 +29,16 @@ export async function POST(
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
-  const b = booking as { id: string; driver_id: string; lender_id: string; status: string; created_at: string };
-
-  if (b.status !== 'pending') {
+  if (booking.status !== 'pending') {
     return NextResponse.json(
-      { error: `Booking is already ${b.status}` },
+      { error: `Booking is already ${booking.status}` },
       { status: 409 },
     );
   }
 
-  // Check the 30-minute window
-  const createdAt = new Date(b.created_at).getTime();
+  // Check the 30-minute window (the sweep above should already have caught this,
+  // but re-check in case the window expired in the gap between the sweep and now)
+  const createdAt = new Date(booking.created_at).getTime();
   const windowMs = BOOKING_AUTO_CANCEL_MINUTES * 60 * 1000;
   if (Date.now() - createdAt > windowMs) {
     return NextResponse.json(
@@ -48,14 +49,14 @@ export async function POST(
 
   const { error: updateError } = await adminSupabase
     .from('bookings')
-    .update({ status: 'confirmed' })
+    .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
     .eq('id', params.id);
 
   if (updateError) {
     return NextResponse.json({ error: 'Failed to accept booking' }, { status: 500 });
   }
 
-  await notify(b.driver_id, 'booking_accepted', { booking_id: params.id });
+  await notify(booking.driver_id, 'booking_accepted', { booking_id: params.id });
 
   return NextResponse.json({ ok: true });
 }

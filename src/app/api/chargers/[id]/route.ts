@@ -21,6 +21,27 @@ async function getOwnerCheck(chargerId: string, userId: string) {
 }
 
 /**
+ * GET /api/chargers/[id] — public charger details, used by the booking form.
+ */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const adminSupabase = createAdminClient();
+  const { data: charger, error } = await adminSupabase
+    .from('chargers')
+    .select('id, lender_id, title, charger_type, price_per_kwh, address, status, deleted_at')
+    .eq('id', params.id)
+    .single();
+
+  if (error || !charger || charger.deleted_at) {
+    return NextResponse.json({ error: 'Charger not found' }, { status: 404 });
+  }
+
+  return NextResponse.json({ data: charger });
+}
+
+/**
  * PATCH /api/chargers/[id] — update a charger (all fields optional).
  * Auth: must own charger.
  */

@@ -2,6 +2,9 @@ type NotificationType =
   | 'booking_received'
   | 'booking_accepted'
   | 'booking_rejected'
+  | 'booking_auto_rejected'
+  | 'session_started'
+  | 'session_completed'
   | 'kyc_approved'
   | 'kyc_rejected'
   | 'payout_processed';

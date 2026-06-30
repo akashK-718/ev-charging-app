@@ -14,6 +14,10 @@ export const PAYOUT_HOLD_HOURS = 24;
 // Free cancellation window for driver (minutes before scheduled start)
 export const FREE_CANCEL_MINUTES = 60;
 
+// "Start session" button appears this many minutes before scheduled_start,
+// and remains valid this many minutes after scheduled_end (grace window).
+export const SESSION_GRACE_MINUTES = 30;
+
 // Default search radius for "nearby chargers" (in meters)
 export const DEFAULT_SEARCH_RADIUS_METERS = 5000;
 
@@ -38,12 +42,23 @@ export const CHARGER_TYPES = [
 
 // Booking states (the state machine)
 export const BOOKING_STATES = [
-  'pending',
-  'confirmed',
-  'active',
-  'completed',
-  'cancelled',
-  'disputed'
+  'pending',        // created, awaiting lender accept
+  'confirmed',      // lender accepted
+  'rejected',       // lender manually rejected
+  'auto_rejected',  // 30-min timeout
+  'cancelled',      // driver cancelled (future PR)
+  'in_progress',    // session started
+  'completed',      // session ended successfully
+  'no_show'         // driver didn't show up (future PR)
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATES)[number];
+
+// Statuses considered "active" — shown in default lists, eligible for polling
+export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'in_progress'];
+
+// Statuses considered "declined" — driver-facing message + refund already triggered
+export const DECLINED_BOOKING_STATUSES: BookingStatus[] = ['rejected', 'auto_rejected', 'cancelled'];
+
+// Statuses considered "past" — lifecycle finished
+export const PAST_BOOKING_STATUSES: BookingStatus[] = ['completed', 'no_show'];

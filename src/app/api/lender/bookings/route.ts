@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
+import { ACTIVE_BOOKING_STATUSES, PAST_BOOKING_STATUSES, DECLINED_BOOKING_STATUSES, type BookingStatus } from '@/lib/constants';
 
-const VALID_STATUSES = ['pending', 'confirmed', 'active', 'completed', 'cancelled', 'disputed'] as const;
-type BookingStatus = (typeof VALID_STATUSES)[number];
+type FilterTab = 'active' | 'past' | 'cancelled' | 'all';
+
+function statusesForFilter(filter: FilterTab): BookingStatus[] | null {
+  if (filter === 'active') return ACTIVE_BOOKING_STATUSES;
+  if (filter === 'past') return PAST_BOOKING_STATUSES;
+  if (filter === 'cancelled') return DECLINED_BOOKING_STATUSES;
+  return null; // 'all'
+}
 
 export async function GET(request: NextRequest) {
   const supabase = createClient();
@@ -13,6 +21,8 @@ export async function GET(request: NextRequest) {
   }
 
   const adminSupabase = createAdminClient();
+  await runAutoRejectSweep(adminSupabase);
+
   const { data: profile } = await adminSupabase
     .from('users')
     .select('role')
@@ -24,16 +34,15 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const statusParam = searchParams.get('status') ?? 'all';
+  const filter = (searchParams.get('filter') ?? 'all') as FilterTab;
 
   let query = adminSupabase
     .from('bookings')
-    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, status, cancellation_reason, confirmation_code, created_at, updated_at')
+    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, status, rejection_reason, confirmation_code, created_at, updated_at')
     .eq('lender_id', user.id);
 
-  if (statusParam !== 'all' && VALID_STATUSES.includes(statusParam as BookingStatus)) {
-    query = query.eq('status', statusParam as BookingStatus);
-  }
+  const statuses = statusesForFilter(filter);
+  if (statuses) query = query.in('status', statuses);
 
   const { data: bookings, error: bookingsError } = await query.order('created_at', { ascending: false });
 
@@ -41,12 +50,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });
   }
 
-  const raw = (bookings ?? []) as Array<{
-    id: string; charger_id: string; driver_id: string; lender_id: string;
-    scheduled_start: string; scheduled_end: string; status: string;
-    cancellation_reason: string | null; confirmation_code: string;
-    created_at: string; updated_at: string;
-  }>;
+  const raw = bookings ?? [];
 
   // Enrich with charger info
   const chargerIds = [...new Set(raw.map(b => b.charger_id))];
@@ -71,8 +75,7 @@ export async function GET(request: NextRequest) {
       .map(p => [p.booking_id, p]),
   );
 
-  const isConfirmedOrLater = (status: string) =>
-    ['confirmed', 'active', 'completed', 'cancelled', 'disputed'].includes(status);
+  const isConfirmedOrLater = (status: string) => status !== 'pending';
 
   const enriched = raw.map(b => {
     const driver = driverMap.get(b.driver_id);
@@ -98,16 +101,16 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  // Sort: pending (oldest first), then confirmed by scheduled_start, then the rest
+  // Sort: pending (oldest first), then confirmed/in_progress by scheduled_start, then the rest
   const pending = enriched.filter(b => b.status === 'pending').sort((a, b) =>
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
-  const confirmed = enriched.filter(b => b.status === 'confirmed').sort((a, b) =>
+  const active = enriched.filter(b => b.status === 'confirmed' || b.status === 'in_progress').sort((a, b) =>
     new Date(a.scheduled_start).getTime() - new Date(b.scheduled_start).getTime(),
   );
-  const rest = enriched.filter(b => !['pending', 'confirmed'].includes(b.status)).sort((a, b) =>
+  const rest = enriched.filter(b => !['pending', 'confirmed', 'in_progress'].includes(b.status)).sort((a, b) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
 
-  return NextResponse.json({ data: [...pending, ...confirmed, ...rest] });
+  return NextResponse.json({ data: [...pending, ...active, ...rest] });
 }

@@ -120,17 +120,11 @@ export default async function ChargerDetailPage({
 
         {/* CTA */}
         <div>
-          <Button
-            variant="secondary"
-            size="lg"
-            className="w-full"
-            disabled
-          >
-            Book this charger
-          </Button>
-          <p className="text-xs text-muted text-center mt-2">
-            Booking available in Module 3 — coming soon.
-          </p>
+          <Link href={`/bookings/new?charger=${charger.id}`}>
+            <Button variant="secondary" size="lg" className="w-full">
+              Book this charger
+            </Button>
+          </Link>
         </div>
       </div>
     </main>
