@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-const AUTH_PAGES = ['/login', '/verify-otp', '/welcome'];
+const AUTH_PAGES = ['/login', '/verify-otp'];
 
 interface NavLink {
   href: string;
@@ -38,7 +38,7 @@ export function Navbar() {
   const drawerRef = useRef<HTMLDivElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
 
-  const isAuthPage = AUTH_PAGES.some(p => pathname === p);
+  const isAuthPage = AUTH_PAGES.some(p => pathname === p) || pathname.startsWith('/welcome');
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [pathname]);

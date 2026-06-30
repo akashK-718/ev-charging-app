@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
       email,
       email_confirm: true,
       password,
-      user_metadata: { role: 'driver' },
+      // onboarded:false marks this account as mid-welcome-flow; cleared once they pick a role.
+      user_metadata: { role: 'driver', onboarded: false },
     });
 
     if (createError || !authData.user) {

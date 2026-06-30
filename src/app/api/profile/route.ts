@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest) {
 
   const adminSupabase = createAdminClient();
   const updates: { name?: string; role?: 'driver' | 'lender' | 'both' } = {};
-  const metaUpdates: { name?: string; role?: string } = {};
+  const metaUpdates: { name?: string; role?: string; onboarded?: boolean } = {};
   let roleForcedBoth = false;
 
   // ── Name update ─────────────────────────────────────────────────────────────
@@ -102,6 +102,8 @@ export async function PATCH(request: NextRequest) {
 
     updates.role = resolvedRole;
     metaUpdates.role = resolvedRole;
+    // Choosing a role (welcome flow or later editing) marks onboarding complete.
+    metaUpdates.onboarded = true;
   }
 
   if (Object.keys(updates).length === 0) {
