@@ -19,7 +19,13 @@ const ROLE_LABELS: Record<Role, string> = {
   both: 'Driver & Lender',
 };
 
-export function RoleEditor({ initialRole }: { initialRole: Role }) {
+export function RoleEditor({
+  initialRole,
+  onRoleChange,
+}: {
+  initialRole: Role;
+  onRoleChange?: (role: Role) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Role>(initialRole);
   const [displayRole, setDisplayRole] = useState<Role>(initialRole);
@@ -63,6 +69,7 @@ export function RoleEditor({ initialRole }: { initialRole: Role }) {
 
       const savedRole = data.data?.role ?? selected;
       setDisplayRole(savedRole);
+      onRoleChange?.(savedRole);
       closeModal();
 
       // Refresh the Supabase session so useAuth picks up the new role from updated metadata
