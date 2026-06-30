@@ -80,7 +80,7 @@ function VerifyOtpContent() {
       }
       const { isNewUser, role } = data.data ?? {};
       if (isNewUser) {
-        router.push('/welcome');
+        router.push('/welcome/name');
       } else if (role === 'lender' || role === 'both') {
         router.push('/lender/dashboard');
       } else {

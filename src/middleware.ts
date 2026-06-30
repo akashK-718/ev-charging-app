@@ -50,18 +50,32 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/chargers', request.url));
   }
 
-  // If authenticated but name not set, redirect to name collection.
-  // Exempt: /welcome (new signup), /profile/name (the collection page itself), /api/* routes.
-  if (
-    user &&
-    !user.user_metadata?.name &&
-    pathname !== '/welcome' &&
-    pathname !== '/profile/name' &&
-    !pathname.startsWith('/api')
-  ) {
-    const url = new URL('/profile/name', request.url);
-    url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
+  // ── Two-step welcome flow gating ──────────────────────────────────────────────
+  // Legacy entry points always forward to the first step.
+  if (user && (pathname === '/welcome' || pathname === '/profile/name')) {
+    return NextResponse.redirect(new URL('/welcome/name', request.url));
+  }
+
+  if (user) {
+    const name = user.user_metadata?.name as string | undefined;
+    // `onboarded` is explicitly false only for accounts mid-welcome-flow (set at signup,
+    // cleared once a role is chosen). Undefined means either pre-existing or already complete.
+    const onboarded = user.user_metadata?.onboarded;
+
+    const isWelcomeName = pathname === '/welcome/name';
+    const isWelcomeRole = pathname === '/welcome/role';
+
+    if (!name && !isWelcomeName) {
+      const url = new URL('/welcome/name', request.url);
+      url.searchParams.set('next', pathname);
+      return NextResponse.redirect(url);
+    }
+
+    if (name && onboarded === false && !isWelcomeRole && !isWelcomeName) {
+      const url = new URL('/welcome/role', request.url);
+      url.searchParams.set('next', pathname);
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
