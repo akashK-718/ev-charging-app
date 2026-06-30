@@ -4,8 +4,19 @@
  * In production, auto-generate from your Supabase schema:
  *   npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/lib/supabase/types.ts
  *
- * This is a hand-written stub that matches 001_initial_schema.sql + 008_lender_complete_flow.sql.
+ * This is a hand-written stub that matches 001_initial_schema.sql + 008_lender_complete_flow.sql
+ * + 010_booking_lifecycle.sql.
  */
+
+type BookingStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'rejected'
+  | 'auto_rejected'
+  | 'cancelled'
+  | 'in_progress'
+  | 'completed'
+  | 'no_show';
 
 export type Database = {
   public: {
@@ -105,9 +116,14 @@ export type Database = {
           actual_start: string | null;
           actual_end: string | null;
           kwh_delivered: number | null;
-          status: 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled' | 'disputed';
+          status: BookingStatus;
           cancellation_reason: string | null;
           confirmation_code: string;
+          confirmed_at: string | null;
+          rejected_at: string | null;
+          started_at: string | null;
+          ended_at: string | null;
+          rejection_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -121,9 +137,14 @@ export type Database = {
           actual_start?: string | null;
           actual_end?: string | null;
           kwh_delivered?: number | null;
-          status?: 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled' | 'disputed';
+          status?: BookingStatus;
           cancellation_reason?: string | null;
           confirmation_code: string;
+          confirmed_at?: string | null;
+          rejected_at?: string | null;
+          started_at?: string | null;
+          ended_at?: string | null;
+          rejection_reason?: string | null;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
         Relationships: [];
@@ -135,6 +156,7 @@ export type Database = {
           razorpay_order_id: string | null;
           razorpay_payment_id: string | null;
           razorpay_transfer_id: string | null;
+          razorpay_refund_id: string | null;
           gross_amount: number;
           platform_fee: number;
           lender_payout: number;
@@ -150,6 +172,7 @@ export type Database = {
           razorpay_order_id?: string | null;
           razorpay_payment_id?: string | null;
           razorpay_transfer_id?: string | null;
+          razorpay_refund_id?: string | null;
           gross_amount: number;
           platform_fee: number;
           lender_payout: number;
@@ -261,6 +284,22 @@ export type Database = {
           p_slots: string; // JSON string
         };
         Returns: string; // new charger UUID
+      };
+      create_booking_with_payment: {
+        Args: {
+          p_charger_id: string;
+          p_driver_id: string;
+          p_lender_id: string;
+          p_scheduled_start: string;
+          p_scheduled_end: string;
+          p_confirmation_code: string;
+          p_gross_amount: number;
+          p_platform_fee: number;
+          p_lender_payout: number;
+          p_razorpay_order_id: string;
+          p_razorpay_payment_id: string;
+        };
+        Returns: string; // new booking UUID
       };
     };
     Enums: Record<string, never>;

@@ -5,16 +5,13 @@ import { useRouter, useParams } from 'next/navigation';
 import { Phone, MapPin, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { BOOKING_AUTO_CANCEL_MINUTES } from '@/lib/constants';
+import { BOOKING_AUTO_CANCEL_MINUTES, ACTIVE_BOOKING_STATUSES, type BookingStatus } from '@/lib/constants';
+import { StatusBadge } from '@/components/bookings/StatusBadge';
+import { BookingTimeline } from '@/components/bookings/BookingTimeline';
+import { SessionControls } from '@/components/bookings/SessionControls';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-50 text-yellow-700',
-  confirmed: 'bg-volt-soft text-volt-deep',
-  active: 'bg-blue-50 text-blue-700',
-  completed: 'bg-gray-100 text-muted',
-  cancelled: 'bg-red-50 text-red-700',
-  disputed: 'bg-orange-50 text-orange-700',
-};
+const MIN_REASON_LENGTH = 10;
+const POLL_MS = 10000;
 
 type BookingDetail = {
   id: string;
@@ -28,7 +25,12 @@ type BookingDetail = {
   kwh_delivered: number | null;
   status: string;
   cancellation_reason: string | null;
+  rejection_reason: string | null;
   confirmation_code: string;
+  confirmed_at: string | null;
+  rejected_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
   created_at: string;
   charger: { id: string; title: string; address: string } | null;
   driver: { id: string; name: string | null; phone: string | null } | null;
@@ -84,8 +86,8 @@ export default function LenderBookingDetailPage() {
 
   const remaining = useCountdown(booking?.status === 'pending' ? booking.created_at : null);
 
-  const fetchBooking = useCallback(async () => {
-    setLoading(true);
+  const fetchBooking = useCallback(async (withSpinner = true) => {
+    if (withSpinner) setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/lender/bookings/${id}`);
@@ -98,13 +100,25 @@ export default function LenderBookingDetailPage() {
     } catch {
       setError('Failed to load booking');
     } finally {
-      setLoading(false);
+      if (withSpinner) setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
     void fetchBooking();
   }, [fetchBooking]);
+
+  // Poll every 10s while the booking is in an active state
+  useEffect(() => {
+    if (!booking || !ACTIVE_BOOKING_STATUSES.includes(booking.status as BookingStatus)) return;
+    const interval = setInterval(() => { void fetchBooking(false); }, POLL_MS);
+    return () => clearInterval(interval);
+  }, [booking, fetchBooking]);
+
+  // Auto-refresh once the auto-reject countdown hits zero
+  useEffect(() => {
+    if (remaining === 0) void fetchBooking(false);
+  }, [remaining, fetchBooking]);
 
   async function handleAccept() {
     if (actionLoading) return;
@@ -126,8 +140,8 @@ export default function LenderBookingDetailPage() {
   }
 
   async function handleReject() {
-    if (!rejectReason.trim()) {
-      setActionError('Please provide a reason for rejection.');
+    if (rejectReason.trim().length < MIN_REASON_LENGTH) {
+      setActionError(`Please provide a reason of at least ${MIN_REASON_LENGTH} characters.`);
       return;
     }
     if (actionLoading) return;
@@ -167,7 +181,7 @@ export default function LenderBookingDetailPage() {
   }
 
   const isPending = booking.status === 'pending';
-  const isConfirmedOrLater = ['confirmed', 'active', 'completed', 'cancelled', 'disputed'].includes(booking.status);
+  const isConfirmedOrLater = booking.status !== 'pending';
 
   // Format countdown
   let countdownDisplay = '';
@@ -176,8 +190,7 @@ export default function LenderBookingDetailPage() {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     countdownDisplay = `${m}:${String(s).padStart(2, '0')}`;
-    const isExpired = remaining === 0;
-    if (isExpired) countdownDisplay = 'Expired';
+    if (remaining === 0) countdownDisplay = 'Expired';
   }
 
   const driverName = booking.driver?.name ?? 'Driver';
@@ -196,9 +209,7 @@ export default function LenderBookingDetailPage() {
           <h1 className="font-display font-extrabold text-3xl text-ink">Booking</h1>
           <p className="text-xs text-muted mt-1 font-mono">{booking.confirmation_code}</p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[booking.status] ?? 'bg-gray-100 text-muted'}`}>
-          {booking.status}
-        </span>
+        <StatusBadge status={booking.status} />
       </div>
 
       {/* Pending countdown warning */}
@@ -215,9 +226,7 @@ export default function LenderBookingDetailPage() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
               <p className="text-sm font-semibold">
-                {remaining === 0
-                  ? 'Acceptance window expired'
-                  : 'Time to accept'}
+                {remaining === 0 ? 'Acceptance window expired' : 'Auto-rejects in'}
               </p>
             </div>
             {remaining > 0 && (
@@ -231,6 +240,16 @@ export default function LenderBookingDetailPage() {
           )}
         </div>
       )}
+
+      {/* Session controls (start/end) */}
+      <SessionControls
+        bookingId={booking.id}
+        status={booking.status}
+        scheduledStart={booking.scheduled_start}
+        scheduledEnd={booking.scheduled_end}
+        startedAt={booking.started_at}
+        onUpdated={() => fetchBooking(false)}
+      />
 
       {/* Charger info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
@@ -325,6 +344,11 @@ export default function LenderBookingDetailPage() {
               </span>
             </div>
           </div>
+          {booking.status === 'completed' && (
+            <p className="text-xs text-muted pt-1">
+              Your earnings: ₹{(booking.payment.lender_payout / 100).toFixed(0)} (will be paid out within 24 hours)
+            </p>
+          )}
         </div>
       )}
 
@@ -373,6 +397,7 @@ export default function LenderBookingDetailPage() {
               placeholder="e.g. Charger unavailable for that time slot"
               className="mt-1 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt resize-none"
             />
+            <p className="text-xs text-muted mt-1">Minimum {MIN_REASON_LENGTH} characters.</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -385,7 +410,7 @@ export default function LenderBookingDetailPage() {
             <Button
               variant="secondary"
               size="md"
-              disabled={actionLoading || !rejectReason.trim()}
+              disabled={actionLoading || rejectReason.trim().length < MIN_REASON_LENGTH}
               className="flex-1"
               onClick={() => { void handleReject(); }}
             >
@@ -395,19 +420,14 @@ export default function LenderBookingDetailPage() {
         </div>
       )}
 
-      {booking.status === 'confirmed' && (
-        <div className="px-4 py-3 bg-volt-soft rounded-2xl border border-volt">
-          <p className="font-semibold text-ink text-sm">Booking confirmed</p>
-          <p className="text-xs text-muted mt-1">
-            The driver will arrive at the scheduled time. Contact them above if needed.
-          </p>
-        </div>
-      )}
-
-      {booking.status === 'cancelled' && booking.cancellation_reason && (
+      {(booking.status === 'rejected' || booking.status === 'auto_rejected') && (
         <div className="px-4 py-3 bg-gray-50 rounded-2xl">
-          <p className="text-sm font-semibold text-muted">Cancellation reason</p>
-          <p className="text-sm text-ink mt-0.5">{booking.cancellation_reason}</p>
+          <p className="text-sm font-semibold text-muted">
+            {booking.status === 'auto_rejected' ? 'Auto-declined' : 'Declined'}
+          </p>
+          {(booking.rejection_reason ?? booking.cancellation_reason) && (
+            <p className="text-sm text-ink mt-0.5">{booking.rejection_reason ?? booking.cancellation_reason}</p>
+          )}
         </div>
       )}
 
@@ -417,8 +437,15 @@ export default function LenderBookingDetailPage() {
           {booking.kwh_delivered && (
             <p className="text-xs text-muted mt-0.5">{booking.kwh_delivered} kWh delivered</p>
           )}
+          <p className="text-xs text-muted mt-0.5">Earnings queued — see Payouts.</p>
         </div>
       )}
+
+      {/* Timeline */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <h2 className="font-semibold text-sm text-ink mb-3">Timeline</h2>
+        <BookingTimeline booking={booking} />
+      </div>
     </main>
   );
 }
