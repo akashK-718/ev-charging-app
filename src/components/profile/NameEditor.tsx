@@ -15,7 +15,13 @@ function validateName(v: string): string | null {
   return null;
 }
 
-export function NameEditor({ initialName }: { initialName: string | null }) {
+export function NameEditor({
+  initialName,
+  showKycContext,
+}: {
+  initialName: string | null;
+  showKycContext: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialName ?? '');
   const [displayName, setDisplayName] = useState(initialName);
@@ -118,7 +124,9 @@ export function NameEditor({ initialName }: { initialName: string | null }) {
 
       {!editing && (
         <p className="text-xs text-muted mt-1 leading-relaxed">
-          This is your display name. Your legal name (from verification documents) is separate and used only for payouts and receipts.
+          {showKycContext
+            ? 'This is your display name. Your legal name (from verification documents) is separate and used only for payouts and receipts.'
+            : 'This is how others see you. You can edit it anytime.'}
         </p>
       )}
     </div>
