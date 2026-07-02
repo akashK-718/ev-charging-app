@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { BookOpen, Zap, Clock, ChevronRight, Plus } from 'lucide-react';
+import { BookOpen, Clock, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SearchParams {
@@ -252,13 +252,6 @@ export default async function LenderDashboardPage({
             <span className="font-semibold text-ink text-sm">View bookings</span>
           </Link>
           <Link
-            href="/lender/chargers/new"
-            className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
-          >
-            <Zap className="w-5 h-5 text-volt-deep" />
-            <span className="font-semibold text-ink text-sm">Add a charger</span>
-          </Link>
-          <Link
             href="/lender/earnings"
             className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
           >
@@ -296,7 +289,7 @@ export default async function LenderDashboardPage({
             {displayedChargers.map(charger => (
               <Link
                 key={charger.id}
-                href={`/lender/chargers/${charger.id}/edit`}
+                href={`/lender/chargers/${charger.id}`}
                 className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
               >
                 <div className="flex-1 min-w-0">
