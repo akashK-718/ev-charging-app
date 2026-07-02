@@ -403,19 +403,6 @@ export default async function LenderDashboardPage({
         {chargers.length === 0 ? (
           <p className="text-sm text-muted py-2">You haven&apos;t added any chargers yet.</p>
         ) : (
-<<<<<<< HEAD
-          <div className="space-y-2">
-            {displayedChargers.map(charger => (
-              <Link
-                key={charger.id}
-                href={`/lender/chargers/${charger.id}`}
-                className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-sm font-semibold text-ink truncate">{charger.title}</p>
-                    <ChargerStatusBadge status={charger.status} />
-=======
           <>
             <div className="space-y-2">
               {displayedChargers.map(charger => (
@@ -430,7 +417,6 @@ export default async function LenderDashboardPage({
                       <ChargerStatusBadge status={charger.status} />
                     </div>
                     <p className="text-xs text-muted">{chargerSubtitle(charger, chargerStats.get(charger.id))}</p>
->>>>>>> 997d111 (Dashboard cleanup: add charger placement, subtitles, counts, formatting)
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
                 </Link>
