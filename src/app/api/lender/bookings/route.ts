@@ -35,11 +35,14 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const filter = (searchParams.get('filter') ?? 'all') as FilterTab;
+  const chargerFilter = searchParams.get('charger');
 
   let query = adminSupabase
     .from('bookings')
     .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, status, rejection_reason, confirmation_code, created_at, updated_at')
     .eq('lender_id', user.id);
+
+  if (chargerFilter) query = query.eq('charger_id', chargerFilter);
 
   const statuses = statusesForFilter(filter);
   if (statuses) query = query.in('status', statuses);

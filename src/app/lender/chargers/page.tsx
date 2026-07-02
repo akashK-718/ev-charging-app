@@ -331,9 +331,9 @@ function LenderChargersContent() {
               className="bg-white rounded-2xl border border-gray-100 p-4"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
+                <Link href={`/lender/chargers/${charger.id}`} className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold text-ink text-sm truncate">{charger.title}</p>
+                    <p className="font-semibold text-ink text-sm truncate group-hover:underline">{charger.title}</p>
                     <span className={cn(
                       'px-2 py-0.5 rounded-full text-xs font-semibold shrink-0',
                       charger.status === 'active' ? 'bg-volt-soft text-volt-deep' :
@@ -355,7 +355,7 @@ function LenderChargersContent() {
                     <span>·</span>
                     <span>{charger.charger_type}</span>
                   </div>
-                </div>
+                </Link>
                 <ActionMenu
                   charger={charger}
                   onPause={() => { void handlePause(charger); }}
