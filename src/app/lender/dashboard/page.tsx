@@ -375,7 +375,7 @@ export default async function LenderDashboardPage({
         </Link>
       </div>
 
-      {/* Quick actions — Fix 2: only View bookings + View earnings */}
+      {/* Quick actions */}
       <div className="space-y-2">
         <h2 className="font-semibold text-lg text-ink">Quick actions</h2>
         <div className="grid grid-cols-1 gap-2">
@@ -385,6 +385,13 @@ export default async function LenderDashboardPage({
           >
             <BookOpen className="w-5 h-5 text-volt-deep" />
             <span className="font-semibold text-ink text-sm">View bookings</span>
+          </Link>
+          <Link
+            href="/lender/chargers/new"
+            className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+          >
+            <Zap className="w-5 h-5 text-volt-deep" />
+            <span className="font-semibold text-ink text-sm">Add a charger</span>
           </Link>
           <Link
             href="/lender/earnings"
@@ -433,14 +440,6 @@ export default async function LenderDashboardPage({
           </>
         )}
 
-        {/* Add a charger — Fix 2: styled like Quick action buttons */}
-        <Link
-          href="/lender/chargers/new"
-          className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
-        >
-          <Zap className="w-5 h-5 text-volt-deep" />
-          <span className="font-semibold text-ink text-sm">Add a charger</span>
-        </Link>
       </div>
 
       {/* Recent bookings — Fix 5: richer display */}
