@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { MoreVertical, Plus, Zap, Pause, Play, Trash2, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
@@ -17,6 +17,8 @@ type Charger = {
   charger_type: string;
   connector_types: string[];
 };
+
+type Filter = 'all' | 'active' | 'draft' | 'paused';
 
 function ActionMenu({
   charger,
@@ -65,7 +67,6 @@ function ActionMenu({
             Edit
           </Link>
 
-          {/* Pause/Unpause only for active chargers — drafts are already not visible */}
           {charger.status === 'active' && (
             <button
               type="button"
@@ -144,8 +145,51 @@ function DeleteModal({
   );
 }
 
-export default function LenderChargersPage() {
+function FilterTabs({
+  chargers,
+  currentFilter,
+}: {
+  chargers: Charger[];
+  currentFilter: Filter;
+}) {
   const router = useRouter();
+
+  const tabs: { key: Filter; label: string; count: number }[] = [
+    { key: 'all',    label: 'All',    count: chargers.length },
+    { key: 'active', label: 'Live',   count: chargers.filter(c => c.status === 'active').length },
+    { key: 'draft',  label: 'Drafts', count: chargers.filter(c => c.status === 'draft').length },
+    { key: 'paused', label: 'Paused', count: chargers.filter(c => c.status === 'paused').length },
+  ];
+
+  return (
+    <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+      {tabs.map(tab => (
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => router.replace(`/lender/chargers?filter=${tab.key}`)}
+          className={cn(
+            'px-3 py-1.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors',
+            currentFilter === tab.key
+              ? 'bg-ink text-white'
+              : 'bg-gray-100 text-muted hover:bg-gray-200'
+          )}
+        >
+          {tab.label} ({tab.count})
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LenderChargersContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawFilter = searchParams.get('filter') ?? 'all';
+  const currentFilter: Filter = ['all', 'active', 'draft', 'paused'].includes(rawFilter)
+    ? (rawFilter as Filter)
+    : 'all';
+
   const { profile, loading: profileLoading } = useProfile();
 
   const [chargers, setChargers] = useState<Charger[]>([]);
@@ -155,24 +199,6 @@ export default function LenderChargersPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const fetchChargers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/chargers?lender_only=1');
-      if (!res.ok) { setError('Failed to load chargers'); return; }
-      const body = await res.json() as { chargers?: Charger[] };
-      // Filter to only this lender's chargers (the API returns public chargers by default)
-      // We'll use a dedicated lender endpoint instead
-      setChargers(body.chargers ?? []);
-    } catch {
-      setError('Failed to load chargers');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Use a dedicated lender chargers fetch
   const fetchLenderChargers = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -223,6 +249,10 @@ export default function LenderChargersPage() {
 
   const kycApproved = profile?.kyc_status === 'approved';
 
+  const filteredChargers = currentFilter === 'all'
+    ? chargers
+    : chargers.filter(c => c.status === currentFilter);
+
   return (
     <main className="min-h-screen px-6 py-10">
       <div className="flex items-center justify-between mb-6">
@@ -236,9 +266,8 @@ export default function LenderChargersPage() {
         </Link>
       </div>
 
-      {/* Soft verification notice — informational only, not a blocker */}
       {!profileLoading && !kycApproved && (
-        <div className="mb-6 px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200 flex items-center justify-between gap-3">
+        <div className="mb-6 px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200">
           <p className="text-sm text-yellow-800">
             Your chargers aren&apos;t visible to drivers yet.{' '}
             <Link href="/profile" className="font-semibold underline underline-offset-2">
@@ -255,6 +284,11 @@ export default function LenderChargersPage() {
         </div>
       )}
 
+      {/* Filter tabs — only show once chargers are loaded */}
+      {!loading && !error && (
+        <FilterTabs chargers={chargers} currentFilter={currentFilter} />
+      )}
+
       {loading && (
         <div className="text-center py-12 text-muted">Loading…</div>
       )}
@@ -265,27 +299,33 @@ export default function LenderChargersPage() {
         </div>
       )}
 
-      {!loading && !error && chargers.length === 0 && (
-        <div className="text-center py-16">
-          <div className="w-14 h-14 bg-volt-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Zap className="w-7 h-7 text-volt-deep" />
+      {!loading && !error && filteredChargers.length === 0 && (
+        currentFilter === 'all' ? (
+          <div className="text-center py-16">
+            <div className="w-14 h-14 bg-volt-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-7 h-7 text-volt-deep" />
+            </div>
+            <p className="font-semibold text-ink">No chargers yet</p>
+            <p className="text-sm text-muted mt-1 mb-4">
+              Add your first charger to start earning.
+            </p>
+            <Link
+              href="/lender/chargers/new"
+              className="inline-block px-6 py-3 bg-ink text-white font-bold rounded-2xl hover:bg-ink/90 transition-colors"
+            >
+              Add charger
+            </Link>
           </div>
-          <p className="font-semibold text-ink">No chargers yet</p>
-          <p className="text-sm text-muted mt-1 mb-4">
-            Add your first charger to start earning.
-          </p>
-          <Link
-            href="/lender/chargers/new"
-            className="inline-block px-6 py-3 bg-ink text-white font-bold rounded-2xl hover:bg-ink/90 transition-colors"
-          >
-            Add charger
-          </Link>
-        </div>
+        ) : (
+          <div className="text-center py-12 text-muted text-sm">
+            No {currentFilter === 'active' ? 'live' : currentFilter} chargers.
+          </div>
+        )
       )}
 
-      {!loading && !error && chargers.length > 0 && (
+      {!loading && !error && filteredChargers.length > 0 && (
         <div className="space-y-3">
-          {chargers.map(charger => (
+          {filteredChargers.map(charger => (
             <div
               key={charger.id}
               className="bg-white rounded-2xl border border-gray-100 p-4"
@@ -298,12 +338,12 @@ export default function LenderChargersPage() {
                       'px-2 py-0.5 rounded-full text-xs font-semibold shrink-0',
                       charger.status === 'active' ? 'bg-volt-soft text-volt-deep' :
                       charger.status === 'paused' ? 'bg-yellow-50 text-yellow-700' :
-                      charger.status === 'draft' ? 'bg-gray-100 text-muted' :
+                      charger.status === 'draft'  ? 'bg-gray-100 text-muted' :
                       'bg-red-50 text-red-700',
                     )}>
                       {charger.status === 'active' ? 'Live' :
                        charger.status === 'paused' ? 'Paused' :
-                       charger.status === 'draft' ? 'Awaiting verification' :
+                       charger.status === 'draft'  ? 'Awaiting verification' :
                        'Suspended'}
                     </span>
                   </div>
@@ -337,5 +377,13 @@ export default function LenderChargersPage() {
         />
       )}
     </main>
+  );
+}
+
+export default function LenderChargersPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12 text-muted">Loading…</div>}>
+      <LenderChargersContent />
+    </Suspense>
   );
 }
