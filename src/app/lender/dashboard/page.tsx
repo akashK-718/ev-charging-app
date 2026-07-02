@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { BookOpen, Clock, ChevronRight, Plus } from 'lucide-react';
+import { BookOpen, Zap, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatINR } from '@/lib/currency';
 
 interface SearchParams {
   listed?: string;
@@ -14,102 +15,210 @@ type ChargerRow = {
   title: string;
   address: string;
   status: string;
-  total_sessions: number;
+};
+
+type ChargerStats = {
+  upcomingNext: string | null;
+  weekCompleted: number;
+  weekEarningsPaise: number;
+  hasCompleted: boolean;
+  lastEndedAt: string | null;
+};
+
+type EnrichedRecentBooking = {
+  id: string;
+  charger_id: string;
+  driver_id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  status: string;
+  charger_title: string | null;
+  driver_name: string | null;
+  lender_payout: number;
 };
 
 async function getLenderData(userId: string) {
   const adminSupabase = createAdminClient();
 
-  // Week starts Monday 00:00 local-ish (UTC here — acceptable for earnings display)
   const now = new Date();
   const daysToMonday = (now.getDay() + 6) % 7;
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - daysToMonday);
   weekStart.setHours(0, 0, 0, 0);
+  const nowIso = now.toISOString();
+  const weekStartIso = weekStart.toISOString();
 
-  const [userResult, chargersResult, weekBookingsResult, recentResult] = await Promise.all([
-    adminSupabase
-      .from('users')
-      .select('id, name, kyc_status')
-      .eq('id', userId)
-      .single(),
+  const [
+    userResult,
+    chargersResult,
+    upcomingResult,
+    weekCompletedResult,
+    recentCompletedResult,
+    recentBookingsResult,
+  ] = await Promise.all([
+    adminSupabase.from('users').select('id, name, kyc_status').eq('id', userId).single(),
 
     adminSupabase
       .from('chargers')
-      .select('id, title, address, status, total_sessions')
+      .select('id, title, address, status')
       .eq('lender_id', userId)
       .is('deleted_at', null)
       .in('status', ['draft', 'active', 'paused']),
 
-    // Completed bookings this week — IDs only, for earnings sum
+    // Upcoming confirmed bookings for next-booking subtitle
     adminSupabase
       .from('bookings')
-      .select('id')
+      .select('charger_id, scheduled_start')
+      .eq('lender_id', userId)
+      .eq('status', 'confirmed')
+      .gt('scheduled_start', nowIso),
+
+    // This week's completed bookings (IDs + charger) for counts + earnings
+    adminSupabase
+      .from('bookings')
+      .select('id, charger_id')
       .eq('lender_id', userId)
       .eq('status', 'completed')
-      .gte('ended_at', weekStart.toISOString()),
+      .gte('ended_at', weekStartIso),
 
+    // Most recent completed per charger (for "last booking X days ago")
     adminSupabase
       .from('bookings')
-      .select('id, status, scheduled_start')
+      .select('charger_id, ended_at')
+      .eq('lender_id', userId)
+      .eq('status', 'completed')
+      .order('ended_at', { ascending: false })
+      .limit(50),
+
+    // Recent 5 bookings for dashboard section
+    adminSupabase
+      .from('bookings')
+      .select('id, charger_id, driver_id, scheduled_start, scheduled_end, status')
       .eq('lender_id', userId)
       .order('created_at', { ascending: false })
       .limit(5),
   ]);
 
-  // Sum lender_payout for this week's completed bookings
-  const weekBookingIds = (weekBookingsResult.data ?? []).map(
-    (b: { id: string }) => b.id
-  );
+  const chargers = (chargersResult.data ?? []) as ChargerRow[];
+  const upcoming = (upcomingResult.data ?? []) as Array<{ charger_id: string; scheduled_start: string }>;
+  const weekCompleted = (weekCompletedResult.data ?? []) as Array<{ id: string; charger_id: string }>;
+  const recentCompleted = (recentCompletedResult.data ?? []) as Array<{ charger_id: string; ended_at: string | null }>;
+  const recentRaw = (recentBookingsResult.data ?? []) as Array<{
+    id: string; charger_id: string; driver_id: string;
+    scheduled_start: string; scheduled_end: string; status: string;
+  }>;
+
+  // Build per-charger stats
+  const chargerStats = new Map<string, ChargerStats>();
+  for (const c of chargers) {
+    chargerStats.set(c.id, { upcomingNext: null, weekCompleted: 0, weekEarningsPaise: 0, hasCompleted: false, lastEndedAt: null });
+  }
+
+  for (const b of upcoming) {
+    const s = chargerStats.get(b.charger_id);
+    if (s && (!s.upcomingNext || b.scheduled_start < s.upcomingNext)) {
+      s.upcomingNext = b.scheduled_start;
+    }
+  }
+
+  for (const b of weekCompleted) {
+    const s = chargerStats.get(b.charger_id);
+    if (s) { s.weekCompleted++; s.hasCompleted = true; }
+  }
+
+  const seenCompleted = new Set<string>();
+  for (const b of recentCompleted) {
+    if (!seenCompleted.has(b.charger_id)) {
+      seenCompleted.add(b.charger_id);
+      const s = chargerStats.get(b.charger_id);
+      if (s) { s.lastEndedAt = b.ended_at; s.hasCompleted = true; }
+    }
+  }
+
+  // Payments for this week's completed bookings
+  const weekBookingIds = weekCompleted.map(b => b.id);
   let weekEarningsPaise = 0;
   if (weekBookingIds.length > 0) {
     const { data: weekPayments } = await adminSupabase
       .from('payments')
-      .select('lender_payout')
+      .select('booking_id, lender_payout')
       .in('booking_id', weekBookingIds);
-    weekEarningsPaise = (weekPayments ?? []).reduce(
-      (sum: number, p: { lender_payout: number }) => sum + (p.lender_payout ?? 0),
-      0
+    const payMap = new Map(
+      (weekPayments ?? []).map((p: { booking_id: string; lender_payout: number }) => [p.booking_id, p.lender_payout ?? 0] as [string, number])
     );
+    for (const b of weekCompleted) {
+      const payout = payMap.get(b.id) ?? 0;
+      weekEarningsPaise += payout;
+      const s = chargerStats.get(b.charger_id);
+      if (s) s.weekEarningsPaise += payout;
+    }
   }
+
+  // Enrich recent bookings with charger title, driver name, payment
+  const chargerIds = [...new Set(recentRaw.map(b => b.charger_id))];
+  const driverIds  = [...new Set(recentRaw.map(b => b.driver_id))];
+  const recentIds  = recentRaw.map(b => b.id);
+
+  const [chargerTitlesRes, driverNamesRes, recentPaymentsRes] = await Promise.all([
+    chargerIds.length > 0
+      ? adminSupabase.from('chargers').select('id, title').in('id', chargerIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; title: string }> }),
+    driverIds.length > 0
+      ? adminSupabase.from('users').select('id, name').in('id', driverIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }> }),
+    recentIds.length > 0
+      ? adminSupabase.from('payments').select('booking_id, lender_payout').in('booking_id', recentIds)
+      : Promise.resolve({ data: [] as Array<{ booking_id: string; lender_payout: number }> }),
+  ]);
+
+  const chargerTitleMap = new Map(
+    (chargerTitlesRes.data ?? []).map((c: { id: string; title: string }) => [c.id, c.title] as [string, string])
+  );
+  const driverNameMap = new Map(
+    (driverNamesRes.data ?? []).map((u: { id: string; name: string | null }) => [u.id, u.name] as [string, string | null])
+  );
+  const recentPayMap = new Map(
+    (recentPaymentsRes.data ?? []).map((p: { booking_id: string; lender_payout: number }) => [p.booking_id, p.lender_payout ?? 0] as [string, number])
+  );
+
+  const recentBookings: EnrichedRecentBooking[] = recentRaw.map(b => ({
+    ...b,
+    charger_title: chargerTitleMap.get(b.charger_id) ?? null,
+    driver_name: driverNameMap.get(b.driver_id) ?? null,
+    lender_payout: recentPayMap.get(b.id) ?? 0,
+  }));
 
   return {
     user: userResult.data as { id: string; name: string | null; kyc_status: string } | null,
-    chargers: (chargersResult.data ?? []) as ChargerRow[],
+    chargers,
+    chargerStats,
     weekEarningsPaise,
-    recentBookings: (recentResult.data ?? []) as Array<{
-      id: string;
-      status: string;
-      scheduled_start: string;
-    }>,
+    recentBookings,
   };
 }
 
 const BOOKING_STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-50 text-yellow-700',
-  confirmed: 'bg-volt-soft text-volt-deep',
-  in_progress: 'bg-blue-50 text-blue-700',
-  completed: 'bg-gray-100 text-muted',
-  cancelled: 'bg-red-50 text-red-700',
-  rejected: 'bg-red-50 text-red-700',
-  auto_rejected: 'bg-red-50 text-red-700',
+  pending:      'bg-yellow-50 text-yellow-700',
+  confirmed:    'bg-volt-soft text-volt-deep',
+  in_progress:  'bg-blue-50 text-blue-700',
+  completed:    'bg-gray-100 text-muted',
+  cancelled:    'bg-red-50 text-red-700',
+  rejected:     'bg-red-50 text-red-700',
+  auto_rejected:'bg-red-50 text-red-700',
 };
 
 const BOOKING_STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  in_progress: 'In progress',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  rejected: 'Rejected',
-  auto_rejected: 'Expired',
+  pending:      'Pending',
+  confirmed:    'Confirmed',
+  in_progress:  'In progress',
+  completed:    'Completed',
+  cancelled:    'Cancelled',
+  rejected:     'Rejected',
+  auto_rejected:'Expired',
 };
 
 const CHARGER_STATUS_SORT: Record<string, number> = {
-  draft: 0,
-  active: 1,
-  paused: 2,
-  suspended: 3,
+  draft: 0, active: 1, paused: 2, suspended: 3,
 };
 
 function ChargerStatusBadge({ status }: { status: string }) {
@@ -128,11 +237,38 @@ function ChargerStatusBadge({ status }: { status: string }) {
   );
 }
 
-function chargerSubtitle(charger: ChargerRow): string {
-  if (charger.status === 'active') return `${charger.total_sessions} booking${charger.total_sessions !== 1 ? 's' : ''}`;
+function chargerSubtitle(charger: ChargerRow, stats: ChargerStats | undefined): string {
   if (charger.status === 'draft')  return 'Awaiting verification';
-  if (charger.status === 'paused') return 'Not visible to drivers';
-  return '';
+  if (charger.status === 'paused') return 'Paused — not visible to drivers';
+  if (charger.status !== 'active' || !stats) return '';
+
+  if (stats.upcomingNext) {
+    const d = new Date(stats.upcomingNext);
+    const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `Next: ${dateStr} at ${timeStr}`;
+  }
+  if (stats.weekCompleted > 0) {
+    const n = stats.weekCompleted;
+    return `${n} booking${n !== 1 ? 's' : ''} this week · ${formatINR(stats.weekEarningsPaise)}`;
+  }
+  if (!stats.hasCompleted) return 'No bookings yet';
+  if (stats.lastEndedAt) {
+    const daysAgo = Math.floor((Date.now() - new Date(stats.lastEndedAt).getTime()) / 86_400_000);
+    if (daysAgo === 0) return 'Last booking today';
+    if (daysAgo === 1) return 'Last booking yesterday';
+    return `Last booking ${daysAgo} days ago`;
+  }
+  return 'No bookings yet';
+}
+
+function formatDuration(start: string, end: string): string {
+  const diffMs = new Date(end).getTime() - new Date(start).getTime();
+  const h = Math.floor(diffMs / 3_600_000);
+  const m = Math.floor((diffMs % 3_600_000) / 60_000);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
 }
 
 export default async function LenderDashboardPage({
@@ -144,19 +280,18 @@ export default async function LenderDashboardPage({
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect('/login');
 
-  const { user: profile, chargers, weekEarningsPaise, recentBookings } = await getLenderData(user.id);
+  const { user: profile, chargers, chargerStats, weekEarningsPaise, recentBookings } = await getLenderData(user.id);
   if (!profile) redirect('/login');
 
-  const kycStatus = (profile.kyc_status ?? 'not_started') as string;
+  const kycStatus     = (profile.kyc_status ?? 'not_started') as string;
   const liveChargers  = chargers.filter(c => c.status === 'active').length;
   const draftChargers = chargers.filter(c => c.status === 'draft').length;
-  const weekEarningsRupees = Math.floor(weekEarningsPaise / 100);
 
-  const sortedChargers = [...chargers].sort(
+  const sortedChargers  = [...chargers].sort(
     (a, b) => (CHARGER_STATUS_SORT[a.status] ?? 99) - (CHARGER_STATUS_SORT[b.status] ?? 99)
   );
   const displayedChargers = sortedChargers.slice(0, 3);
-  const hasMoreChargers = sortedChargers.length > 3;
+  const hasMoreChargers   = sortedChargers.length > 3;
 
   return (
     <main className="min-h-screen px-6 py-10 space-y-6">
@@ -178,7 +313,7 @@ export default async function LenderDashboardPage({
 
       {/* KYC status banners */}
       {kycStatus === 'not_started' && draftChargers > 0 && (
-        <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200 flex items-center justify-between gap-3">
+        <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200">
           <p className="text-sm text-yellow-800">
             Your {draftChargers} charger{draftChargers > 1 ? 's are' : ' is'} ready.{' '}
             <Link href="/profile" className="font-semibold underline underline-offset-2">
@@ -212,35 +347,35 @@ export default async function LenderDashboardPage({
         {profile.name ? `Hi, ${profile.name.split(' ')[0]}` : 'Welcome back'}
       </h1>
 
-      {/* Tappable stat cards */}
+      {/* Stat cards — Fix 7: bigger chevrons + group hover; Fix 8: "Earnings this week" */}
       <div className="grid grid-cols-3 gap-3">
         <Link
           href="/lender/earnings"
-          className="bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
+          className="group bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
         >
-          <ChevronRight className="absolute top-2 right-2 w-3.5 h-3.5 text-gray-300" />
-          <p className="text-2xl font-display font-extrabold text-ink">₹{weekEarningsRupees}</p>
-          <p className="text-xs text-muted mt-1">This week</p>
+          <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
+          <p className="text-2xl font-display font-extrabold text-ink">{formatINR(weekEarningsPaise)}</p>
+          <p className="text-xs text-muted mt-1">Earnings this week</p>
         </Link>
         <Link
           href="/lender/chargers?filter=active"
-          className="bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
+          className="group bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
         >
-          <ChevronRight className="absolute top-2 right-2 w-3.5 h-3.5 text-gray-300" />
+          <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
           <p className="text-2xl font-display font-extrabold text-ink">{liveChargers}</p>
           <p className="text-xs text-muted mt-1">Live</p>
         </Link>
         <Link
           href="/lender/chargers?filter=draft"
-          className="bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
+          className="group bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
         >
-          <ChevronRight className="absolute top-2 right-2 w-3.5 h-3.5 text-gray-300" />
+          <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
           <p className="text-2xl font-display font-extrabold text-ink">{draftChargers}</p>
           <p className="text-xs text-muted mt-1">Drafts</p>
         </Link>
       </div>
 
-      {/* Quick actions */}
+      {/* Quick actions — Fix 2: only View bookings + View earnings */}
       <div className="space-y-2">
         <h2 className="font-semibold text-lg text-ink">Quick actions</h2>
         <div className="grid grid-cols-1 gap-2">
@@ -261,30 +396,14 @@ export default async function LenderDashboardPage({
         </div>
       </div>
 
-      {/* My chargers */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-lg text-ink">My chargers</h2>
-          <Link
-            href="/lender/chargers/new"
-            className="flex items-center gap-1 text-xs font-semibold text-volt-deep"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add
-          </Link>
-        </div>
+      {/* My chargers — Fix 2: no + Add link; Fix 3/4: context subtitles; Add a charger at bottom */}
+      <div className="space-y-2">
+        <h2 className="font-semibold text-lg text-ink">My chargers</h2>
 
         {chargers.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
-            <p className="text-sm text-muted mb-3">You haven&apos;t added any chargers yet.</p>
-            <Link
-              href="/lender/chargers/new"
-              className="inline-block px-4 py-2 bg-ink text-white text-sm font-bold rounded-xl hover:bg-ink/90 transition-colors"
-            >
-              Add your first charger
-            </Link>
-          </div>
+          <p className="text-sm text-muted py-2">You haven&apos;t added any chargers yet.</p>
         ) : (
+<<<<<<< HEAD
           <div className="space-y-2">
             {displayedChargers.map(charger => (
               <Link
@@ -296,12 +415,27 @@ export default async function LenderDashboardPage({
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-sm font-semibold text-ink truncate">{charger.title}</p>
                     <ChargerStatusBadge status={charger.status} />
+=======
+          <>
+            <div className="space-y-2">
+              {displayedChargers.map(charger => (
+                <Link
+                  key={charger.id}
+                  href={`/lender/chargers/${charger.id}`}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold text-ink truncate">{charger.title}</p>
+                      <ChargerStatusBadge status={charger.status} />
+                    </div>
+                    <p className="text-xs text-muted">{chargerSubtitle(charger, chargerStats.get(charger.id))}</p>
+>>>>>>> 997d111 (Dashboard cleanup: add charger placement, subtitles, counts, formatting)
                   </div>
-                  <p className="text-xs text-muted">{chargerSubtitle(charger)}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
-              </Link>
-            ))}
+                  <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                </Link>
+              ))}
+            </div>
             {hasMoreChargers && (
               <Link
                 href="/lender/chargers"
@@ -310,37 +444,54 @@ export default async function LenderDashboardPage({
                 View all chargers
               </Link>
             )}
-          </div>
+          </>
         )}
+
+        {/* Add a charger — Fix 2: styled like Quick action buttons */}
+        <Link
+          href="/lender/chargers/new"
+          className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+        >
+          <Zap className="w-5 h-5 text-volt-deep" />
+          <span className="font-semibold text-ink text-sm">Add a charger</span>
+        </Link>
       </div>
 
-      {/* Recent bookings */}
+      {/* Recent bookings — Fix 5: richer display */}
       <div className="space-y-3">
         <h2 className="font-semibold text-lg text-ink">Recent bookings</h2>
         {recentBookings.length === 0 ? (
-          <p className="text-sm text-muted">No bookings yet.</p>
+          <p className="text-sm text-muted">
+            No bookings yet. Your chargers will appear here once drivers start booking.
+          </p>
         ) : (
           <div className="space-y-2">
             {recentBookings.map(booking => (
               <Link
                 key={booking.id}
                 href={`/lender/bookings/${booking.id}`}
-                className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
+                className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
               >
-                <div>
-                  <p className="text-sm font-semibold text-ink">Booking</p>
-                  <p className="text-xs text-muted">
-                    {new Date(booking.scheduled_start).toLocaleDateString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink truncate">
+                    {booking.charger_title ?? 'Charger'}
                   </p>
+                  <p className="text-xs text-muted mt-0.5 truncate">
+                    {booking.driver_name ?? 'Driver'}
+                    {' · '}
+                    {new Date(booking.scheduled_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    {' · '}
+                    {formatDuration(booking.scheduled_start, booking.scheduled_end)}
+                  </p>
+                  {booking.lender_payout > 0 && (
+                    <p className="text-xs font-semibold text-ink mt-1">
+                      {formatINR(booking.lender_payout)} earned
+                    </p>
+                  )}
                 </div>
                 <span className={cn(
-                  'px-2 py-0.5 rounded-full text-xs font-semibold',
-                  BOOKING_STATUS_COLORS[booking.status] ?? 'bg-gray-100 text-muted'
+                  'px-2 py-0.5 rounded-full text-xs font-semibold shrink-0',
+                  BOOKING_STATUS_COLORS[booking.status] ?? 'bg-gray-100 text-muted',
                 )}>
                   {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
                 </span>
