@@ -347,32 +347,34 @@ export default async function LenderDashboardPage({
         {profile.name ? `Hi, ${profile.name.split(' ')[0]}` : 'Welcome back'}
       </h1>
 
-      {/* Stat cards — Fix 7: bigger chevrons + group hover; Fix 8: "Earnings this week" */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Stat cards — Row 1: Earnings full-width; Row 2: Live + Drafts 50/50 */}
+      <div className="space-y-3">
         <Link
           href="/lender/earnings"
-          className="group bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
+          className="group block bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
         >
-          <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
-          <p className="text-2xl font-display font-extrabold text-ink">{formatINR(weekEarningsPaise)}</p>
+          <ChevronRight className="absolute top-4 right-4 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
+          <p className="text-3xl font-display font-extrabold text-ink pr-6">{formatINR(weekEarningsPaise)}</p>
           <p className="text-xs text-muted mt-1">Earnings this week</p>
         </Link>
-        <Link
-          href="/lender/chargers?filter=active"
-          className="group bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
-        >
-          <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
-          <p className="text-2xl font-display font-extrabold text-ink">{liveChargers}</p>
-          <p className="text-xs text-muted mt-1">Live</p>
-        </Link>
-        <Link
-          href="/lender/chargers?filter=draft"
-          className="group bg-white rounded-2xl border border-gray-100 p-4 text-center hover:bg-gray-50 hover:border-gray-200 transition-colors cursor-pointer relative"
-        >
-          <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
-          <p className="text-2xl font-display font-extrabold text-ink">{draftChargers}</p>
-          <p className="text-xs text-muted mt-1">Drafts</p>
-        </Link>
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href="/lender/chargers?filter=active"
+            className="group bg-white rounded-2xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+          >
+            <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
+            <p className="text-2xl font-display font-extrabold text-ink">{liveChargers}</p>
+            <p className="text-xs text-muted mt-1">Live</p>
+          </Link>
+          <Link
+            href="/lender/chargers?filter=draft"
+            className="group bg-white rounded-2xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+          >
+            <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
+            <p className="text-2xl font-display font-extrabold text-ink">{draftChargers}</p>
+            <p className="text-xs text-muted mt-1">Drafts</p>
+          </Link>
+        </div>
       </div>
 
       {/* Quick actions */}
