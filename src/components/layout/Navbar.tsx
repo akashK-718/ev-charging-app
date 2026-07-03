@@ -87,8 +87,25 @@ export function Navbar() {
   if (isAuthPage) return null;
 
   if (loading) {
-    // Height placeholder prevents layout shift during auth check
-    return <div className="h-14 border-b border-gray-100 bg-white sticky top-0 z-40" />;
+    return (
+      <header className="h-14 border-b border-gray-100 bg-white sticky top-0 z-40">
+        {/* Mobile skeleton */}
+        <div className="flex items-center justify-between h-full px-4 lg:hidden">
+          <div className="w-9" aria-hidden="true" />
+          <Logo href="/" />
+          <div className="w-9 h-8 rounded-xl bg-gray-100 animate-pulse" aria-hidden="true" />
+        </div>
+        {/* Desktop skeleton */}
+        <div className="hidden lg:flex items-center h-full px-6 gap-4">
+          <Logo href="/" />
+          <div className="flex items-center gap-2 ml-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="w-20 h-7 rounded-lg bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </header>
+    );
   }
 
   if (!user) {
