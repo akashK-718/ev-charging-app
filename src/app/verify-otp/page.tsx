@@ -79,12 +79,15 @@ function VerifyOtpContent() {
         return;
       }
       const { isNewUser, role } = data.data ?? {};
+      // Full-page navigation so the browser Supabase client re-reads the
+      // session cookies that were set server-side, triggering onAuthStateChange
+      // and preventing a blank navbar on first login.
       if (isNewUser) {
-        router.push('/welcome/name');
+        window.location.href = '/welcome/name';
       } else if (role === 'lender' || role === 'both') {
-        router.push('/lender/dashboard');
+        window.location.href = '/lender/dashboard';
       } else {
-        router.push('/chargers');
+        window.location.href = '/chargers';
       }
     } catch {
       setError('Something went wrong. Please try again.');
