@@ -66,27 +66,32 @@ export async function POST(request: NextRequest) {
   // Look up in our users table to determine isNewUser
   const { data: existingProfile } = await adminSupabase
     .from('users')
-    .select('id, role')
+    .select('id, role, name, is_admin')
     .eq('phone', fullPhone)
     .maybeSingle();
 
   let userId: string;
   let role: string;
+  let isAdmin: boolean;
   let isNewUser: boolean;
 
   if (existingProfile) {
     userId = existingProfile.id;
     role = existingProfile.role;
+    isAdmin = (existingProfile as { is_admin: boolean }).is_admin ?? false;
     isNewUser = false;
 
-    // Ensure auth.users entry exists (migration path for any users created before this flow).
-    // Error is intentionally ignored — fires "User already registered" on second+ logins.
-    await adminSupabase.auth.admin.createUser({
-      id: userId,
-      email,
-      email_confirm: true,
+    // Sync the auth user: set the correct derived password (handles accounts created
+    // via grant_admin() which use a placeholder) and keep JWT metadata up-to-date.
+    // Supabase merges user_metadata, so unrelated keys (e.g. onboarded) are preserved.
+    const profile = existingProfile as { name: string | null; is_admin: boolean };
+    await adminSupabase.auth.admin.updateUserById(userId, {
       password,
-      user_metadata: { role },
+      user_metadata: {
+        role,
+        is_admin: isAdmin,
+        ...(profile.name ? { name: profile.name } : {}),
+      },
     });
   } else {
     // New user — create in Supabase Auth first to get the canonical UUID
@@ -124,6 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     role = newProfile.role;
+    isAdmin = false;
     isNewUser = true;
   }
 
@@ -143,5 +149,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ data: { userId, role, isNewUser } });
+  return NextResponse.json({ data: { userId, role, isNewUser, isAdmin } });
 }

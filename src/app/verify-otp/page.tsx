@@ -78,12 +78,14 @@ function VerifyOtpContent() {
         setLoading(false);
         return;
       }
-      const { isNewUser, role } = data.data ?? {};
+      const { isNewUser, role, isAdmin } = data.data ?? {};
       // Full-page navigation so the browser Supabase client re-reads the
       // session cookies that were set server-side, triggering onAuthStateChange
       // and preventing a blank navbar on first login.
       if (isNewUser) {
         window.location.href = '/welcome/name';
+      } else if (isAdmin) {
+        window.location.href = '/admin';
       } else if (role === 'lender' || role === 'both') {
         window.location.href = '/lender/dashboard';
       } else {

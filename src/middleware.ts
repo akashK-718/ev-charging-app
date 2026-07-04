@@ -58,9 +58,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect logged-in users away from auth screens and landing page
+  // Redirect logged-in users away from auth screens and landing page.
+  // Admins land on /admin; everyone else on /chargers.
   if ((pathname === '/login' || pathname === '/verify-otp' || pathname === '/') && user) {
-    return NextResponse.redirect(new URL('/chargers', request.url));
+    const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
+    const dest = isAdmin ? '/admin' : '/chargers';
+    return NextResponse.redirect(new URL(dest, request.url));
   }
 
   // ── Two-step welcome flow gating ──────────────────────────────────────────────
