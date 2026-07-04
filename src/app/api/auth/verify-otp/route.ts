@@ -101,10 +101,11 @@ export async function POST(request: NextRequest) {
 
     // Step 2: sync password + metadata. Fixes grant_admin accounts whose auth.users
     // row was created with a placeholder password, and keeps JWT metadata in sync.
-    // Safe to call even if step 1 just created the user (idempotent).
+    // app_metadata must be set — if null, Supabase returns unexpected_failure on sign-in.
     await adminSupabase.auth.admin.updateUserById(userId, {
       password,
       user_metadata: metaUpdate,
+      app_metadata: { provider: 'email', providers: ['email'] },
     });
   } else {
     // New user — create in Supabase Auth first to get the canonical UUID
