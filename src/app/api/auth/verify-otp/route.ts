@@ -81,17 +81,30 @@ export async function POST(request: NextRequest) {
     isAdmin = (existingProfile as { is_admin: boolean }).is_admin ?? false;
     isNewUser = false;
 
-    // Sync the auth user: set the correct derived password (handles accounts created
-    // via grant_admin() which use a placeholder) and keep JWT metadata up-to-date.
-    // Supabase merges user_metadata, so unrelated keys (e.g. onboarded) are preserved.
     const profile = existingProfile as { name: string | null; is_admin: boolean };
+    const metaUpdate = {
+      role,
+      is_admin: isAdmin,
+      ...(profile.name ? { name: profile.name } : {}),
+    };
+
+    // Step 1: create auth.users entry if absent (migration path for accounts that
+    // predate this OTP flow, or were inserted directly into public.users).
+    // "User already registered" error is intentionally ignored.
+    await adminSupabase.auth.admin.createUser({
+      id: userId,
+      email,
+      email_confirm: true,
+      password,
+      user_metadata: metaUpdate,
+    });
+
+    // Step 2: sync password + metadata. Fixes grant_admin accounts whose auth.users
+    // row was created with a placeholder password, and keeps JWT metadata in sync.
+    // Safe to call even if step 1 just created the user (idempotent).
     await adminSupabase.auth.admin.updateUserById(userId, {
       password,
-      user_metadata: {
-        role,
-        is_admin: isAdmin,
-        ...(profile.name ? { name: profile.name } : {}),
-      },
+      user_metadata: metaUpdate,
     });
   } else {
     // New user — create in Supabase Auth first to get the canonical UUID
