@@ -1,17 +1,16 @@
 -- Migration 013: grant_admin() helper function
 -- Usage: SELECT grant_admin('91XXXXXXXXXX');
 --
--- Creates a fully-provisioned admin account for a phone number that has never
--- signed up, OR upgrades an existing account to admin — in both cases idempotent.
+-- For NEW phone numbers: inserts a row into public.users only (is_admin=true,
+-- role='both', kyc_status='approved', name='Admin'). The auth.users row is created
+-- by the Supabase admin API on the first OTP login — never via raw SQL, which avoids
+-- missing internal GoTrue fields that cause unexpected_failure on sign-in.
 --
--- For NEW numbers: inserts into auth.users (placeholder password, corrected on first
--- OTP login by the verify-otp route) and public.users with is_admin=true, role='both',
--- kyc_status='approved' and name='Admin' so the welcome flow is skipped automatically.
+-- For EXISTING phone numbers: sets is_admin=true in public.users and merges
+-- is_admin:true into the auth.users JWT metadata (if the auth account exists).
+-- The JWT picks up the flag on the user's next login.
 --
--- For EXISTING numbers: merges is_admin:true into raw_user_meta_data and sets
--- public.users.is_admin = true. The JWT picks up the flag on next login.
---
--- Requires: pgcrypto extension (already enabled via migration 001).
+-- Idempotent: safe to run multiple times on the same number.
 
 CREATE OR REPLACE FUNCTION grant_admin(phone_number text)
 RETURNS void
@@ -19,53 +18,27 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  auth_user_id uuid;
-  fake_email    text;
+  existing_id uuid;
 BEGIN
-  fake_email := phone_number || '@auth.local';
+  SELECT id INTO existing_id FROM public.users WHERE phone = phone_number;
 
-  SELECT id INTO auth_user_id
-  FROM auth.users
-  WHERE email = fake_email;
-
-  IF auth_user_id IS NULL THEN
-    -- New number: create auth user + public profile from scratch.
-    -- The encrypted_password here is a placeholder; the verify-otp route calls
-    -- auth.admin.updateUserById on first login to set the HMAC-derived password.
-    INSERT INTO auth.users (
-      instance_id, id, aud, role,
-      email, encrypted_password, email_confirmed_at,
-      raw_app_meta_data, raw_user_meta_data,
-      created_at, updated_at
-    ) VALUES (
-      '00000000-0000-0000-0000-000000000000',
-      gen_random_uuid(),
-      'authenticated',
-      'authenticated',
-      fake_email,
-      crypt('placeholder_password', gen_salt('bf')),
-      now(),
-      -- Required by Supabase JWT minting — without this signInWithPassword returns unexpected_failure
-      '{"provider": "email", "providers": ["email"]}'::jsonb,
-      -- Include name so the middleware welcome-flow gate is not triggered
-      '{"role": "both", "is_admin": true, "name": "Admin"}'::jsonb,
-      now(),
-      now()
-    )
-    RETURNING id INTO auth_user_id;
-
-    INSERT INTO public.users (id, phone, name, role, is_admin, kyc_status)
-    VALUES (auth_user_id, phone_number, 'Admin', 'both', true, 'approved');
+  IF existing_id IS NULL THEN
+    -- New number: create the public profile only.
+    -- auth.users is intentionally left to the verify-otp route (Supabase admin API
+    -- createUser call) which sets all GoTrue-internal fields correctly.
+    INSERT INTO public.users (phone, name, role, is_admin, kyc_status)
+    VALUES (phone_number, 'Admin', 'both', true, 'approved');
 
   ELSE
-    -- Existing number: upgrade in place.
-    UPDATE auth.users
-    SET raw_user_meta_data = raw_user_meta_data || '{"is_admin": true}'::jsonb
-    WHERE id = auth_user_id;
-
+    -- Existing user: promote in place.
     UPDATE public.users
     SET is_admin = true
-    WHERE phone = phone_number;
+    WHERE id = existing_id;
+
+    -- Merge is_admin into JWT metadata if the auth account already exists.
+    UPDATE auth.users
+    SET raw_user_meta_data = raw_user_meta_data || '{"is_admin": true}'::jsonb
+    WHERE id = existing_id;
   END IF;
 END;
 $$;
