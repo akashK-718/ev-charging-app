@@ -4,7 +4,7 @@ import { notify } from '@/lib/notifications';
 import { getAdminUser, logAdminAction } from '@/lib/admin';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   const adminUser = await getAdminUser();
@@ -12,9 +12,22 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const adminSupabase = createAdminClient();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
 
-  const { data: submission, error: fetchError } = await adminSupabase
+  const b = body as { reason?: string };
+
+  if (!b.reason || typeof b.reason !== 'string' || b.reason.trim().length === 0) {
+    return NextResponse.json({ error: 'Reason is required' }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  const { data: submission, error: fetchError } = await admin
     .from('kyc_submissions')
     .select('id, user_id, status')
     .eq('id', params.id)
@@ -30,35 +43,34 @@ export async function POST(
     return NextResponse.json({ error: 'Submission is not in pending state' }, { status: 409 });
   }
 
-  const { error: updateSubError } = await adminSupabase
+  const { error: updateError } = await admin
     .from('kyc_submissions')
     .update({
-      status: 'approved',
+      status: 'resubmission_required',
+      rejection_reason: b.reason.trim(),
       reviewed_at: new Date().toISOString(),
       reviewed_by: adminUser.id,
     })
     .eq('id', params.id);
 
-  if (updateSubError) {
-    return NextResponse.json({ error: 'Failed to approve submission' }, { status: 500 });
+  if (updateError) {
+    return NextResponse.json({ error: 'Failed to request resubmission' }, { status: 500 });
   }
 
-  await adminSupabase
+  await admin
     .from('users')
-    .update({ kyc_status: 'approved' })
+    .update({ kyc_status: 'resubmission_required' })
     .eq('id', sub.user_id);
 
-  // Promote all draft chargers for this lender to active — they go live immediately.
-  await adminSupabase
-    .from('chargers')
-    .update({ status: 'active' })
-    .eq('lender_id', sub.user_id)
-    .eq('status', 'draft')
-    .is('deleted_at', null);
-
   await Promise.all([
-    notify(sub.user_id, 'kyc_approved', { submission_id: params.id }),
-    logAdminAction(adminUser.id, 'kyc_approved', sub.user_id, { submission_id: params.id }),
+    notify(sub.user_id, 'kyc_resubmission_required', {
+      submission_id: params.id,
+      reason: b.reason.trim(),
+    }),
+    logAdminAction(adminUser.id, 'kyc_resubmission_required', sub.user_id, {
+      submission_id: params.id,
+      reason: b.reason.trim(),
+    }),
   ]);
 
   return NextResponse.json({ ok: true });

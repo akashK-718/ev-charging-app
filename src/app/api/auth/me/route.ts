@@ -12,7 +12,7 @@ export async function GET() {
   const adminSupabase = createAdminClient();
   const { data: profile, error: profileError } = await adminSupabase
     .from('users')
-    .select('id, phone, name, role, kyc_status')
+    .select('id, phone, name, role, kyc_status, is_admin')
     .eq('id', user.id)
     .single();
 

@@ -45,6 +45,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Admin-only routes: require is_admin flag in JWT metadata.
+  // The flag is synced to metadata when admin access is granted (see migration 012).
+  if (pathname.startsWith('/admin') && user) {
+    const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
+    if (!isAdmin) {
+      const role = user.user_metadata?.role as string | undefined;
+      const dest = role === 'lender' || role === 'both' ? '/lender/dashboard' : '/chargers';
+      const url = new URL(dest, request.url);
+      url.searchParams.set('error', 'admin_required');
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Redirect logged-in users away from auth screens and landing page
   if ((pathname === '/login' || pathname === '/verify-otp' || pathname === '/') && user) {
     return NextResponse.redirect(new URL('/chargers', request.url));

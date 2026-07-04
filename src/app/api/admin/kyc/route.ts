@@ -1,21 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
-
-async function getAdminUser() {
-  const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) return null;
-
-  const adminSupabase = createAdminClient();
-  const { data: profile } = await adminSupabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') return null;
-  return user;
-}
+import { createAdminClient } from '@/lib/supabase/server';
+import { getAdminUser } from '@/lib/admin';
 
 const VALID_STATUSES = ['pending', 'approved', 'rejected', 'resubmission_required'] as const;
 type KycStatus = (typeof VALID_STATUSES)[number];
@@ -51,19 +36,31 @@ export async function GET(request: NextRequest) {
     status: string; submitted_at: string; rejection_reason: string | null;
   }>;
 
-  // Enrich with user info
   const userIds = [...new Set(rawList.map(s => s.user_id))];
-  const { data: usersData } = userIds.length > 0
-    ? await adminSupabase.from('users').select('id, phone, name').in('id', userIds)
-    : { data: [] };
+
+  const [usersRes, draftsRes] = await Promise.all([
+    userIds.length > 0
+      ? adminSupabase.from('users').select('id, phone, name').in('id', userIds)
+      : Promise.resolve({ data: [] }),
+    userIds.length > 0
+      ? adminSupabase.from('chargers').select('lender_id').eq('status', 'draft').is('deleted_at', null).in('lender_id', userIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
   const userMap = new Map(
-    (usersData ?? []).map(u => [u.id, { phone: u.phone, name: u.name }] as [string, { phone: string; name: string | null }]),
+    ((usersRes.data ?? []) as Array<{ id: string; phone: string; name: string | null }>)
+      .map(u => [u.id, { phone: u.phone, name: u.name }]),
   );
+
+  const draftCountMap = new Map<string, number>();
+  for (const row of (draftsRes.data ?? []) as Array<{ lender_id: string }>) {
+    draftCountMap.set(row.lender_id, (draftCountMap.get(row.lender_id) ?? 0) + 1);
+  }
 
   const enriched = rawList.map(s => ({
     ...s,
     users: userMap.get(s.user_id) ?? null,
+    draft_count: draftCountMap.get(s.user_id) ?? 0,
   }));
 
   return NextResponse.json({ data: enriched });

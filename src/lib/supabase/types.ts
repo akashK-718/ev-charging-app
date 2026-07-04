@@ -27,11 +27,12 @@ export type Database = {
           phone: string;
           name: string | null;
           role: 'driver' | 'lender' | 'both' | 'admin';
-          kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected';
+          kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           kyc_doc_url: string | null;
           avg_rating: number | null;
           razorpay_contact_id: string | null;
           razorpay_fund_account_id: string | null;
+          is_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -40,10 +41,30 @@ export type Database = {
           phone: string;
           name?: string | null;
           role?: 'driver' | 'lender' | 'both' | 'admin';
-          kyc_status?: 'not_started' | 'pending' | 'approved' | 'rejected';
+          kyc_status?: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           kyc_doc_url?: string | null;
+          is_admin?: boolean;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
+        Relationships: [];
+      };
+      audit_log: {
+        Row: {
+          id: string;
+          admin_user_id: string;
+          action_type: string;
+          target_user_id: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          admin_user_id: string;
+          action_type: string;
+          target_user_id?: string | null;
+          metadata?: Record<string, unknown>;
+        };
+        Update: Partial<Database['public']['Tables']['audit_log']['Insert']>;
         Relationships: [];
       };
       chargers: {
