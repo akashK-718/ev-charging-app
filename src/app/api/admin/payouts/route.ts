@@ -1,21 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
-
-async function getAdminUser() {
-  const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) return null;
-
-  const adminSupabase = createAdminClient();
-  const { data: profile } = await adminSupabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') return null;
-  return user;
-}
+import { createAdminClient } from '@/lib/supabase/server';
+import { getAdminUser } from '@/lib/admin';
 
 /**
  * GET /api/admin/payouts — list pending payouts with lender info

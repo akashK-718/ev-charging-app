@@ -9,6 +9,7 @@ export interface AuthUser {
   phone: string | null;
   name: string | null;
   role: 'driver' | 'lender' | 'both';
+  is_admin: boolean;
 }
 
 async function resolveAuthUser(rawUser: User): Promise<AuthUser> {
@@ -16,23 +17,30 @@ async function resolveAuthUser(rawUser: User): Promise<AuthUser> {
   const name = (rawUser.user_metadata?.name as string | undefined) ?? null;
 
   if (role) {
-    // Fast path: role is in JWT metadata — no extra network call needed
-    return { id: rawUser.id, phone: rawUser.phone ?? null, name, role };
+    // Fast path: role is in JWT metadata — is_admin also read from metadata.
+    // When granting admin, update both public.users AND auth.users metadata (see migration 012).
+    return {
+      id: rawUser.id,
+      phone: rawUser.phone ?? null,
+      name,
+      role,
+      is_admin: (rawUser.user_metadata?.is_admin as boolean | undefined) ?? false,
+    };
   }
 
-  // Slow path: role missing from metadata (users created before metadata sync).
-  // Fetch from DB so we never show the wrong menu items due to the ?? 'driver' fallback.
+  // Slow path: role missing from metadata — fetch from DB.
   try {
     const res = await fetch('/api/auth/me');
-    const data = (await res.json()) as { data?: { role?: string; name?: string | null } };
+    const data = (await res.json()) as { data?: { role?: string; name?: string | null; is_admin?: boolean } };
     return {
       id: rawUser.id,
       phone: rawUser.phone ?? null,
       name: data.data?.name ?? name,
       role: (data.data?.role as AuthUser['role']) ?? 'driver',
+      is_admin: data.data?.is_admin ?? false,
     };
   } catch {
-    return { id: rawUser.id, phone: rawUser.phone ?? null, name, role: 'driver' };
+    return { id: rawUser.id, phone: rawUser.phone ?? null, name, role: 'driver', is_admin: false };
   }
 }
 

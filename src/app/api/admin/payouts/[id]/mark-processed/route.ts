@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
-
-async function getAdminUser() {
-  const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) return null;
-
-  const adminSupabase = createAdminClient();
-  const { data: profile } = await adminSupabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') return null;
-  return user;
-}
+import { getAdminUser, logAdminAction } from '@/lib/admin';
 
 export async function POST(
   _request: NextRequest,
@@ -68,11 +53,17 @@ export async function POST(
       .in('booking_id', p.booking_ids);
   }
 
-  await notify(p.user_id, 'payout_processed', {
-    payout_id: params.id,
-    amount_paise: p.amount_paise,
-    booking_count: p.booking_ids.length,
-  });
+  await Promise.all([
+    notify(p.user_id, 'payout_processed', {
+      payout_id: params.id,
+      amount_paise: p.amount_paise,
+      booking_count: p.booking_ids.length,
+    }),
+    logAdminAction(adminUser.id, 'payout_processed', p.user_id, {
+      payout_id: params.id,
+      amount_paise: p.amount_paise,
+    }),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

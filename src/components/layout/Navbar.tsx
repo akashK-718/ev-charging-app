@@ -118,7 +118,10 @@ export function Navbar() {
 
   const isBoth = user.role === 'both';
   const activeMode = isBoth ? viewMode : (user.role === 'lender' ? 'lender' : 'driver');
-  const links = activeMode === 'lender' ? LENDER_LINKS : DRIVER_LINKS;
+  const baseLinks = activeMode === 'lender' ? LENDER_LINKS : DRIVER_LINKS;
+  const links: NavLink[] = user.is_admin
+    ? [...baseLinks, { href: '/admin', label: 'Admin' }]
+    : baseLinks;
   const homeHref = user.role === 'driver' ? '/chargers' : '/lender/dashboard';
 
   async function handleSignOut() {
@@ -269,6 +272,7 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(function NavItem(
   ref,
 ) {
   const isActive = pathname === href || (href.length > 1 && pathname.startsWith(href));
+  const isAdmin = href === '/admin';
 
   return (
     <Link
@@ -280,12 +284,20 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(function NavItem(
         mobile
           ? 'flex items-center px-4 py-3 rounded-xl mb-0.5'
           : 'px-3 py-1.5 rounded-lg',
-        isActive
-          ? 'bg-volt-soft text-ink'
-          : 'text-muted hover:text-ink hover:bg-gray-50',
+        isAdmin
+          ? isActive
+            ? 'bg-slate-800 text-white'
+            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          : isActive
+            ? 'bg-volt-soft text-ink'
+            : 'text-muted hover:text-ink hover:bg-gray-50',
       )}
     >
-      {label}
+      {isAdmin ? (
+        <span className="flex items-center gap-1.5">
+          <span className="text-xs font-bold tracking-widest uppercase opacity-70">Admin</span>
+        </span>
+      ) : label}
     </Link>
   );
 });

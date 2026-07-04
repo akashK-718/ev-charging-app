@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
-
-async function getAdminUser() {
-  const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) return null;
-
-  const adminSupabase = createAdminClient();
-  const { data: profile } = await adminSupabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || (profile as { role: string }).role !== 'admin') return null;
-  return user;
-}
+import { getAdminUser, logAdminAction } from '@/lib/admin';
 
 export async function POST(
   request: NextRequest,
@@ -54,7 +39,7 @@ export async function POST(
 
   const sub = submission as { id: string; user_id: string; status: string };
 
-  const newStatus = b.resubmission_allowed ? 'resubmission_required' : 'rejected';
+  const newStatus = 'rejected';
 
   const { error: updateSubError } = await adminSupabase
     .from('kyc_submissions')
@@ -75,11 +60,16 @@ export async function POST(
     .update({ kyc_status: 'rejected' })
     .eq('id', sub.user_id);
 
-  await notify(sub.user_id, 'kyc_rejected', {
-    submission_id: params.id,
-    reason: b.reason.trim(),
-    resubmission_allowed: b.resubmission_allowed ?? false,
-  });
+  await Promise.all([
+    notify(sub.user_id, 'kyc_rejected', {
+      submission_id: params.id,
+      reason: b.reason.trim(),
+    }),
+    logAdminAction(adminUser.id, 'kyc_rejected', sub.user_id, {
+      submission_id: params.id,
+      reason: b.reason.trim(),
+    }),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

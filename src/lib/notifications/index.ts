@@ -7,6 +7,7 @@ type NotificationType =
   | 'session_completed'
   | 'kyc_approved'
   | 'kyc_rejected'
+  | 'kyc_resubmission_required'
   | 'payout_processed';
 
 export async function notify(
