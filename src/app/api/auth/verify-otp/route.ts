@@ -91,6 +91,9 @@ export async function POST(request: NextRequest) {
     // Step 1: create auth.users entry if absent (migration path for accounts that
     // predate this OTP flow, or were inserted directly into public.users).
     // "User already registered" error is intentionally ignored.
+    // Step 1: create auth.users entry if absent (migration path for accounts that
+    // predate this OTP flow, or were inserted directly into public.users).
+    // "User already registered" error is intentionally ignored.
     await adminSupabase.auth.admin.createUser({
       id: userId,
       email,
