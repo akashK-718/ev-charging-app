@@ -35,7 +35,8 @@ BEGIN
     INSERT INTO auth.users (
       instance_id, id, aud, role,
       email, encrypted_password, email_confirmed_at,
-      raw_user_meta_data, created_at, updated_at
+      raw_app_meta_data, raw_user_meta_data,
+      created_at, updated_at
     ) VALUES (
       '00000000-0000-0000-0000-000000000000',
       gen_random_uuid(),
@@ -44,6 +45,8 @@ BEGIN
       fake_email,
       crypt('placeholder_password', gen_salt('bf')),
       now(),
+      -- Required by Supabase JWT minting — without this signInWithPassword returns unexpected_failure
+      '{"provider": "email", "providers": ["email"]}'::jsonb,
       -- Include name so the middleware welcome-flow gate is not triggered
       '{"role": "both", "is_admin": true, "name": "Admin"}'::jsonb,
       now(),
