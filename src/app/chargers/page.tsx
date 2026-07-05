@@ -117,7 +117,7 @@ function computeRouteBounds(
 export default function ChargersPage() {
   // ── Search / view mode ────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-  const [searchMode, setSearchMode] = useState<SearchMode>('near_me');
+  const [searchMode, setSearchMode] = useState<SearchMode>('along_route');
 
   // ── Near-me: search centre ────────────────────────────────────────────────
   const [searchCenter, setSearchCenter] = useState<Coords | null>(null);
@@ -267,7 +267,7 @@ export default function ChargersPage() {
       setSearchCenter(saved.center);
       setCenterType(saved.centerType);
       setViewMode(saved.viewMode);
-      setSearchMode(saved.searchMode ?? 'near_me');
+      setSearchMode(saved.searchMode ?? 'along_route');
       setAllIndiaMode(isAllIndia);
       setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
       if (saved.routeFrom) {
@@ -501,6 +501,40 @@ export default function ChargersPage() {
         setSearchAddress('');
       });
     }
+  }
+
+  async function handleUseGpsLocation() {
+    async function apply(gps: Coords) {
+      setGpsCoords(gps);
+      setGpsAvailable(true);
+      setSearchCenter(gps);
+      setCenterType('gps');
+      try {
+        const result = await maps.reverseGeocode(gps);
+        setSearchAddress(result.formattedAddress);
+      } catch {
+        setSearchAddress('');
+      }
+    }
+
+    if (gpsCoords) { await apply(gpsCoords); return; }
+    if (gpsAvailable === false) {
+      showToastMsg('Location access denied. Enable it in your browser settings.');
+      return;
+    }
+    if (!navigator.geolocation) {
+      setGpsAvailable(false);
+      showToastMsg('Location access denied. Enable it in your browser settings.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => { void apply({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+      () => {
+        setGpsAvailable(false);
+        showToastMsg('Location access denied. Enable it in your browser settings.');
+      },
+      { timeout: 8000 },
+    );
   }
 
   function handleGpsRouteRefresh() {
@@ -760,22 +794,41 @@ export default function ChargersPage() {
                 ) : (
                   /* Near-me mode */
                   <div className="space-y-2">
-                    <AddressAutocomplete
-                      value={searchAddress}
-                      onChange={handleAddressChange}
-                      onSelect={handleAddressSelect}
-                      placeholder="Search a location…"
-                    />
-                    <div className="flex items-center justify-between">
-                      <span
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <AddressAutocomplete
+                          value={searchAddress}
+                          onChange={handleAddressChange}
+                          onSelect={handleAddressSelect}
+                          placeholder="Search a location…"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { void handleUseGpsLocation(); }}
+                        title={gpsAvailable === false ? 'Location access denied' : 'Use my location'}
+                        aria-label="Use current GPS location"
+                        disabled={gpsAvailable === false}
                         className={cn(
-                          'text-xs font-semibold transition-colors',
-                          activeFetchLoading ? 'text-muted' : 'text-ink',
+                          'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors',
+                          gpsAvailable === false
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : centerType === 'gps'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 hover:bg-gray-200 text-ink',
                         )}
                       >
-                        {counterLabel}
-                      </span>
+                        <LocateFixed className="w-4 h-4" />
+                      </button>
                     </div>
+                    <span
+                      className={cn(
+                        'block text-xs font-semibold transition-colors',
+                        activeFetchLoading ? 'text-muted' : 'text-ink',
+                      )}
+                    >
+                      {counterLabel}
+                    </span>
                     <RadiusSlider
                       value={allIndiaMode ? Infinity : radius}
                       onChange={handleRadiusChange}
@@ -787,25 +840,6 @@ export default function ChargersPage() {
             </div>
           )}
 
-          {/* ── Recenter / GPS button (near-me only) ─────────────────────── */}
-          {!locationLoading && !isRouteMode && (
-            <button
-              onClick={handleRecenter}
-              disabled={gpsAvailable === false}
-              title={gpsAvailable === false ? 'Location access denied' : 'Recenter on my location'}
-              className={cn(
-                'absolute bottom-8 right-4 z-10 w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors',
-                gpsAvailable === false
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : centerType === 'gps'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white text-ink hover:bg-gray-50',
-              )}
-              aria-label="Recenter on my location"
-            >
-              <LocateFixed className="w-5 h-5" />
-            </button>
-          )}
 
           {/* ── Toast ─────────────────────────────────────────────────────── */}
           <div
@@ -914,12 +948,41 @@ export default function ChargersPage() {
               )
             ) : (
               <>
-                <AddressAutocomplete
-                  value={searchAddress}
-                  onChange={handleAddressChange}
-                  onSelect={handleAddressSelect}
-                  placeholder="Search a location…"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <AddressAutocomplete
+                      value={searchAddress}
+                      onChange={handleAddressChange}
+                      onSelect={handleAddressSelect}
+                      placeholder="Search a location…"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { void handleUseGpsLocation(); }}
+                    title={gpsAvailable === false ? 'Location access denied' : 'Use my location'}
+                    aria-label="Use current GPS location"
+                    disabled={gpsAvailable === false}
+                    className={cn(
+                      'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors',
+                      gpsAvailable === false
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : centerType === 'gps'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 hover:bg-gray-200 text-ink',
+                    )}
+                  >
+                    <LocateFixed className="w-4 h-4" />
+                  </button>
+                </div>
+                <span
+                  className={cn(
+                    'block text-xs font-semibold transition-colors',
+                    activeFetchLoading ? 'text-muted' : 'text-ink',
+                  )}
+                >
+                  {counterLabel}
+                </span>
                 <RadiusSlider
                   value={allIndiaMode ? Infinity : radius}
                   onChange={handleRadiusChange}
