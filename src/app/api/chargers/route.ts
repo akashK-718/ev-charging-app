@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '@/lib/constants';
+import { applyLocationOffset } from '@/lib/location/offset';
 
 const VALID_CHARGER_TYPES = ['AC_3.3kW', 'AC_7kW', 'AC_22kW', 'DC_fast'] as const;
 const VALID_CONNECTOR_TYPES = ['Type2', 'BharatAC', 'CCS2', 'CHAdeMO', 'Type1'] as const;
@@ -35,6 +36,14 @@ type ConnectorType = (typeof VALID_CONNECTOR_TYPES)[number];
  */
 function filterPublishable(chargers: Record<string, unknown>[]): Record<string, unknown>[] {
   return chargers.filter(c => c.deleted_at == null);
+}
+
+function offsetCharger(c: Record<string, unknown>): Record<string, unknown> {
+  const id = typeof c.id === 'string' ? c.id : '';
+  const lat = typeof c.latitude === 'number' ? c.latitude : 0;
+  const lng = typeof c.longitude === 'number' ? c.longitude : 0;
+  const offset = applyLocationOffset(lat, lng, id);
+  return { ...c, latitude: offset.latitude, longitude: offset.longitude, is_approximate: true };
 }
 
 export async function GET(request: NextRequest) {
@@ -104,7 +113,7 @@ export async function GET(request: NextRequest) {
       chargers = chargers.filter(c => Number(c.price_per_kwh) <= maxPrice);
     }
 
-    return NextResponse.json({ chargers });
+    return NextResponse.json({ chargers: chargers.map(offsetCharger) });
   }
 
   // ── All India mode ──────────────────────────────────────────────────────────
@@ -133,7 +142,7 @@ export async function GET(request: NextRequest) {
         { status: 500 },
       );
     }
-    const chargers = filterPublishable((data ?? []) as Record<string, unknown>[]);
+    const chargers = filterPublishable((data ?? []) as Record<string, unknown>[]).map(offsetCharger);
     return NextResponse.json({ chargers, total: chargers.length });
   }
 
@@ -170,7 +179,7 @@ export async function GET(request: NextRequest) {
       chargers = chargers.filter(c => Number(c.price_per_kwh) <= maxPrice);
     }
 
-    return NextResponse.json({ chargers });
+    return NextResponse.json({ chargers: chargers.map(offsetCharger) });
   }
 
   // ── Non-spatial mode ────────────────────────────────────────────────────────
@@ -194,7 +203,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const chargers = filterPublishable((data ?? []) as Record<string, unknown>[]);
+  const chargers = filterPublishable((data ?? []) as Record<string, unknown>[]).map(offsetCharger);
   return NextResponse.json({ chargers });
 }
 

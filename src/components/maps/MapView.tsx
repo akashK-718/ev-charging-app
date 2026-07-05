@@ -40,6 +40,12 @@ export type MapViewProps = {
   zoom?: number;
   /** When true, animates the camera to fit all of India. */
   fitIndia?: boolean;
+  /**
+   * When set, renders a semi-transparent amber circle of the given radius
+   * (default 2000 m) at the given coords and labels it "Approximate location".
+   * Used on charger/booking detail pages for unconfirmed bookings.
+   */
+  approximateZone?: { coords: Coords; radiusMeters?: number };
 
   // ── Driver map: GeoJSON clustered charger markers ────────────────────────
   chargerMarkers?: ChargerMarkerData[];
@@ -145,6 +151,20 @@ const radiusOutlineLayer: LayerProps = {
   paint: { 'line-color': VOLT, 'line-opacity': 0.6, 'line-width': 1.5 },
 };
 
+const approxFillLayer: LayerProps = {
+  id: 'approx-fill',
+  type: 'fill',
+  source: 'approx-circle',
+  paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.10 },
+};
+
+const approxOutlineLayer: LayerProps = {
+  id: 'approx-outline',
+  type: 'line',
+  source: 'approx-circle',
+  paint: { 'line-color': '#f59e0b', 'line-opacity': 0.5, 'line-width': 1.5, 'line-dasharray': [4, 3] },
+};
+
 function makeRouteLineLayer(recalculating: boolean): LayerProps {
   return {
     id: 'route-line',
@@ -184,6 +204,7 @@ export function MapView({
   searchRadius,
   userLocation,
   manualCenter,
+  approximateZone,
   routeGeometry,
   routeBuffer = 2500,
   routeRecalculating = false,
@@ -228,6 +249,10 @@ export function MapView({
     searchRadius && isFinite(searchRadius) && searchRadius > 0
       ? makeCircleGeoJSON(center, searchRadius)
       : null;
+
+  const approxGeoJSON = approximateZone
+    ? makeCircleGeoJSON(approximateZone.coords, approximateZone.radiusMeters ?? 2000)
+    : null;
 
   const routeGeoJSON = routeGeometry
     ? {
@@ -430,6 +455,28 @@ export function MapView({
           <Layer {...radiusFillLayer} />
           <Layer {...radiusOutlineLayer} />
         </Source>
+      )}
+
+      {/* Approximate location zone — amber dashed circle + label */}
+      {approxGeoJSON && approximateZone && (
+        <>
+          <Source id="approx-circle" type="geojson" data={approxGeoJSON}>
+            <Layer {...approxFillLayer} />
+            <Layer {...approxOutlineLayer} />
+          </Source>
+          <Marker
+            latitude={approximateZone.coords.lat}
+            longitude={approximateZone.coords.lng}
+            anchor="bottom"
+          >
+            <div className="flex flex-col items-center gap-0.5 pointer-events-none select-none">
+              <span className="bg-amber-50 border border-amber-300 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+                Approximate location
+              </span>
+              <span className="w-2 h-2 rounded-full bg-amber-400 border-2 border-white shadow" />
+            </div>
+          </Marker>
+        </>
       )}
 
       {/* Clustered charger markers */}
