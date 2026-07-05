@@ -8,7 +8,7 @@ async function getProfileData(userId: string) {
   const [userResult, submissionResult, draftResult] = await Promise.all([
     adminSupabase
       .from('users')
-      .select('id, name, phone, role, kyc_status, created_at')
+      .select('id, name, phone, role, kyc_status, created_at, avatar_url')
       .eq('id', userId)
       .single(),
 
@@ -34,6 +34,7 @@ async function getProfileData(userId: string) {
     user: userResult.data as {
       id: string; name: string | null; phone: string;
       role: string; kyc_status: string; created_at: string;
+      avatar_url: string | null;
     } | null,
     submission: submissionResult.data as {
       id: string; status: string; submitted_at: string; rejection_reason: string | null;
@@ -75,6 +76,7 @@ export default async function ProfilePage({
         submission={submission}
         draftCount={draftCount}
         showSubmittedBanner={searchParams.verified === 'submitted'}
+        initialAvatarUrl={profile.avatar_url}
       />
     </main>
   );

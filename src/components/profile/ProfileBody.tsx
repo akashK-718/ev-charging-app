@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ShieldX, Clock, ShieldAlert } from 'lucide-react';
+import { Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert, Camera, ImageIcon, ShieldQuestion, Trash2 } from 'lucide-react';
 import { NameEditor } from './NameEditor';
 import { RoleEditor } from './RoleEditor';
+import { Avatar } from '@/components/ui/Avatar';
+import { uploadImage } from '@/lib/cloudinary';
 import { requiresKyc, type UserRole } from '@/lib/auth/kyc';
 
 type Role = 'driver' | 'lender' | 'both';
@@ -25,10 +27,40 @@ interface ProfileBodyProps {
   submission: Submission | null;
   draftCount: number;
   showSubmittedBanner: boolean;
+  initialAvatarUrl: string | null;
 }
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function resizeImage(file: File, maxSize = 400): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('No 2d context')); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        blob => {
+          if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
+          resolve(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        0.9,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+    img.src = url;
+  });
 }
 
 export function ProfileBody({
@@ -40,13 +72,110 @@ export function ProfileBody({
   submission,
   draftCount,
   showSubmittedBanner,
+  initialAvatarUrl,
 }: ProfileBodyProps) {
   const [role, setRole] = useState<Role>(initialRole);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const kycRequired = requiresKyc(role as UserRole);
+
+  async function handleFileSelect(file: File) {
+    setAvatarLoading(true);
+    setAvatarError(null);
+    try {
+      const resized = await resizeImage(file, 400);
+      const url = await uploadImage(resized);
+      const res = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: url }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setAvatarUrl(url);
+    } catch {
+      setAvatarError('Could not upload photo. Please try again.');
+    } finally {
+      setAvatarLoading(false);
+    }
+  }
+
+  async function handleResetAvatar() {
+    setAvatarLoading(true);
+    setAvatarError(null);
+    try {
+      const res = await fetch('/api/users/me/reset-avatar', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to reset');
+      const data = await res.json() as { avatar_url: string };
+      setAvatarUrl(data.avatar_url);
+    } catch {
+      setAvatarError('Could not reset avatar. Please try again.');
+    } finally {
+      setAvatarLoading(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    setAvatarLoading(true);
+    setAvatarError(null);
+    try {
+      const res = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar_url: null }),
+      });
+      if (!res.ok) throw new Error('Failed to remove');
+      setAvatarUrl(null);
+    } catch {
+      setAvatarError('Could not remove photo. Please try again.');
+    } finally {
+      setAvatarLoading(false);
+    }
+  }
+
+  function openCamera() {
+    setSheetOpen(false);
+    setTimeout(() => cameraInputRef.current?.click(), 50);
+  }
+
+  function openFilePicker() {
+    setSheetOpen(false);
+    setTimeout(() => fileInputRef.current?.click(), 50);
+  }
 
   return (
     <>
-      {/* Submission success toast — only while still pending; hide once approved/rejected, never for drivers */}
+      {/* Hidden file inputs */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={e => {
+          const f = e.target.files?.[0];
+          if (f) void handleFileSelect(f);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => {
+          const f = e.target.files?.[0];
+          if (f) void handleFileSelect(f);
+          e.target.value = '';
+        }}
+      />
+
+      {/* Submission success toast */}
       {showSubmittedBanner && kycRequired && kycStatus === 'pending' && (
         <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
           <p className="font-semibold text-blue-800">Verification submitted!</p>
@@ -57,13 +186,34 @@ export function ProfileBody({
       {/* Account info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
         <h2 className="font-semibold text-base text-ink">Account</h2>
+
+        {/* Avatar */}
+        <div className="flex flex-col items-center py-2">
+          <div className="relative">
+            {avatarLoading ? (
+              <div className="w-20 h-20 rounded-full bg-gray-100 animate-pulse" />
+            ) : (
+              <Avatar avatarUrl={avatarUrl} name={initialName} size="lg" />
+            )}
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              aria-label="Edit profile photo"
+              className="absolute bottom-0 right-0 w-6 h-6 bg-ink text-white rounded-full flex items-center justify-center shadow-md hover:bg-ink/80 transition-colors"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+          </div>
+          {avatarError && (
+            <p className="text-xs text-red-600 font-medium mt-2 text-center">{avatarError}</p>
+          )}
+        </div>
+
         <div className="space-y-3">
           <NameEditor initialName={initialName} showKycContext={kycRequired} />
           <div>
             <p className="text-xs text-muted mb-0.5">Phone</p>
             <p className="text-sm font-semibold text-ink">{phone}</p>
-            {/* TODO: Implement phone change flow in future PR (Module 5+) */}
-            {/* Requires: OTP verification on both numbers, uniqueness check, auth provider sync */}
             <p className="text-xs text-muted mt-1">
               To change your phone number,{' '}
               <a href="mailto:support@example.com" className="underline hover:text-ink transition-colors">
@@ -80,7 +230,7 @@ export function ProfileBody({
         </div>
       </div>
 
-      {/* Identity verification — drivers don't go through KYC, hidden entirely for them */}
+      {/* Identity verification */}
       {kycRequired && (
         <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-base text-ink">Identity verification</h2>
@@ -158,6 +308,62 @@ export function ProfileBody({
             Documents are reviewed by our team and not shared with third parties.
           </p>
         </div>
+      )}
+
+      {/* Avatar edit bottom sheet */}
+      {sheetOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setSheetOpen(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl px-5 pt-4 pb-8">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <p className="text-sm font-bold text-ink mb-4 text-center">Profile photo</p>
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={openCamera}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              >
+                <Camera className="w-5 h-5 text-muted shrink-0" />
+                <span className="text-sm font-semibold text-ink">Take a selfie</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openFilePicker}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              >
+                <ImageIcon className="w-5 h-5 text-muted shrink-0" />
+                <span className="text-sm font-semibold text-ink">Upload a photo</span>
+              </button>
+
+              {kycStatus === 'approved' && (
+                <button
+                  type="button"
+                  onClick={() => { setSheetOpen(false); void handleResetAvatar(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                >
+                  <ShieldQuestion className="w-5 h-5 text-muted shrink-0" />
+                  <span className="text-sm font-semibold text-ink">Use verification photo</span>
+                </button>
+              )}
+
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => { setSheetOpen(false); void handleRemoveAvatar(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-red-50 transition-colors text-left"
+                >
+                  <Trash2 className="w-5 h-5 text-red-500 shrink-0" />
+                  <span className="text-sm font-semibold text-red-600">Remove photo</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </>
   );
