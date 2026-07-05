@@ -9,6 +9,7 @@ import { BOOKING_AUTO_CANCEL_MINUTES, ACTIVE_BOOKING_STATUSES, type BookingStatu
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
+import { LenderRatingSection } from '@/components/bookings/LenderRatingSection';
 
 const MIN_REASON_LENGTH = 10;
 const POLL_MS = 10000;
@@ -434,13 +435,13 @@ export default function LenderBookingDetailPage() {
       )}
 
       {booking.status === 'completed' && (
-        <div className="px-4 py-3 bg-gray-50 rounded-2xl">
-          <p className="text-sm font-semibold text-ink">Session completed</p>
-          {booking.kwh_delivered && (
-            <p className="text-xs text-muted mt-0.5">{booking.kwh_delivered} kWh delivered</p>
-          )}
-          <p className="text-xs text-muted mt-0.5">Earnings queued — see Payouts.</p>
-        </div>
+        <LenderRatingSection
+          bookingId={booking.id}
+          driverName={booking.driver?.name ?? 'Driver'}
+          startedAt={booking.started_at}
+          endedAt={booking.ended_at}
+          kwhDelivered={booking.kwh_delivered}
+        />
       )}
 
       {/* Timeline */}
