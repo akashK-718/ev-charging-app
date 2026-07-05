@@ -42,19 +42,24 @@ export async function GET(
     return NextResponse.json({ error: 'Charger not found' }, { status: 404 });
   }
 
-  // Check if the current user has a confirmed booking for this charger
-  let hasConfirmedBooking = false;
+  // Reveal exact coords if the user is the charger's lender OR has a confirmed booking
+  let revealExact = false;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
-    const { data: booking } = await adminSupabase
-      .from('bookings')
-      .select('id')
-      .eq('charger_id', params.id)
-      .eq('driver_id', user.id)
-      .in('status', ['confirmed', 'awaiting_driver_confirmation', 'in_progress', 'completed'])
-      .maybeSingle();
-    hasConfirmedBooking = !!booking;
+    const c = charger as typeof charger & { lender_id: string };
+    if (c.lender_id === user.id) {
+      revealExact = true;
+    } else {
+      const { data: booking } = await adminSupabase
+        .from('bookings')
+        .select('id')
+        .eq('charger_id', params.id)
+        .eq('driver_id', user.id)
+        .in('status', ['confirmed', 'awaiting_driver_confirmation', 'in_progress', 'completed'])
+        .maybeSingle();
+      revealExact = !!booking;
+    }
   }
 
   const { latitude, longitude, address, ...chargerRest } = charger as typeof charger & {
@@ -63,7 +68,7 @@ export async function GET(
     address: string;
   };
 
-  if (hasConfirmedBooking) {
+  if (revealExact) {
     return NextResponse.json({
       data: { ...chargerRest, latitude, longitude, address, is_approximate: false },
     });
