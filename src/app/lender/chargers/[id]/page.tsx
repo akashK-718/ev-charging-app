@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ChevronLeft, Edit3, Pause, Play, MoreVertical,
+  ChevronLeft, ChevronRight, Edit3, Pause, Play, MoreVertical,
   Trash2, Copy, ExternalLink, Zap, MapPin, Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -464,10 +464,19 @@ export default function LenderChargerDetailPage() {
                 <p className="text-sm font-bold text-ink">₹{charger.price_per_kwh}/kWh</p>
               </div>
 
-              <div>
-                <p className="text-xs text-muted mb-1">Address</p>
-                <p className="text-sm text-ink leading-snug">{charger.address}</p>
-              </div>
+              <Link
+                href={`/chargers?charger_id=${chargerId}`}
+                className="flex items-start justify-between gap-2 group"
+              >
+                <div>
+                  <p className="text-xs text-muted mb-1">Address</p>
+                  <p className="text-sm text-ink leading-snug">{charger.address}</p>
+                  <p className="text-xs text-volt-deep font-semibold mt-0.5 group-hover:underline">
+                    View on map
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-5" />
+              </Link>
 
               {instructions && (
                 <div>
