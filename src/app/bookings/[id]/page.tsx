@@ -6,6 +6,7 @@ import { Phone, MapPin, Clock, ShieldCheck } from 'lucide-react';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
+import { DriverRatingSection } from '@/components/bookings/DriverRatingSection';
 import { Button } from '@/components/ui/Button';
 import { ACTIVE_BOOKING_STATUSES, FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES, type BookingStatus } from '@/lib/constants';
 
@@ -208,17 +209,13 @@ export default function BookingDetailPage() {
       )}
 
       {booking.status === 'completed' && (
-        <div className="px-4 py-3 bg-gray-50 rounded-2xl space-y-1">
-          <p className="text-sm font-semibold text-ink">
-            Session completed at {booking.ended_at ? new Date(booking.ended_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '—'}
-          </p>
-          {booking.started_at && booking.ended_at && (
-            <p className="text-xs text-muted">Duration: {formatDuration(booking.started_at, booking.ended_at)}</p>
-          )}
-          {booking.payment && (
-            <p className="text-xs text-muted">Amount: ₹{(booking.payment.gross_amount / 100).toFixed(0)}</p>
-          )}
-        </div>
+        <DriverRatingSection
+          bookingId={booking.id}
+          chargerTitle={booking.charger?.title ?? '—'}
+          startedAt={booking.started_at}
+          endedAt={booking.ended_at}
+          paymentPaise={booking.payment?.gross_amount ?? null}
+        />
       )}
 
       {/* Session controls (start/end) */}

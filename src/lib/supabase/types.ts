@@ -289,6 +289,35 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['payouts']['Insert']>;
         Relationships: [];
       };
+      reviews: {
+        Row: {
+          id: string;
+          booking_id: string;
+          charger_id: string;
+          reviewer_id: string;
+          reviewee_id: string;
+          review_type: 'charger' | 'lender' | 'driver';
+          rating: number;
+          review_text: string | null;
+          updated_at: string | null;
+          locked_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          charger_id: string;
+          reviewer_id: string;
+          reviewee_id: string;
+          review_type: 'charger' | 'lender' | 'driver';
+          rating: number;
+          review_text?: string | null;
+          updated_at?: string | null;
+          locked_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['reviews']['Insert']>;
+        Relationships: [];
+      };
       notifications: {
         Row: {
           id: string;
