@@ -63,3 +63,9 @@ export const DECLINED_BOOKING_STATUSES: BookingStatus[] = ['rejected', 'auto_rej
 
 // Statuses considered "past" — lifecycle finished
 export const PAST_BOOKING_STATUSES: BookingStatus[] = ['completed', 'no_show'];
+
+// Proximity check — server fallback defaults (never fail open)
+export const PROXIMITY_CHECK_DEFAULTS = { enabled: true, radius_km: 0.5 } as const;
+
+// Valid radius options surfaced in the admin UI
+export const PROXIMITY_RADIUS_STEPS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] as const;
