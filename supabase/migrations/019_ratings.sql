@@ -15,12 +15,9 @@ CREATE TABLE IF NOT EXISTS public.reviews (
   review_text text        CHECK (review_text IS NULL OR length(review_text) <= 200),
   updated_at  timestamptz DEFAULT now(),
   locked_at   timestamptz,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT reviews_booking_type_unique UNIQUE (booking_id, reviewer_id, review_type)
 );
-
-ALTER TABLE public.reviews
-  ADD CONSTRAINT IF NOT EXISTS reviews_booking_type_unique
-  UNIQUE (booking_id, reviewer_id, review_type);
 
 CREATE INDEX IF NOT EXISTS idx_reviews_booking  ON public.reviews(booking_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_reviewer ON public.reviews(reviewer_id);
@@ -66,14 +63,17 @@ EXECUTE FUNCTION update_charger_avg_rating();
 -- ============================================
 ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "reviews_select_own" ON public.reviews;
 CREATE POLICY "reviews_select_own"
   ON public.reviews FOR SELECT
   USING (reviewer_id = auth.uid());
 
+DROP POLICY IF EXISTS "reviews_insert_own" ON public.reviews;
 CREATE POLICY "reviews_insert_own"
   ON public.reviews FOR INSERT
   WITH CHECK (reviewer_id = auth.uid());
 
+DROP POLICY IF EXISTS "reviews_update_own" ON public.reviews;
 CREATE POLICY "reviews_update_own"
   ON public.reviews FOR UPDATE
   USING (reviewer_id = auth.uid() AND (locked_at IS NULL OR locked_at > now()));
