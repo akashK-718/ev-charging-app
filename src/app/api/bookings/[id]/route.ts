@@ -20,7 +20,7 @@ export async function GET(
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
-    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, rejection_reason, created_at')
+    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, no_show_at, rejection_reason, created_at')
     .eq('id', params.id)
     .eq('driver_id', user.id)
     .single();

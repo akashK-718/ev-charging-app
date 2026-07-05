@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
 import { SESSION_GRACE_MINUTES, PROXIMITY_CHECK_DEFAULTS } from '@/lib/constants';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
+import { runAutoNoShowSweep } from '@/lib/bookings/auto-no-show';
 import { haversineKm } from '@/lib/haversine';
 
 /**
@@ -27,7 +28,7 @@ export async function POST(
   }
 
   const adminSupabase = createAdminClient();
-  await runAutoRejectSweep(adminSupabase);
+  await Promise.all([runAutoRejectSweep(adminSupabase), runAutoNoShowSweep(adminSupabase)]);
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')

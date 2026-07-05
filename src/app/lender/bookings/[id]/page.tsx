@@ -31,6 +31,7 @@ type BookingDetail = {
   rejected_at: string | null;
   started_at: string | null;
   ended_at: string | null;
+  no_show_at: string | null;
   created_at: string;
   charger: { id: string; title: string; address: string } | null;
   driver: { id: string; name: string | null; phone: string | null } | null;
