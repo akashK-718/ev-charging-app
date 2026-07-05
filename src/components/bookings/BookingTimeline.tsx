@@ -7,6 +7,7 @@ interface TimelineBooking {
   rejection_reason?: string | null;
   started_at?: string | null;
   ended_at?: string | null;
+  no_show_at?: string | null;
   status: string;
 }
 
@@ -36,6 +37,9 @@ export function BookingTimeline({ booking }: { booking: TimelineBooking }) {
   }
   if (booking.ended_at) {
     events.push({ label: 'Session completed', time: booking.ended_at });
+  }
+  if (booking.no_show_at) {
+    events.push({ label: 'No show', time: booking.no_show_at });
   }
 
   return (
