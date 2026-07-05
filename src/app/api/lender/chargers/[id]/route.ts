@@ -13,7 +13,7 @@ export async function GET(
 
   const { data: charger, error: chargerError } = await adminSupabase
     .from('chargers')
-    .select('id, lender_id, title, charger_type, connector_types, price_per_kwh, address, photos, instructions, status, avg_rating, total_sessions, created_at')
+    .select('id, lender_id, title, charger_type, connector_types, price_per_kwh, address, latitude, longitude, photos, instructions, status, avg_rating, total_sessions, created_at')
     .eq('id', params.id)
     .is('deleted_at', null)
     .single();
