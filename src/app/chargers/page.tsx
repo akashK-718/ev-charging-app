@@ -230,6 +230,33 @@ export default function ChargersPage() {
     }
   }, []);
 
+  // ── Deeplink: ?charger_id=<id> opens that charger's bottom sheet ────────────
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const deeplinkedId = params.get('charger_id');
+    if (!deeplinkedId) return;
+
+    // Strip the param immediately so back navigation returns cleanly to /chargers
+    window.history.replaceState(null, '', '/chargers');
+
+    void (async () => {
+      try {
+        const res = await fetch(`/api/chargers/${deeplinkedId}`);
+        if (!res.ok) return;
+        const body = await res.json() as { data: ChargerRow & { latitude: number; longitude: number } };
+        const charger = body.data;
+        setSelectedCharger(charger);
+        // Centre the map on the charger's (approximate) coords
+        setSearchCenter({ lat: Number(charger.latitude), lng: Number(charger.longitude) });
+        setCenterType('manual');
+      } catch {
+        // Deeplink failure must never break the map
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Init: restore localStorage or request GPS ─────────────────────────────
 
   useEffect(() => {
