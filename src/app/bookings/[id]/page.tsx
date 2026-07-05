@@ -6,7 +6,8 @@ import { Phone, MapPin, Clock, ShieldCheck } from 'lucide-react';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
-import { ACTIVE_BOOKING_STATUSES, type BookingStatus } from '@/lib/constants';
+import { Button } from '@/components/ui/Button';
+import { ACTIVE_BOOKING_STATUSES, FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES, type BookingStatus } from '@/lib/constants';
 
 type BookingDetail = {
   id: string;
@@ -25,11 +26,13 @@ type BookingDetail = {
   started_at: string | null;
   ended_at: string | null;
   no_show_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
   rejection_reason: string | null;
   created_at: string;
   charger: { id: string; title: string; address: string; photos: string[] } | null;
   lender: { id: string; name: string | null; phone: string | null } | null;
-  payment: { gross_amount: number; platform_fee: number; lender_payout: number; status: string } | null;
+  payment: { gross_amount: number; platform_fee: number; lender_payout: number; status: string; created_at: string } | null;
 };
 
 function formatDuration(start: string, end: string) {
@@ -41,6 +44,12 @@ function formatDuration(start: string, end: string) {
   return `${m}m`;
 }
 
+function formatCountdown(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
 const POLL_MS = 10000;
 
 export default function BookingDetailPage() {
@@ -50,6 +59,12 @@ export default function BookingDetailPage() {
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Cancel state
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const fetchBooking = useCallback(async (withSpinner = true) => {
     if (withSpinner) setLoading(true);
@@ -69,16 +84,39 @@ export default function BookingDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => {
-    void fetchBooking();
-  }, [fetchBooking]);
+  useEffect(() => { void fetchBooking(); }, [fetchBooking]);
 
-  // Poll every 10s while the booking is in an active state
+  // Poll every 10s while active
   useEffect(() => {
     if (!booking || !ACTIVE_BOOKING_STATUSES.includes(booking.status as BookingStatus)) return;
     const interval = setInterval(() => { void fetchBooking(false); }, POLL_MS);
     return () => clearInterval(interval);
   }, [booking, fetchBooking]);
+
+  // 1-second ticker for countdown
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function handleCancel() {
+    setCancelLoading(true);
+    setCancelError(null);
+    try {
+      const res = await fetch(`/api/bookings/${id}/cancel`, { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json() as { error?: string };
+        setCancelError(body.error ?? 'Failed to cancel booking');
+        return;
+      }
+      setShowCancelConfirm(false);
+      await fetchBooking(false);
+    } catch {
+      setCancelError('Failed to cancel booking');
+    } finally {
+      setCancelLoading(false);
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-12 text-muted">Loading…</div>;
@@ -95,6 +133,23 @@ export default function BookingDetailPage() {
   }
 
   const lenderName = booking.lender?.name ?? 'Lender';
+  const canCancel = booking.status === 'pending' || booking.status === 'confirmed';
+
+  // Free window calculation
+  const paymentCreatedMs = booking.payment?.created_at
+    ? new Date(booking.payment.created_at).getTime()
+    : null;
+  const freeWindowEndMs = paymentCreatedMs
+    ? paymentCreatedMs + FREE_CANCEL_WINDOW_MINUTES * 60 * 1000
+    : null;
+  const freeWindowRemainingMs = freeWindowEndMs
+    ? Math.max(0, freeWindowEndMs - nowMs)
+    : 0;
+  const inFreeWindow = freeWindowRemainingMs > 0;
+
+  // Refund policy outside free window
+  const minutesToStart = (new Date(booking.scheduled_start).getTime() - nowMs) / 60000;
+  const fullRefundOutsideWindow = minutesToStart > FREE_CANCEL_MINUTES;
 
   return (
     <main className="min-h-screen px-6 py-10 space-y-5 pb-10">
@@ -141,6 +196,17 @@ export default function BookingDetailPage() {
         </div>
       )}
 
+      {booking.status === 'cancelled' && (
+        <div className="px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200">
+          <p className="text-sm font-semibold text-ink">Booking cancelled.</p>
+          {booking.cancellation_reason === 'driver_late_cancel' ? (
+            <p className="text-xs text-muted mt-1">No refund — cancelled within {FREE_CANCEL_MINUTES} minutes of the slot.</p>
+          ) : (
+            <p className="text-xs text-muted mt-1">Refund has been initiated.</p>
+          )}
+        </div>
+      )}
+
       {booking.status === 'completed' && (
         <div className="px-4 py-3 bg-gray-50 rounded-2xl space-y-1">
           <p className="text-sm font-semibold text-ink">
@@ -165,6 +231,68 @@ export default function BookingDetailPage() {
         onUpdated={() => fetchBooking(false)}
         userRole="driver"
       />
+
+      {/* Cancel section */}
+      {canCancel && !showCancelConfirm && (
+        <button
+          type="button"
+          onClick={() => setShowCancelConfirm(true)}
+          className="w-full text-sm font-semibold text-red-600 hover:text-red-700 py-2 transition-colors"
+        >
+          {inFreeWindow
+            ? `Cancel for free (${formatCountdown(freeWindowRemainingMs)} remaining)`
+            : 'Cancel booking'}
+        </button>
+      )}
+
+      {canCancel && showCancelConfirm && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+          {inFreeWindow ? (
+            <>
+              <p className="text-sm font-semibold text-ink">Cancel this booking?</p>
+              <p className="text-xs text-muted">
+                You&apos;re within the free cancellation window — you&apos;ll get a full refund.
+                {' '}Window closes in {formatCountdown(freeWindowRemainingMs)}.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-ink">Cancellation policy</p>
+              {fullRefundOutsideWindow ? (
+                <p className="text-xs text-muted">
+                  You&apos;re cancelling more than {FREE_CANCEL_MINUTES} minutes before the slot — you&apos;ll receive a full refund.
+                </p>
+              ) : (
+                <p className="text-xs text-red-600 font-semibold">
+                  You&apos;re cancelling within {FREE_CANCEL_MINUTES} minutes of the slot — no refund will be issued.
+                </p>
+              )}
+            </>
+          )}
+          {cancelError && (
+            <p className="text-xs text-red-600 font-semibold">{cancelError}</p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="md"
+              disabled={cancelLoading}
+              onClick={() => { setShowCancelConfirm(false); setCancelError(null); }}
+            >
+              Keep booking
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              disabled={cancelLoading}
+              className="flex-1 bg-red-50 text-red-700 hover:bg-red-100 border-red-100"
+              onClick={() => { void handleCancel(); }}
+            >
+              {cancelLoading ? 'Cancelling…' : 'Yes, cancel'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Charger info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">

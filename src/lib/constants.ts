@@ -14,6 +14,9 @@ export const PAYOUT_HOLD_HOURS = 24;
 // Free cancellation window for driver (minutes before scheduled start)
 export const FREE_CANCEL_MINUTES = 60;
 
+// Free cancellation window post-payment (minutes after payment captured)
+export const FREE_CANCEL_WINDOW_MINUTES = 5;
+
 // "Start session" button appears this many minutes before scheduled_start,
 // and remains valid this many minutes after scheduled_end (grace window).
 export const SESSION_GRACE_MINUTES = 30;
