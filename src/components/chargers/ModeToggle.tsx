@@ -1,7 +1,6 @@
 'use client';
 
 import { MapPin, Route } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type SearchMode = 'near_me' | 'along_route';
 
@@ -10,45 +9,25 @@ interface ModeToggleProps {
   onChange: (mode: SearchMode) => void;
 }
 
+/**
+ * Compact single-button pill that shows the OTHER mode and switches to it on tap.
+ * Along route is the default; "Near me" pill appears when in route mode.
+ */
 export function ModeToggle({ value, onChange }: ModeToggleProps) {
+  const isRoute = value === 'along_route';
+  const nextMode: SearchMode = isRoute ? 'near_me' : 'along_route';
+
   return (
-    <div
-      role="group"
-      aria-label="Search mode"
-      className="inline-flex items-center bg-volt-soft rounded-full p-0.5"
+    <button
+      type="button"
+      onClick={() => onChange(nextMode)}
+      aria-label={isRoute ? 'Switch to Near me mode' : 'Switch to Along route mode'}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 text-xs font-semibold text-ink transition-all duration-150"
     >
-      <button
-        type="button"
-        role="radio"
-        aria-checked={value === 'near_me'}
-        onClick={() => { if (value !== 'near_me') onChange('near_me'); }}
-        onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && value !== 'near_me') onChange('near_me'); }}
-        className={cn(
-          'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200',
-          value === 'near_me'
-            ? 'bg-volt text-ink shadow-sm'
-            : 'text-muted hover:text-ink',
-        )}
-      >
-        <MapPin className="w-3.5 h-3.5 shrink-0" />
-        Near me
-      </button>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={value === 'along_route'}
-        onClick={() => { if (value !== 'along_route') onChange('along_route'); }}
-        onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && value !== 'along_route') onChange('along_route'); }}
-        className={cn(
-          'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200',
-          value === 'along_route'
-            ? 'bg-volt text-ink shadow-sm'
-            : 'text-muted hover:text-ink',
-        )}
-      >
-        <Route className="w-3.5 h-3.5 shrink-0" />
-        Along route
-      </button>
-    </div>
+      {isRoute
+        ? <MapPin className="w-3.5 h-3.5 text-muted shrink-0" />
+        : <Route className="w-3.5 h-3.5 text-muted shrink-0" />}
+      {isRoute ? 'Near me' : 'Along route'}
+    </button>
   );
 }
