@@ -42,20 +42,21 @@ export const CHARGER_TYPES = [
 
 // Booking states (the state machine)
 export const BOOKING_STATES = [
-  'pending',        // created, awaiting lender accept
-  'confirmed',      // lender accepted
-  'rejected',       // lender manually rejected
-  'auto_rejected',  // 30-min timeout
-  'cancelled',      // driver cancelled (future PR)
-  'in_progress',    // session started
-  'completed',      // session ended successfully
-  'no_show'         // driver didn't show up (future PR)
+  'pending',                      // created, awaiting lender accept
+  'confirmed',                    // lender accepted
+  'rejected',                     // lender manually rejected
+  'auto_rejected',                // 30-min timeout
+  'cancelled',                    // driver cancelled (future PR)
+  'awaiting_driver_confirmation', // lender initiated session, driver must confirm
+  'in_progress',                  // session started (both parties confirmed)
+  'completed',                    // session ended successfully
+  'no_show'                       // driver didn't show up (future PR)
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATES)[number];
 
 // Statuses considered "active" — shown in default lists, eligible for polling
-export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'in_progress'];
+export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'awaiting_driver_confirmation', 'in_progress'];
 
 // Statuses considered "declined" — driver-facing message + refund already triggered
 export const DECLINED_BOOKING_STATUSES: BookingStatus[] = ['rejected', 'auto_rejected', 'cancelled'];

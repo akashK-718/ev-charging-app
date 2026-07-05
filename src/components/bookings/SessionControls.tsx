@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Zap, Square } from 'lucide-react';
+import { Zap, Square, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { SESSION_GRACE_MINUTES } from '@/lib/constants';
 
@@ -12,6 +12,7 @@ interface SessionControlsProps {
   scheduledEnd: string;
   startedAt: string | null;
   onUpdated: () => void | Promise<void>;
+  userRole: 'driver' | 'lender';
 }
 
 function formatClock(ms: number) {
@@ -23,7 +24,15 @@ function formatClock(ms: number) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export function SessionControls({ bookingId, status, scheduledStart, scheduledEnd, startedAt, onUpdated }: SessionControlsProps) {
+export function SessionControls({
+  bookingId,
+  status,
+  scheduledStart,
+  scheduledEnd,
+  startedAt,
+  onUpdated,
+  userRole,
+}: SessionControlsProps) {
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +42,7 @@ export function SessionControls({ bookingId, status, scheduledStart, scheduledEn
     return () => clearInterval(interval);
   }, []);
 
-  if (status !== 'confirmed' && status !== 'in_progress') return null;
+  if (status !== 'confirmed' && status !== 'awaiting_driver_confirmation' && status !== 'in_progress') return null;
 
   const graceMs = SESSION_GRACE_MINUTES * 60 * 1000;
   const windowStart = new Date(scheduledStart).getTime() - graceMs;
@@ -59,11 +68,56 @@ export function SessionControls({ bookingId, status, scheduledStart, scheduledEn
     }
   }
 
+  // ── confirmed ──────────────────────────────────────────────────────────────
   if (status === 'confirmed') {
+    if (userRole === 'lender') {
+      return (
+        <div className="space-y-2">
+          {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+          {canStart ? (
+            <Button
+              variant="secondary"
+              size="lg"
+              disabled={loading}
+              className="flex items-center gap-2 justify-center"
+              onClick={() => { void handleAction('start'); }}
+            >
+              <Zap className="w-5 h-5" />
+              {loading ? 'Starting…' : 'Start session'}
+            </Button>
+          ) : now < windowStart ? (
+            <p className="text-xs text-muted text-center">
+              Start session opens {SESSION_GRACE_MINUTES} minutes before the booked time.
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
+    // Driver — waiting for lender
     return (
-      <div className="space-y-2">
-        {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
-        {canStart ? (
+      <div className="px-4 py-3 bg-amber-50 rounded-2xl border border-amber-200">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-amber-700" />
+          <p className="text-sm font-semibold text-amber-700">Waiting for lender to start the session</p>
+        </div>
+        <p className="text-xs text-amber-700/80 mt-1">
+          The lender will start the session when you arrive at the charger.
+        </p>
+      </div>
+    );
+  }
+
+  // ── awaiting_driver_confirmation ───────────────────────────────────────────
+  if (status === 'awaiting_driver_confirmation') {
+    if (userRole === 'driver') {
+      return (
+        <div className="space-y-2">
+          <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+            <p className="text-sm font-semibold text-blue-700">Lender has started the session</p>
+            <p className="text-xs text-blue-600 mt-1">Confirm to begin charging.</p>
+          </div>
+          {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
           <Button
             variant="secondary"
             size="lg"
@@ -72,18 +126,27 @@ export function SessionControls({ bookingId, status, scheduledStart, scheduledEn
             onClick={() => { void handleAction('start'); }}
           >
             <Zap className="w-5 h-5" />
-            {loading ? 'Starting…' : 'Start session'}
+            {loading ? 'Confirming…' : 'Confirm start'}
           </Button>
-        ) : now < windowStart ? (
-          <p className="text-xs text-muted text-center">
-            Start session opens {SESSION_GRACE_MINUTES} minutes before the booked time.
-          </p>
-        ) : null}
+        </div>
+      );
+    }
+
+    // Lender — waiting for driver to confirm
+    return (
+      <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-blue-700" />
+          <p className="text-sm font-semibold text-blue-700">Waiting for driver to confirm</p>
+        </div>
+        <p className="text-xs text-blue-600 mt-1">
+          Session starts once the driver confirms at the charger.
+        </p>
       </div>
     );
   }
 
-  // in_progress
+  // ── in_progress ────────────────────────────────────────────────────────────
   const expectedEndMs = new Date(scheduledEnd).getTime() - now;
   const elapsedMs = now - new Date(startedAt ?? scheduledStart).getTime();
 

@@ -14,6 +14,7 @@ type BookingStatus =
   | 'rejected'
   | 'auto_rejected'
   | 'cancelled'
+  | 'awaiting_driver_confirmation'
   | 'in_progress'
   | 'completed'
   | 'no_show';

@@ -3,6 +3,7 @@ type NotificationType =
   | 'booking_accepted'
   | 'booking_rejected'
   | 'booking_auto_rejected'
+  | 'session_initiation_requested'
   | 'session_started'
   | 'session_completed'
   | 'kyc_approved'
