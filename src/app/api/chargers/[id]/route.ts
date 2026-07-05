@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { applyLocationOffset } from '@/lib/location/offset';
 
 const VALID_CHARGER_TYPES = ['AC_3.3kW', 'AC_7kW', 'AC_22kW', 'DC_fast'] as const;
 const VALID_CONNECTOR_TYPES = ['Type2', 'BharatAC', 'CCS2', 'CHAdeMO', 'Type1'] as const;
@@ -22,6 +23,9 @@ async function getOwnerCheck(chargerId: string, userId: string) {
 
 /**
  * GET /api/chargers/[id] — public charger details, used by the booking form.
+ *
+ * Unauthenticated or no confirmed booking → offset coords, no address.
+ * Has confirmed/in_progress booking for this charger → exact coords + address.
  */
 export async function GET(
   _request: NextRequest,
@@ -30,7 +34,7 @@ export async function GET(
   const adminSupabase = createAdminClient();
   const { data: charger, error } = await adminSupabase
     .from('chargers')
-    .select('id, lender_id, title, charger_type, price_per_kwh, address, status, deleted_at')
+    .select('id, lender_id, title, charger_type, connector_types, price_per_kwh, address, latitude, longitude, status, deleted_at, photos, instructions')
     .eq('id', params.id)
     .single();
 
@@ -38,7 +42,37 @@ export async function GET(
     return NextResponse.json({ error: 'Charger not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ data: charger });
+  // Check if the current user has a confirmed booking for this charger
+  let hasConfirmedBooking = false;
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: booking } = await adminSupabase
+      .from('bookings')
+      .select('id')
+      .eq('charger_id', params.id)
+      .eq('driver_id', user.id)
+      .in('status', ['confirmed', 'awaiting_driver_confirmation', 'in_progress', 'completed'])
+      .maybeSingle();
+    hasConfirmedBooking = !!booking;
+  }
+
+  const { latitude, longitude, address, ...chargerRest } = charger as typeof charger & {
+    latitude: number;
+    longitude: number;
+    address: string;
+  };
+
+  if (hasConfirmedBooking) {
+    return NextResponse.json({
+      data: { ...chargerRest, latitude, longitude, address, is_approximate: false },
+    });
+  }
+
+  const offset = applyLocationOffset(latitude, longitude, params.id);
+  return NextResponse.json({
+    data: { ...chargerRest, latitude: offset.latitude, longitude: offset.longitude, address: null, is_approximate: true },
+  });
 }
 
 /**

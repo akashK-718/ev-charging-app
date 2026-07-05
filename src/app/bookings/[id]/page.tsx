@@ -298,11 +298,17 @@ export default function BookingDetailPage() {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Charger</h2>
         <p className="font-semibold text-ink">{booking.charger?.title ?? '—'}</p>
-        {booking.charger?.address && (
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <MapPin className="w-3.5 h-3.5 shrink-0" />
-            <span>{booking.charger.address}</span>
-          </div>
+        {booking.confirmed_at ? (
+          booking.charger?.address && (
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span>{booking.charger.address}</span>
+            </div>
+          )
+        ) : (
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
+            Approximate location — exact address shared after booking confirmed.
+          </p>
         )}
       </div>
 

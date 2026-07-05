@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, MapPin, Zap } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { ArrowLeft, MapPin, Zap, Info } from 'lucide-react';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/Button';
 import type { Database } from '@/lib/supabase/types';
 
@@ -20,7 +20,9 @@ export default async function ChargerDetailPage({
   params: { id: string };
 }) {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const adminSupabase = createAdminClient();
+
+  const { data, error } = await adminSupabase
     .from('chargers')
     .select('*')
     .eq('id', params.id)
@@ -29,6 +31,20 @@ export default async function ChargerDetailPage({
   if (error || !data) notFound();
 
   const charger = data as ChargerRow;
+
+  // Check if the current user has a confirmed booking for this charger
+  let hasConfirmedBooking = false;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: booking } = await adminSupabase
+      .from('bookings')
+      .select('id')
+      .eq('charger_id', params.id)
+      .eq('driver_id', user.id)
+      .in('status', ['confirmed', 'awaiting_driver_confirmation', 'in_progress', 'completed'])
+      .maybeSingle();
+    hasConfirmedBooking = !!booking;
+  }
 
   const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
 
@@ -102,14 +118,23 @@ export default async function ChargerDetailPage({
           </div>
         </div>
 
-        {/* Address */}
-        <div className="flex gap-2">
-          <MapPin className="w-4 h-4 text-muted mt-0.5 shrink-0" />
-          <p className="text-sm text-muted">{charger.address}</p>
-        </div>
+        {/* Address — gated on confirmed booking */}
+        {hasConfirmedBooking ? (
+          <div className="flex gap-2">
+            <MapPin className="w-4 h-4 text-muted mt-0.5 shrink-0" />
+            <p className="text-sm text-muted">{charger.address}</p>
+          </div>
+        ) : (
+          <div className="flex gap-2 items-start px-3 py-2.5 bg-amber-50 rounded-xl border border-amber-200">
+            <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-700">
+              Approximate location — exact address shared after booking confirmed.
+            </p>
+          </div>
+        )}
 
-        {/* Access instructions */}
-        {charger.instructions && (
+        {/* Access instructions — shown only after confirmed */}
+        {hasConfirmedBooking && charger.instructions && (
           <div className="rounded-xl border border-gray-100 p-4">
             <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
               Access instructions
