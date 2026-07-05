@@ -27,6 +27,16 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
   // Tracks the latest drag position to discard stale reverse-geocode responses
   const latestDragRef = useRef<Coords | null>(null);
 
+  // Sync addressText when draft.address arrives asynchronously (edit flow).
+  // useState only reads its initial value once on mount; by the time the fetch
+  // resolves and draft.address is set, the component is already mounted.
+  useEffect(() => {
+    if (draft.address && !addressText) {
+      setAddressText(draft.address);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.address]);
+
   const isValid =
     !!draft.address && draft.latitude !== undefined && draft.longitude !== undefined;
 
