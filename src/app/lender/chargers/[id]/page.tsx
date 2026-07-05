@@ -319,7 +319,7 @@ export default function LenderChargerDetailPage() {
             </div>
             <div className="flex items-center gap-1.5 mt-2">
               <Link
-                href={`/chargers?charger_id=${chargerId}&exact=true`}
+                href={`/lender/chargers/${chargerId}/map`}
                 className="flex items-center gap-1 text-sm text-muted hover:text-volt-deep transition-colors"
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
