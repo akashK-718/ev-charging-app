@@ -160,6 +160,7 @@ export type Database = {
           started_at: string | null;
           ended_at: string | null;
           no_show_at: string | null;
+          cancelled_at: string | null;
           rejection_reason: string | null;
           created_at: string;
           updated_at: string;
@@ -182,6 +183,7 @@ export type Database = {
           started_at?: string | null;
           ended_at?: string | null;
           no_show_at?: string | null;
+          cancelled_at?: string | null;
           rejection_reason?: string | null;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;

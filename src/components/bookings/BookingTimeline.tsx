@@ -8,6 +8,7 @@ interface TimelineBooking {
   started_at?: string | null;
   ended_at?: string | null;
   no_show_at?: string | null;
+  cancelled_at?: string | null;
   status: string;
 }
 
@@ -40,6 +41,9 @@ export function BookingTimeline({ booking }: { booking: TimelineBooking }) {
   }
   if (booking.no_show_at) {
     events.push({ label: 'No show', time: booking.no_show_at });
+  }
+  if (booking.cancelled_at) {
+    events.push({ label: 'Cancelled', time: booking.cancelled_at });
   }
 
   return (

@@ -20,7 +20,7 @@ export async function GET(
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
-    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, no_show_at, rejection_reason, created_at')
+    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, no_show_at, cancelled_at, cancellation_reason, rejection_reason, created_at')
     .eq('id', params.id)
     .eq('driver_id', user.id)
     .single();
@@ -34,7 +34,7 @@ export async function GET(
     adminSupabase.from('users').select('id, name, phone').eq('id', booking.lender_id).single(),
     adminSupabase
       .from('payments')
-      .select('booking_id, gross_amount, platform_fee, lender_payout, status')
+      .select('booking_id, gross_amount, platform_fee, lender_payout, status, created_at')
       .eq('booking_id', booking.id)
       .maybeSingle(),
   ]);
