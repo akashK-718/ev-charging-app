@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Zap, Square, Clock } from 'lucide-react';
+import { Zap, Square, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { SESSION_GRACE_MINUTES } from '@/lib/constants';
 
@@ -36,6 +36,7 @@ export function SessionControls({
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [geoWarning, setGeoWarning] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -49,15 +50,23 @@ export function SessionControls({
   const windowEnd = new Date(scheduledEnd).getTime() + graceMs;
   const canStart = now >= windowStart && now <= windowEnd;
 
-  async function handleAction(action: 'start' | 'end') {
+  async function handleAction(action: 'start' | 'end', body?: Record<string, unknown>) {
     if (loading) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/${action}`, { method: 'POST' });
+      const res = await fetch(`/api/bookings/${bookingId}/${action}`, {
+        method: 'POST',
+        ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+      });
       if (!res.ok) {
-        const body = await res.json() as { error?: string };
-        setError(body.error ?? `Failed to ${action} session`);
+        const resBody = await res.json() as { error?: string; distance_m?: number; radius_km?: number };
+        if (typeof resBody.distance_m === 'number' && typeof resBody.radius_km === 'number') {
+          const distanceKm = (resBody.distance_m / 1000).toFixed(2);
+          setError(`You're ${distanceKm}km away — must be within ${resBody.radius_km}km. Move closer to start.`);
+        } else {
+          setError(resBody.error ?? `Failed to ${action} session`);
+        }
         return;
       }
       await onUpdated();
@@ -66,6 +75,27 @@ export function SessionControls({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleDriverConfirm() {
+    setGeoWarning(null);
+    setError(null);
+
+    let coords: { latitude: number; longitude: number } | undefined;
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 }),
+        );
+        coords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+      } catch {
+        setGeoWarning('Could not verify your location');
+      }
+    } else {
+      setGeoWarning('Could not verify your location');
+    }
+
+    void handleAction('start', coords);
   }
 
   // ── confirmed ──────────────────────────────────────────────────────────────
@@ -117,13 +147,19 @@ export function SessionControls({
             <p className="text-sm font-semibold text-blue-700">Lender has started the session</p>
             <p className="text-xs text-blue-600 mt-1">Confirm to begin charging.</p>
           </div>
+          {geoWarning && (
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 rounded-xl border border-amber-200">
+              <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-700">{geoWarning}</p>
+            </div>
+          )}
           {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
           <Button
             variant="secondary"
             size="lg"
             disabled={loading}
             className="flex items-center gap-2 justify-center"
-            onClick={() => { void handleAction('start'); }}
+            onClick={() => { void handleDriverConfirm(); }}
           >
             <Zap className="w-5 h-5" />
             {loading ? 'Confirming…' : 'Confirm start'}

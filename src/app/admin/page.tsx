@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ChevronRight } from 'lucide-react';
 import { formatINR } from '@/lib/currency';
+import { ProximityCheckCard } from '@/components/admin/ProximityCheckCard';
+import { PROXIMITY_CHECK_DEFAULTS } from '@/lib/constants';
 
 export default async function AdminDashboardPage() {
   const supabase = createClient();
@@ -13,12 +15,13 @@ export default async function AdminDashboardPage() {
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [kycRes, payoutsRes, activeUsersRes, activeChargersRes, profileRes] = await Promise.all([
+  const [kycRes, payoutsRes, activeUsersRes, activeChargersRes, profileRes, settingsRes] = await Promise.all([
     admin.from('kyc_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     admin.from('payouts').select('id, amount_paise').eq('status', 'pending'),
     admin.from('bookings').select('driver_id').gte('created_at', weekAgo).in('status', ['confirmed', 'in_progress', 'completed']),
     admin.from('chargers').select('id', { count: 'exact', head: true }).eq('status', 'active').is('deleted_at', null),
     admin.from('users').select('name').eq('id', user.id).single(),
+    admin.from('app_settings').select('key, value').in('key', ['proximity_check_enabled', 'proximity_check_radius_km']),
   ]);
 
   const pendingKyc = kycRes.count ?? 0;
@@ -32,6 +35,14 @@ export default async function AdminDashboardPage() {
   const totalActiveChargers = activeChargersRes.count ?? 0;
 
   const adminName = (profileRes.data as { name: string | null } | null)?.name ?? 'Admin';
+
+  // Parse proximity settings — fall back to defaults if table not yet seeded
+  let proximityEnabled: boolean = PROXIMITY_CHECK_DEFAULTS.enabled;
+  let proximityRadiusKm: number = PROXIMITY_CHECK_DEFAULTS.radius_km;
+  for (const row of (settingsRes.data ?? []) as Array<{ key: string; value: unknown }>) {
+    if (row.key === 'proximity_check_enabled') proximityEnabled = Boolean(row.value);
+    if (row.key === 'proximity_check_radius_km') proximityRadiusKm = Number(row.value);
+  }
 
   const stats: Array<{ label: string; value: string; sub: string; href: string; urgent: boolean }> = [
     {
@@ -92,6 +103,15 @@ export default async function AdminDashboardPage() {
             <ChevronRight className="w-5 h-5 text-muted group-hover:text-ink transition-colors shrink-0" />
           </Link>
         ))}
+      </div>
+
+      {/* Feature flags */}
+      <div className="space-y-3">
+        <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Feature flags</p>
+        <ProximityCheckCard
+          initialEnabled={proximityEnabled}
+          initialRadiusKm={proximityRadiusKm}
+        />
       </div>
     </main>
   );
