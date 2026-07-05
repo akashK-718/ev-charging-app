@@ -16,7 +16,7 @@ export async function POST(
 
   const { data: submission, error: fetchError } = await adminSupabase
     .from('kyc_submissions')
-    .select('id, user_id, status')
+    .select('id, user_id, status, selfie_url')
     .eq('id', params.id)
     .single();
 
@@ -24,7 +24,7 @@ export async function POST(
     return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
   }
 
-  const sub = submission as { id: string; user_id: string; status: string };
+  const sub = submission as { id: string; user_id: string; status: string; selfie_url: string };
 
   if (sub.status !== 'pending') {
     return NextResponse.json({ error: 'Submission is not in pending state' }, { status: 409 });
@@ -47,6 +47,22 @@ export async function POST(
     .from('users')
     .update({ kyc_status: 'approved' })
     .eq('id', sub.user_id);
+
+  // One-time avatar backfill: copy selfie into avatar_url if user hasn't set one yet
+  if (sub.selfie_url) {
+    const { data: userData } = await adminSupabase
+      .from('users')
+      .select('avatar_url')
+      .eq('id', sub.user_id)
+      .single();
+    const u = userData as { avatar_url: string | null } | null;
+    if (!u?.avatar_url) {
+      await adminSupabase
+        .from('users')
+        .update({ avatar_url: sub.selfie_url })
+        .eq('id', sub.user_id);
+    }
+  }
 
   // Promote all draft chargers for this lender to active — they go live immediately.
   await adminSupabase

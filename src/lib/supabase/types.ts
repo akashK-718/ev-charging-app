@@ -34,6 +34,7 @@ export type Database = {
           razorpay_contact_id: string | null;
           razorpay_fund_account_id: string | null;
           is_admin: boolean;
+          avatar_url: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -45,6 +46,7 @@ export type Database = {
           kyc_status?: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           kyc_doc_url?: string | null;
           is_admin?: boolean;
+          avatar_url?: string | null;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
