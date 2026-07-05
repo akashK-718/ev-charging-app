@@ -59,10 +59,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect logged-in users away from auth screens and landing page.
+  // Honour ?next= for internal paths so a failed page load doesn't silently land on /chargers.
   // Admins land on /admin; everyone else on /chargers.
   if ((pathname === '/login' || pathname === '/verify-otp' || pathname === '/') && user) {
     const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
-    const dest = isAdmin ? '/admin' : '/chargers';
+    const nextParam = request.nextUrl.searchParams.get('next');
+    const safeNext = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+    const dest = safeNext ?? (isAdmin ? '/admin' : '/chargers');
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
