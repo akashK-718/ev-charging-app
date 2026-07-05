@@ -317,11 +317,17 @@ export default function LenderChargerDetailPage() {
               </h1>
               <StatusBadge status={charger.status} />
             </div>
-            <div className="flex items-center gap-1.5 mt-2 text-sm text-muted">
-              <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span>{shortCity(charger.address)}</span>
-              <span>·</span>
-              <span>{sinceLabel(charger.status, charger.created_at)}</span>
+            <div className="flex items-center gap-1.5 mt-2">
+              <Link
+                href={`/chargers?charger_id=${chargerId}&exact=true`}
+                className="flex items-center gap-1 text-sm text-muted hover:text-volt-deep transition-colors"
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>{shortCity(charger.address)}</span>
+                <ChevronRight className="w-3 h-3 shrink-0" />
+              </Link>
+              <span className="text-sm text-muted">·</span>
+              <span className="text-sm text-muted">{sinceLabel(charger.status, charger.created_at)}</span>
             </div>
           </div>
 
@@ -464,19 +470,10 @@ export default function LenderChargerDetailPage() {
                 <p className="text-sm font-bold text-ink">₹{charger.price_per_kwh}/kWh</p>
               </div>
 
-              <Link
-                href={`/chargers?charger_id=${chargerId}`}
-                className="flex items-start justify-between gap-2 group"
-              >
-                <div>
-                  <p className="text-xs text-muted mb-1">Address</p>
-                  <p className="text-sm text-ink leading-snug">{charger.address}</p>
-                  <p className="text-xs text-volt-deep font-semibold mt-0.5 group-hover:underline">
-                    View on map
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-5" />
-              </Link>
+              <div>
+                <p className="text-xs text-muted mb-1">Address</p>
+                <p className="text-sm text-ink leading-snug">{charger.address}</p>
+              </div>
 
               {instructions && (
                 <div>
