@@ -5,9 +5,12 @@ import { SESSION_GRACE_MINUTES } from '@/lib/constants';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
 
 /**
- * POST /api/bookings/[id]/start — either the driver or the lender can start
- * the session once the booking is confirmed and we're within the booking
- * window (with a grace period on both sides).
+ * POST /api/bookings/[id]/start — two-step session initiation.
+ *
+ * Step 1 (lender): confirmed → awaiting_driver_confirmation, notifies driver.
+ * Step 2 (driver): awaiting_driver_confirmation → in_progress, sets started_at, notifies lender.
+ *
+ * Driver calling while status is 'confirmed' gets 403 — driver cannot initiate.
  */
 export async function POST(
   _request: NextRequest,
@@ -32,12 +35,11 @@ export async function POST(
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
-  if (booking.driver_id !== user.id && booking.lender_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const isLender = user.id === booking.lender_id;
+  const isDriver = user.id === booking.driver_id;
 
-  if (booking.status !== 'confirmed') {
-    return NextResponse.json({ error: `Booking is ${booking.status}, not confirmed` }, { status: 409 });
+  if (!isLender && !isDriver) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const graceMs = SESSION_GRACE_MINUTES * 60 * 1000;
@@ -52,6 +54,37 @@ export async function POST(
     );
   }
 
+  // Step 1: lender initiates
+  if (isLender) {
+    if (booking.status !== 'confirmed') {
+      return NextResponse.json({ error: `Booking is ${booking.status}, not confirmed` }, { status: 409 });
+    }
+    const { error: updateError } = await adminSupabase
+      .from('bookings')
+      .update({ status: 'awaiting_driver_confirmation' })
+      .eq('id', params.id);
+
+    if (updateError) {
+      return NextResponse.json({ error: 'Failed to initiate session' }, { status: 500 });
+    }
+    await notify(booking.driver_id, 'session_initiation_requested', { booking_id: params.id });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Step 2: driver confirms
+  if (booking.status === 'confirmed') {
+    return NextResponse.json(
+      { error: 'Session must be initiated by the lender first' },
+      { status: 403 },
+    );
+  }
+  if (booking.status !== 'awaiting_driver_confirmation') {
+    return NextResponse.json(
+      { error: `Booking is ${booking.status}, cannot confirm start` },
+      { status: 409 },
+    );
+  }
+
   const nowIso = new Date().toISOString();
   const { error: updateError } = await adminSupabase
     .from('bookings')
@@ -61,9 +94,6 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: 'Failed to start session' }, { status: 500 });
   }
-
-  const otherParty = user.id === booking.driver_id ? booking.lender_id : booking.driver_id;
-  await notify(otherParty, 'session_started', { booking_id: params.id });
-
+  await notify(booking.lender_id, 'session_started', { booking_id: params.id });
   return NextResponse.json({ ok: true });
 }

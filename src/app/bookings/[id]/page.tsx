@@ -121,7 +121,13 @@ export default function BookingDetailPage() {
 
       {booking.status === 'confirmed' && (
         <div className="px-4 py-3 bg-green-50 rounded-2xl border border-green-200">
-          <p className="text-sm font-semibold text-green-700">Confirmed! Charger details below.</p>
+          <p className="text-sm font-semibold text-green-700">Confirmed! Head to the charger — the lender will start the session.</p>
+        </div>
+      )}
+
+      {booking.status === 'awaiting_driver_confirmation' && (
+        <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+          <p className="text-sm font-semibold text-blue-700">Lender has started the session — confirm below to begin charging.</p>
         </div>
       )}
 
@@ -156,6 +162,7 @@ export default function BookingDetailPage() {
         scheduledEnd={booking.scheduled_end}
         startedAt={booking.started_at}
         onUpdated={() => fetchBooking(false)}
+        userRole="driver"
       />
 
       {/* Charger info */}

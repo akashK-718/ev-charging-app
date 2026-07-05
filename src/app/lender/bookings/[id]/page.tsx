@@ -249,6 +249,7 @@ export default function LenderBookingDetailPage() {
         scheduledEnd={booking.scheduled_end}
         startedAt={booking.started_at}
         onUpdated={() => fetchBooking(false)}
+        userRole="lender"
       />
 
       {/* Charger info */}
