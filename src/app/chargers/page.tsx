@@ -70,7 +70,7 @@ type SavedMapState = {
   zoom: number;
   radius: number | 'all_india';
   viewMode: 'map' | 'list';
-  centerType: 'gps' | 'manual';
+  centerType: 'gps' | 'manual' | 'default';
   searchMode: SearchMode;
   timestamp: number;
   routeFrom?: { coords: Coords; address: string };
@@ -121,7 +121,7 @@ export default function ChargersPage() {
 
   // ── Near-me: search centre ────────────────────────────────────────────────
   const [searchCenter, setSearchCenter] = useState<Coords | null>(null);
-  const [centerType, setCenterType] = useState<'gps' | 'manual'>('gps');
+  const [centerType, setCenterType] = useState<'gps' | 'manual' | 'default'>('default');
   const [searchAddress, setSearchAddress] = useState('');
 
   // GPS position — kept fresh independently of searchCenter
@@ -264,7 +264,10 @@ export default function ChargersPage() {
     if (saved) {
       const isAllIndia = saved.radius === 'all_india';
       setSearchCenter(saved.center);
-      setCenterType(saved.centerType);
+      // Never restore centerType as 'gps' from storage — the GPS success handler
+      // below will set it to 'gps' again if permission is still granted this session.
+      // Old saved states that are missing centerType are treated as 'default'.
+      setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
       setViewMode(saved.viewMode);
       setSearchMode(saved.searchMode ?? 'along_route');
       setAllIndiaMode(isAllIndia);
@@ -421,7 +424,7 @@ export default function ChargersPage() {
 
   function handleAddressChange(v: string) {
     setSearchAddress(v);
-    if (v === '' && gpsCoords) {
+    if (v === '' && gpsCoords && gpsAvailable === true) {
       setSearchCenter(gpsCoords);
       setCenterType('gps');
     }
@@ -726,19 +729,19 @@ export default function ChargersPage() {
               fitIndia={!isRouteMode && allIndiaMode}
               chargerMarkers={chargerMarkersData}
               searchRadius={!isRouteMode && !allIndiaMode ? radius : undefined}
-              userLocation={!isRouteMode && centerType === 'gps' ? (gpsCoords ?? undefined) : undefined}
+              userLocation={!isRouteMode && centerType === 'gps' && gpsAvailable === true ? (gpsCoords ?? undefined) : undefined}
               manualCenter={!isRouteMode && centerType === 'manual' ? mapCenter : undefined}
-              routeGeometry={routeResult?.geometry}
-              routeBuffer={routeBuffer}
+              routeGeometry={isRouteMode ? routeResult?.geometry : undefined}
+              routeBuffer={isRouteMode ? routeBuffer : undefined}
               routeRecalculating={isRouteMode && routeLoading}
-              fromCoords={routeFrom?.coords}
-              toCoords={routeTo?.coords}
-              fromAddress={routeFrom?.address}
-              toAddress={routeTo?.address}
+              fromCoords={isRouteMode ? routeFrom?.coords : undefined}
+              toCoords={isRouteMode ? routeTo?.coords : undefined}
+              fromAddress={isRouteMode ? routeFrom?.address : undefined}
+              toAddress={isRouteMode ? routeTo?.address : undefined}
               activeRoutePin={isRouteMode ? activeRouteInput : undefined}
               onFromPinDragEnd={isRouteMode && routeFrom ? c => handlePinDragEnd('from', c) : undefined}
               onToPinDragEnd={isRouteMode && routeTo ? c => handlePinDragEnd('to', c) : undefined}
-              fitBoundsTarget={fitBoundsTarget}
+              fitBoundsTarget={isRouteMode ? fitBoundsTarget : undefined}
               onChargerClick={id => {
                 const source = isRouteMode ? routeChargers : chargers;
                 const found = source.find(c => c.id === id);
@@ -812,7 +815,7 @@ export default function ChargersPage() {
                           'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors',
                           gpsAvailable === false
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : centerType === 'gps'
+                            : centerType === 'gps' && gpsAvailable === true
                               ? 'bg-blue-500 text-white'
                               : 'bg-gray-100 hover:bg-gray-200 text-ink',
                         )}
