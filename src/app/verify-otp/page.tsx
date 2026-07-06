@@ -178,7 +178,7 @@ function VerifyOtpContent() {
         ← Back
       </button>
 
-      <h1 className="font-display font-extrabold text-3xl text-ink">Enter the code</h1>
+      <h1 className="text-2xl font-medium text-ink">Enter the code</h1>
       <p className="mt-2 text-sm text-muted">
         Sent to{' '}
         <span className="text-muted">+91</span>{' '}

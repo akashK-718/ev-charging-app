@@ -135,7 +135,7 @@ export function RoleEditor({
                   key={value}
                   onClick={() => setSelected(value)}
                   className={cn(
-                    'flex items-center gap-3 w-full p-4 rounded-2xl border-2 text-left transition-colors',
+                    'flex items-center gap-3 w-full p-4 rounded-xl border-2 text-left transition-colors',
                     selected === value
                       ? 'border-volt bg-volt-soft'
                       : 'border-gray-200 bg-white hover:border-gray-300',
@@ -160,14 +160,14 @@ export function RoleEditor({
             <div className="flex gap-3 pt-1">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-muted hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-muted hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => { void save(); }}
                 disabled={saving}
-                className="flex-1 py-3 rounded-2xl bg-ink text-white text-sm font-bold hover:bg-ink/90 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 rounded-xl bg-ink text-white text-sm font-bold hover:bg-ink/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

@@ -78,7 +78,7 @@ export function WelcomeRoleForm() {
       </Link>
 
       <div className="mt-4">
-        <h1 className="font-display font-extrabold text-3xl text-ink">How will you use this?</h1>
+        <h1 className="text-2xl font-medium text-ink">How will you use this?</h1>
         <p className="mt-2 text-muted">You can update this anytime in Profile.</p>
       </div>
 
@@ -88,7 +88,7 @@ export function WelcomeRoleForm() {
             key={value}
             onClick={() => setSelected(value)}
             className={cn(
-              'flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-colors',
+              'flex items-center gap-4 p-5 rounded-xl border-2 text-left transition-colors',
               selected === value
                 ? 'border-volt bg-volt-soft'
                 : 'border-gray-200 bg-white hover:border-gray-300',

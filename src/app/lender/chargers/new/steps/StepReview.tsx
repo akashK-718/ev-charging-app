@@ -7,7 +7,7 @@ import type { NewChargerDraft } from '@/types/charger-draft';
 
 const MapViewPreview = dynamic(
   () => import('@/components/maps/MapView').then(m => ({ default: m.MapView })),
-  { ssr: false, loading: () => <div className="h-[160px] bg-gray-100 rounded-2xl animate-pulse" /> },
+  { ssr: false, loading: () => <div className="h-[160px] bg-gray-100 rounded-xl animate-pulse" /> },
 );
 
 const DAY_LABELS: Record<number, string> = {
@@ -72,13 +72,13 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
 
   return (
     <div>
-      <h1 className="font-display font-extrabold text-3xl text-ink">Review & submit</h1>
+      <h1 className="text-2xl font-medium text-ink">Review & submit</h1>
       <p className="mt-2 text-base text-muted">Check everything before going live.</p>
 
       <div className="mt-8 flex flex-col gap-5">
 
         {/* Charger basics */}
-        <section className="p-4 rounded-2xl border border-gray-100 bg-white">
+        <section className="p-4 rounded-xl border border-gray-100 bg-white">
           <SectionHeader label="Charger basics" step={1} onEdit={onEditStep} />
           <p className="text-sm font-semibold text-ink">
             {draft.chargerType ? CHARGER_LABELS[draft.chargerType] : <Missing />}
@@ -97,7 +97,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
         </section>
 
         {/* Pricing */}
-        <section className="p-4 rounded-2xl border border-gray-100 bg-white">
+        <section className="p-4 rounded-xl border border-gray-100 bg-white">
           <SectionHeader label="Pricing" step={2} onEdit={onEditStep} />
           {draft.pricePerKwh != null ? (
             <>
@@ -114,7 +114,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
         </section>
 
         {/* Location */}
-        <section className="p-4 rounded-2xl border border-gray-100 bg-white">
+        <section className="p-4 rounded-xl border border-gray-100 bg-white">
           <SectionHeader label="Location" step={3} onEdit={onEditStep} />
           {draft.address ? (
             <p className="text-sm font-semibold text-ink leading-snug">{draft.address}</p>
@@ -126,7 +126,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
               <p className="mt-1 text-xs text-muted">
                 {draft.latitude.toFixed(5)}, {draft.longitude.toFixed(5)}
               </p>
-              <div className="mt-3 h-[160px] rounded-2xl overflow-hidden">
+              <div className="mt-3 h-[160px] rounded-xl overflow-hidden">
                 <MapViewPreview
                   center={{ lat: draft.latitude, lng: draft.longitude }}
                   zoom={15}
@@ -141,7 +141,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
         </section>
 
         {/* Photos */}
-        <section className="p-4 rounded-2xl border border-gray-100 bg-white">
+        <section className="p-4 rounded-xl border border-gray-100 bg-white">
           <SectionHeader label="Photos" step={4} onEdit={onEditStep} />
           {draft.photos?.length ? (
             <div className="grid grid-cols-4 gap-2 mt-1">
@@ -161,7 +161,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
         </section>
 
         {/* Availability */}
-        <section className="p-4 rounded-2xl border border-gray-100 bg-white">
+        <section className="p-4 rounded-xl border border-gray-100 bg-white">
           <SectionHeader label="Availability" step={5} onEdit={onEditStep} />
           {draft.availability?.length ? (
             <div className="flex flex-col gap-1 mt-1">
@@ -180,7 +180,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
         </section>
 
         {/* Title & instructions */}
-        <section className="p-4 rounded-2xl border border-gray-100 bg-white">
+        <section className="p-4 rounded-xl border border-gray-100 bg-white">
           <SectionHeader label="Title & instructions" step={6} onEdit={onEditStep} />
           {draft.title ? (
             <p className="text-sm font-semibold text-ink">{draft.title}</p>

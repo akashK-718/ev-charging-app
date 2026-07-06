@@ -23,7 +23,7 @@ export function ChargerCard({
 
   return (
     <Link href={`/chargers/${charger.id}`} className="block group">
-      <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <div className="rounded-xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         {/* Cover photo */}
         <div className="aspect-[16/9] bg-volt-soft relative overflow-hidden">
           {cover ? (

@@ -89,7 +89,7 @@ export function WelcomeNameForm({ initialName }: { initialName: string }) {
       </div>
 
       <div className="flex-1 flex flex-col justify-center">
-        <h1 className="font-display font-extrabold text-3xl text-ink">Let&apos;s get started</h1>
+        <h1 className="text-2xl font-medium text-ink">Let&apos;s get started</h1>
         <p className="mt-2 text-muted">First, what should we call you?</p>
 
         <div className="mt-10 space-y-1.5">
@@ -108,7 +108,7 @@ export function WelcomeNameForm({ initialName }: { initialName: string }) {
             autoComplete="name"
             autoFocus
             className={cn(
-              'w-full px-4 py-3 rounded-2xl border text-sm font-medium text-ink placeholder:text-muted',
+              'w-full px-4 py-3 rounded-xl border text-sm font-medium text-ink placeholder:text-muted',
               'focus:outline-none focus:ring-2 focus:ring-volt transition-colors',
               error && touched ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white',
             )}

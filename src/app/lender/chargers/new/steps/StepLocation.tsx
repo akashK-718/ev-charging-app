@@ -12,7 +12,7 @@ const MapView = dynamic(
   () => import('@/components/maps/MapView').then(m => ({ default: m.MapView })),
   {
     ssr: false,
-    loading: () => <div className="w-full h-full rounded-2xl bg-gray-100 animate-pulse" />,
+    loading: () => <div className="w-full h-full rounded-xl bg-gray-100 animate-pulse" />,
   },
 );
 
@@ -115,7 +115,7 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
 
   return (
     <div>
-      <h1 className="font-display font-extrabold text-3xl text-ink">Location</h1>
+      <h1 className="text-2xl font-medium text-ink">Location</h1>
       <p className="mt-2 text-base text-muted">Where is your charger located?</p>
 
       <div className="mt-8">
@@ -154,7 +154,7 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
         <div className="mt-6">
           <p className="text-sm font-semibold text-ink mb-1">Fine-tune pin location</p>
           <p className="text-xs text-muted mb-3">Drag the pin to the exact charger entrance</p>
-          <div className="h-[260px] rounded-2xl overflow-hidden">
+          <div className="h-[260px] rounded-xl overflow-hidden">
             <MapView
               key={mapKey}
               center={{ lat: draft.latitude!, lng: draft.longitude! }}

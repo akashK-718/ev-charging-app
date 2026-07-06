@@ -127,7 +127,7 @@ export default function BookingDetailPage() {
   if (error || !booking) {
     return (
       <main className="px-6 py-10">
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {error ?? 'Booking not found'}
         </div>
       </main>
@@ -158,7 +158,7 @@ export default function BookingDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display font-extrabold text-3xl text-ink">Booking</h1>
+          <h1 className="text-2xl font-medium text-ink">Booking</h1>
           <p className="text-xs text-muted mt-1 font-mono">{booking.confirmation_code}</p>
         </div>
         <StatusBadge status={booking.status} />
@@ -166,7 +166,7 @@ export default function BookingDetailPage() {
 
       {/* Status messages */}
       {booking.status === 'pending' && (
-        <div className="px-4 py-3 bg-amber-50 rounded-2xl border border-amber-200">
+        <div className="px-4 py-3 bg-amber-50 rounded-xl border border-amber-200">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-amber-700" />
             <p className="text-sm font-semibold text-amber-700">Awaiting lender confirmation</p>
@@ -178,20 +178,20 @@ export default function BookingDetailPage() {
       )}
 
       {booking.status === 'confirmed' && (
-        <div className="px-4 py-3 bg-green-50 rounded-2xl border border-green-200">
+        <div className="px-4 py-3 bg-green-50 rounded-xl border border-green-200">
           <p className="text-sm font-semibold text-green-700">Confirmed! Head to the charger — the lender will start the session.</p>
         </div>
       )}
 
       {booking.status === 'awaiting_driver_confirmation' && (
-        <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+        <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
           <p className="text-sm font-semibold text-blue-700">Lender has started the session — confirm below to begin charging.</p>
         </div>
       )}
 
 
       {(booking.status === 'rejected' || booking.status === 'auto_rejected') && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-200">
+        <div className="px-4 py-3 bg-red-50 rounded-xl border border-red-200">
           <p className="text-sm font-semibold text-red-700">Booking was declined. Refund initiated.</p>
           {booking.rejection_reason && (
             <p className="text-xs text-red-700/80 mt-1">{booking.rejection_reason}</p>
@@ -200,7 +200,7 @@ export default function BookingDetailPage() {
       )}
 
       {booking.status === 'cancelled' && (
-        <div className="px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200">
+        <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
           <p className="text-sm font-semibold text-ink">Booking cancelled.</p>
           {booking.cancellation_reason === 'driver_late_cancel' ? (
             <p className="text-xs text-muted mt-1">No refund — cancelled within {FREE_CANCEL_MINUTES} minutes of the slot.</p>
@@ -246,7 +246,7 @@ export default function BookingDetailPage() {
       )}
 
       {canCancel && showCancelConfirm && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           {inFreeWindow ? (
             <>
               <p className="text-sm font-semibold text-ink">Cancel this booking?</p>
@@ -295,7 +295,7 @@ export default function BookingDetailPage() {
       )}
 
       {/* Charger info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Charger</h2>
         <p className="font-semibold text-ink">{booking.charger?.title ?? '—'}</p>
         {booking.confirmed_at ? (
@@ -313,7 +313,7 @@ export default function BookingDetailPage() {
       </div>
 
       {/* Time slot */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Time slot</h2>
         <div className="flex items-center gap-2 text-sm text-ink">
           <Clock className="w-4 h-4 text-muted shrink-0" />
@@ -339,7 +339,7 @@ export default function BookingDetailPage() {
       </div>
 
       {/* Lender info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Lender</h2>
         <p className="font-semibold text-ink text-sm">{lenderName}</p>
         {booking.lender?.phone && (
@@ -358,7 +358,7 @@ export default function BookingDetailPage() {
 
       {/* Payment */}
       {booking.payment && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
           <h2 className="font-semibold text-sm text-ink flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-volt-deep" />
             Payment
@@ -371,7 +371,7 @@ export default function BookingDetailPage() {
       )}
 
       {/* Timeline */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
         <h2 className="font-semibold text-sm text-ink mb-3">Timeline</h2>
         <BookingTimeline booking={booking} />
       </div>

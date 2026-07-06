@@ -65,7 +65,7 @@ export default function BookingsPage() {
 
   return (
     <main className="min-h-screen px-6 py-10">
-      <h1 className="font-display font-extrabold text-3xl text-ink mb-6">Your bookings</h1>
+      <h1 className="text-2xl font-medium text-ink mb-6">Your bookings</h1>
 
       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-6 -mx-1 px-1">
         {TABS.map(tab => (
@@ -87,7 +87,7 @@ export default function BookingsPage() {
       {loading && <div className="text-center py-12 text-muted">Loading…</div>}
 
       {error && !loading && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {error}
         </div>
       )}
@@ -109,7 +109,7 @@ export default function BookingsPage() {
             <Link
               key={booking.id}
               href={`/bookings/${booking.id}`}
-              className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
+              className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
             >
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-ink text-sm truncate">

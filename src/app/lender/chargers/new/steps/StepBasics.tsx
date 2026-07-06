@@ -56,7 +56,7 @@ export function StepBasics({ draft, onChange, onValidChange }: StepBasicsProps) 
 
   return (
     <div>
-      <h1 className="font-display font-extrabold text-3xl text-ink">Charger basics</h1>
+      <h1 className="text-2xl font-medium text-ink">Charger basics</h1>
       <p className="mt-2 text-base text-muted">Tell us about your charger hardware.</p>
 
       <section className="mt-8">
@@ -68,7 +68,7 @@ export function StepBasics({ draft, onChange, onValidChange }: StepBasicsProps) 
               type="button"
               onClick={() => onChange({ chargerType: value as ChargerType })}
               className={cn(
-                'flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-colors',
+                'flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-colors',
                 selectedType === value
                   ? 'border-volt bg-volt-soft'
                   : 'border-gray-200 bg-white hover:border-gray-300',
@@ -106,7 +106,7 @@ export function StepBasics({ draft, onChange, onValidChange }: StepBasicsProps) 
               type="button"
               onClick={() => toggleConnector(c)}
               className={cn(
-                'px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-colors',
+                'h-10 px-4 rounded-xl border-2 text-sm font-semibold transition-colors',
                 selectedConnectors.includes(c)
                   ? 'border-volt bg-volt text-ink'
                   : 'border-gray-200 bg-white text-ink hover:border-gray-300',

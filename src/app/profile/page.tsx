@@ -65,7 +65,7 @@ export default async function ProfilePage({
 
   return (
     <main className="min-h-screen px-6 py-10 space-y-6 max-w-lg mx-auto">
-      <h1 className="font-display font-extrabold text-3xl text-ink">Profile</h1>
+      <h1 className="text-2xl font-medium text-ink">Profile</h1>
 
       <ProfileBody
         initialName={profile.name}

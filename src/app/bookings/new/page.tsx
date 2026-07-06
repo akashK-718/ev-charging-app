@@ -191,7 +191,7 @@ function NewBookingContent() {
   if (loadError || !charger) {
     return (
       <main className="px-6 py-10">
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {loadError ?? 'Charger not found'}
         </div>
       </main>
@@ -202,15 +202,15 @@ function NewBookingContent() {
 
   return (
     <main className="min-h-screen px-6 py-10 space-y-5 max-w-lg mx-auto pb-10">
-      <h1 className="font-display font-extrabold text-3xl text-ink">Book a slot</h1>
+      <h1 className="text-2xl font-medium text-ink">Book a slot</h1>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-1">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-1">
         <p className="font-semibold text-ink">{charger.title}</p>
         <p className="text-xs text-muted">{charger.address}</p>
         <p className="text-sm font-bold text-volt-deep mt-1">₹{charger.price_per_kwh}/kWh</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
         <div>
           <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="date">
             <Calendar className="w-4 h-4" /> Date
@@ -221,7 +221,7 @@ function NewBookingContent() {
             value={date}
             min={minDate}
             onChange={e => setDate(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
           />
         </div>
 
@@ -234,7 +234,7 @@ function NewBookingContent() {
             type="time"
             value={time}
             onChange={e => setTime(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
           />
         </div>
 
@@ -260,7 +260,7 @@ function NewBookingContent() {
       </div>
 
       {estimate && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
           <h2 className="font-semibold text-sm text-ink flex items-center gap-1.5">
             <Zap className="w-4 h-4 text-volt-deep" /> Estimated cost
           </h2>
@@ -275,7 +275,7 @@ function NewBookingContent() {
       )}
 
       {submitError && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {submitError}
         </div>
       )}

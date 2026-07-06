@@ -49,7 +49,7 @@ function CompletedSummary({
   paymentPaise: number | null;
 }) {
   return (
-    <div className="px-4 py-3 bg-gray-50 rounded-2xl space-y-1">
+    <div className="px-4 py-3 bg-gray-50 rounded-xl space-y-1">
       <p className="text-sm font-semibold text-ink">
         Session completed
         {endedAt
@@ -155,7 +155,7 @@ export function DriverRatingSection({
   }
 
   if (state.kind === 'loading') {
-    return <div className="h-24 bg-gray-50 rounded-2xl animate-pulse" />;
+    return <div className="h-24 bg-gray-50 rounded-xl animate-pulse" />;
   }
 
   if (state.kind === 'suppressed' || state.kind === 'skipped') {
@@ -168,7 +168,7 @@ export function DriverRatingSection({
     const chargerR = state.reviews.find(r => r.review_type === 'charger');
     const lenderR = state.reviews.find(r => r.review_type === 'lender');
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-volt-deep shrink-0" />
           <p className="text-sm font-semibold text-ink">Your review</p>
@@ -203,7 +203,7 @@ export function DriverRatingSection({
 
   if (state.kind === 'success') {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-volt-deep shrink-0" />
           <p className="text-sm font-semibold text-ink">Thanks — your review helps the community</p>
@@ -257,7 +257,7 @@ export function DriverRatingSection({
   );
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
+    <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-4 h-4 text-volt-deep shrink-0" />
         <p className="text-sm font-semibold text-ink">Session complete</p>
@@ -290,7 +290,7 @@ export function DriverRatingSection({
             rows={3}
             maxLength={200}
             placeholder="How was your experience?"
-            className="mt-1 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt resize-none"
+            className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt resize-none"
           />
           <p className="text-xs text-muted mt-1 text-right">{reviewText.length}/200</p>
         </div>

@@ -97,7 +97,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
 
   return (
     <div>
-      <h1 className="font-display font-extrabold text-3xl text-ink">Availability</h1>
+      <h1 className="text-2xl font-medium text-ink">Availability</h1>
       <p className="mt-2 text-base text-muted">
         When is your charger available for bookings?
       </p>
@@ -128,7 +128,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
             <div
               key={day.day_of_week}
               className={cn(
-                'flex items-center gap-3 p-3 rounded-2xl border-2 transition-colors',
+                'flex items-center gap-3 p-3 rounded-xl border-2 transition-colors',
                 day.enabled ? 'border-volt bg-volt-soft' : 'border-gray-100 bg-white',
               )}
             >

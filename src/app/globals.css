@@ -2,21 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design system tokens ────────────────────────────────────────────────────
+   Single source of truth for typography, spacing, sizing, and radius.
+   Tailwind equivalents: h-12=48px, rounded-xl=12px, p-4=16px, gap-6=24px
+   ──────────────────────────────────────────────────────────────────────────── */
 :root {
   --background: #ffffff;
   --foreground: #0c1611;
+
+  /* Typography */
+  --font-sans: 'Inter', sans-serif;
+  --font-size-body: 16px;
+  --font-size-sm: 14px;
+  --font-size-xs: 12px;
+  --font-size-heading: 24px;
+  --font-size-title: 20px;
+
+  /* Sizing */
+  --height-control: 48px;
+  --radius: 12px;
+
+  /* Spacing (8-point grid) */
+  --space-1: 8px;   /* gap-2  */
+  --space-2: 16px;  /* gap-4  */
+  --space-3: 24px;  /* gap-6  */
+  --space-4: 32px;  /* gap-8  */
+  --space-5: 40px;  /* gap-10 */
+  --space-6: 48px;  /* gap-12 */
+
+  /* Icon sizes */
+  --icon-size: 24px;
+  --icon-size-sm: 16px;
 }
 
-/* Dark mode is intentionally disabled for MVP.
-   The app ships in light mode only.
-   Tracked for Module 6+ polish: https://github.com/akashK-718/ev-charging-app/issues (open "Implement proper dark mode") */
+/* ─── Intentional exceptions — do NOT apply 48px control height here ──────────
+   • Status badges / chips (StatusBadge.tsx, TileStatusBadge) — indicators, not tap targets
+   • OTP input boxes (verify-otp/page.tsx) — custom fixed layout
+   • Admin pages — utility-style density intentional
+   • Table / list rows — keep existing density
+   • Sort button, filter chips, navbar items, availability time inputs — compact contexts
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Dark mode is intentionally disabled for MVP. */
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
+
+h1, h2 { font-size: var(--font-size-heading); font-weight: 500; }
+h3 { font-size: var(--font-size-title); font-weight: 500; }
 
 * {
   box-sizing: border-box;

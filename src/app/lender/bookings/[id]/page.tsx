@@ -176,7 +176,7 @@ export default function LenderBookingDetailPage() {
   if (error || !booking) {
     return (
       <main className="px-6 py-10">
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {error ?? 'Booking not found'}
         </div>
       </main>
@@ -209,7 +209,7 @@ export default function LenderBookingDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display font-extrabold text-3xl text-ink">Booking</h1>
+          <h1 className="text-2xl font-medium text-ink">Booking</h1>
           <p className="text-xs text-muted mt-1 font-mono">{booking.confirmation_code}</p>
         </div>
         <StatusBadge status={booking.status} />
@@ -218,7 +218,7 @@ export default function LenderBookingDetailPage() {
       {/* Pending countdown warning */}
       {isPending && remaining !== null && (
         <div className={cn(
-          'px-4 py-3 rounded-2xl border',
+          'px-4 py-3 rounded-xl border',
           remaining === 0
             ? 'bg-red-50 border-red-200 text-red-700'
             : remaining < 5 * 60 * 1000
@@ -257,7 +257,7 @@ export default function LenderBookingDetailPage() {
       />
 
       {/* Charger info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Charger</h2>
         <p className="font-semibold text-ink">{booking.charger?.title ?? '—'}</p>
         {booking.charger?.address && (
@@ -269,7 +269,7 @@ export default function LenderBookingDetailPage() {
       </div>
 
       {/* Time slot */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Time slot</h2>
         <div className="flex items-center gap-2 text-sm text-ink">
           <Clock className="w-4 h-4 text-muted shrink-0" />
@@ -295,7 +295,7 @@ export default function LenderBookingDetailPage() {
       </div>
 
       {/* Driver info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Driver</h2>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-volt-soft flex items-center justify-center shrink-0">
@@ -331,7 +331,7 @@ export default function LenderBookingDetailPage() {
 
       {/* Payment breakdown */}
       {booking.payment && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
           <h2 className="font-semibold text-sm text-ink">Earnings breakdown</h2>
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between">
@@ -359,7 +359,7 @@ export default function LenderBookingDetailPage() {
 
       {/* Actions */}
       {actionError && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {actionError}
         </div>
       )}
@@ -380,7 +380,7 @@ export default function LenderBookingDetailPage() {
             type="button"
             disabled={actionLoading}
             onClick={() => setShowRejectForm(true)}
-            className="w-full flex items-center gap-2 justify-center px-6 py-4 rounded-2xl text-lg font-bold bg-red-50 text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+            className="w-full flex items-center gap-2 justify-center px-6 py-4 rounded-xl text-lg font-bold bg-red-50 text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
           >
             <XCircle className="w-5 h-5" />
             Reject booking
@@ -400,7 +400,7 @@ export default function LenderBookingDetailPage() {
               onChange={e => setRejectReason(e.target.value)}
               rows={3}
               placeholder="e.g. Charger unavailable for that time slot"
-              className="mt-1 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt resize-none"
+              className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt resize-none"
             />
             <p className="text-xs text-muted mt-1">Minimum {MIN_REASON_LENGTH} characters.</p>
           </div>
@@ -426,7 +426,7 @@ export default function LenderBookingDetailPage() {
       )}
 
       {(booking.status === 'rejected' || booking.status === 'auto_rejected') && (
-        <div className="px-4 py-3 bg-gray-50 rounded-2xl">
+        <div className="px-4 py-3 bg-gray-50 rounded-xl">
           <p className="text-sm font-semibold text-muted">
             {booking.status === 'auto_rejected' ? 'Auto-declined' : 'Declined'}
           </p>
@@ -447,7 +447,7 @@ export default function LenderBookingDetailPage() {
       )}
 
       {/* Timeline */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
         <h2 className="font-semibold text-sm text-ink mb-3">Timeline</h2>
         <BookingTimeline booking={booking} />
       </div>
