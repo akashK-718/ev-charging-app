@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Phone, MapPin, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
 import { cn } from '@/lib/utils';
 import { BOOKING_AUTO_CANCEL_MINUTES, ACTIVE_BOOKING_STATUSES, type BookingStatus } from '@/lib/constants';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
@@ -307,11 +308,11 @@ export default function LenderBookingDetailPage() {
                 <p className="font-semibold text-ink text-sm">{driverName}</p>
                 {booking.driver?.phone && (
                   <a
-                    href={`tel:${booking.driver.phone}`}
+                    href={formatPhoneForCall(booking.driver.phone)}
                     className="flex items-center gap-1 text-xs text-volt-deep font-semibold mt-0.5"
                   >
                     <Phone className="w-3 h-3" />
-                    {booking.driver.phone}
+                    {formatPhoneForDisplay(booking.driver.phone)}
                   </a>
                 )}
               </>

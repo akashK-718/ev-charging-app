@@ -8,6 +8,7 @@ import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
 import { DriverRatingSection } from '@/components/bookings/DriverRatingSection';
 import { Button } from '@/components/ui/Button';
+import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
 import { ACTIVE_BOOKING_STATUSES, FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES, type BookingStatus } from '@/lib/constants';
 
 type BookingDetail = {
@@ -344,11 +345,11 @@ export default function BookingDetailPage() {
         <p className="font-semibold text-ink text-sm">{lenderName}</p>
         {booking.lender?.phone && (
           <a
-            href={`tel:${booking.lender.phone}`}
+            href={formatPhoneForCall(booking.lender.phone)}
             className="flex items-center gap-1 text-xs text-volt-deep font-semibold"
           >
             <Phone className="w-3 h-3" />
-            {booking.lender.phone}
+            {formatPhoneForDisplay(booking.lender.phone)}
           </a>
         )}
         {!booking.lender?.phone && booking.status === 'pending' && (
