@@ -58,10 +58,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect logged-in users away from auth screens and landing page.
+  // Root `/`: redirect logged-in users to their role's home page.
+  // Logged-out users fall through to the marketing/landing page.
+  if (pathname === '/' && user) {
+    const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
+    const role = (user.user_metadata?.role as string | undefined) ?? '';
+    const dest = isAdmin
+      ? '/admin'
+      : role === 'lender' || role === 'both'
+      ? '/lender/dashboard'
+      : '/chargers';
+    return NextResponse.redirect(new URL(dest, request.url));
+  }
+
+  // Redirect logged-in users away from auth screens.
   // Honour ?next= for internal paths so a failed page load doesn't silently land on /chargers.
-  // Admins land on /admin; everyone else on /chargers.
-  if ((pathname === '/login' || pathname === '/verify-otp' || pathname === '/') && user) {
+  if ((pathname === '/login' || pathname === '/verify-otp') && user) {
     const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
     const nextParam = request.nextUrl.searchParams.get('next');
     const safeNext = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
