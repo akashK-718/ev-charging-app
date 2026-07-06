@@ -26,7 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
   no_show: 'No show',
 };
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
+export function StatusBadge({ status, label, className }: { status: string; label?: string; className?: string }) {
   return (
     <span
       className={cn(
@@ -35,7 +35,7 @@ export function StatusBadge({ status, className }: { status: string; className?:
         className,
       )}
     >
-      {STATUS_LABEL[status] ?? status}
+      {label ?? STATUS_LABEL[status] ?? status}
     </span>
   );
 }

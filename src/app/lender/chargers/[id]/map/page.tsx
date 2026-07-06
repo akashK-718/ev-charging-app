@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
@@ -26,7 +26,7 @@ type ChargerInfo = {
   longitude: number;
 };
 
-function StatusBadge({ status }: { status: ChargerStatus }) {
+function ChargerStatusBadge({ status }: { status: ChargerStatus }) {
   return (
     <span className={cn(
       'px-2.5 py-1 rounded-full text-xs font-semibold shrink-0',
@@ -43,23 +43,31 @@ function StatusBadge({ status }: { status: ChargerStatus }) {
 export default function LenderChargerMapPage() {
   const params = useParams() as { id: string };
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const readonly = searchParams.get('readonly') === 'true';
+
   const [charger, setCharger] = useState<ChargerInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/lender/chargers/${params.id}`)
+    const apiUrl = readonly
+      ? `/api/chargers/${params.id}`
+      : `/api/lender/chargers/${params.id}`;
+
+    fetch(apiUrl)
       .then(async res => {
-        if (res.status === 401 || res.status === 403 || res.status === 404) {
-          router.replace('/lender/chargers');
+        if (!res.ok) {
+          if (readonly) { router.back(); } else { router.replace('/lender/chargers'); }
           return;
         }
-        if (!res.ok) { router.replace('/lender/chargers'); return; }
-        const body = await res.json() as { charger: ChargerInfo };
-        setCharger(body.charger);
+        const body = await res.json() as { charger?: ChargerInfo; data?: ChargerInfo };
+        const info = body.charger ?? body.data ?? null;
+        if (!info) { if (readonly) { router.back(); } else { router.replace('/lender/chargers'); } return; }
+        setCharger({ ...info, latitude: Number(info.latitude), longitude: Number(info.longitude) });
       })
-      .catch(() => router.replace('/lender/chargers'))
+      .catch(() => { if (readonly) { router.back(); } else { router.replace('/lender/chargers'); } })
       .finally(() => setLoading(false));
-  }, [params.id, router]);
+  }, [params.id, router, readonly]);
 
   if (loading) {
     return (
@@ -84,13 +92,23 @@ export default function LenderChargerMapPage() {
 
       {/* Top overlay — back button + title */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center gap-3 px-4 pt-4 pb-6 bg-gradient-to-b from-black/40 to-transparent pointer-events-none">
-        <Link
-          href={`/lender/chargers/${params.id}`}
-          className="pointer-events-auto w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
-          aria-label="Back to charger detail"
-        >
-          <ChevronLeft className="w-5 h-5 text-ink" />
-        </Link>
+        {readonly ? (
+          <button
+            onClick={() => router.back()}
+            className="pointer-events-auto w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
+            aria-label="Back"
+          >
+            <ChevronLeft className="w-5 h-5 text-ink" />
+          </button>
+        ) : (
+          <Link
+            href={`/lender/chargers/${params.id}`}
+            className="pointer-events-auto w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
+            aria-label="Back to charger detail"
+          >
+            <ChevronLeft className="w-5 h-5 text-ink" />
+          </Link>
+        )}
         <h1 className="text-white text-sm font-bold drop-shadow truncate">{charger.title}</h1>
       </div>
 
@@ -101,7 +119,7 @@ export default function LenderChargerMapPage() {
             <p className="text-sm font-bold text-ink truncate">{charger.title}</p>
             <p className="text-xs text-muted mt-0.5 leading-snug line-clamp-2">{charger.address}</p>
           </div>
-          <StatusBadge status={charger.status} />
+          {!readonly && <ChargerStatusBadge status={charger.status} />}
         </div>
       </div>
     </div>

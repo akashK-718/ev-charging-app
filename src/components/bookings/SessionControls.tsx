@@ -152,10 +152,6 @@ export function SessionControls({
     if (userRole === 'driver') {
       return (
         <div className="space-y-2">
-          <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
-            <p className="text-sm font-semibold text-blue-700">Lender has started the session</p>
-            <p className="text-xs text-blue-600 mt-1">Confirm to begin charging.</p>
-          </div>
           {geoWarning && (
             <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 rounded-xl border border-amber-200">
               <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -167,10 +163,9 @@ export function SessionControls({
             variant="secondary"
             size="lg"
             disabled={loading}
-            className="flex items-center gap-2 justify-center"
+            className="justify-center"
             onClick={() => { void handleDriverConfirm(); }}
           >
-            <Zap className="w-5 h-5" />
             {loading ? 'Confirming…' : 'Confirm start'}
           </Button>
         </div>
