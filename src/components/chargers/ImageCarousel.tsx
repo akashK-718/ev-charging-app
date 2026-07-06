@@ -107,7 +107,7 @@ export function ImageCarousel({
       {/* Slides */}
       <div
         className="flex h-full transition-transform duration-300 ease-out will-change-transform"
-        style={{ transform: `translateX(-${index * 100}%)`, width: `${photos.length * 100}%` }}
+        style={{ transform: `translateX(-${(index * 100) / photos.length}%)`, width: `${photos.length * 100}%` }}
       >
         {photos.map((url, i) => (
           <div key={i} className="relative h-full shrink-0" style={{ width: `${100 / photos.length}%` }}>
