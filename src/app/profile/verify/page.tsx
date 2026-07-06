@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, CreditCard, User, Building2, Upload, X } from 'lucide-react';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
@@ -69,7 +70,7 @@ function PhotoUploader({ label, hint, value, onChange, capture }: PhotoUploaderP
       {value ? (
         <div className="relative rounded-xl overflow-hidden border border-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt={label} className="w-full max-h-52 object-cover" />
+          <img src={toJpegUrl(value)} alt={label} className="w-full max-h-52 object-cover" />
           <button
             type="button"
             onClick={() => onChange('')}
@@ -305,16 +306,16 @@ function StepReview({ draft, onEditStep, onValidChange, displayName }: { draft: 
         <ReviewSection icon={<User className="w-4 h-4" />} label="Aadhaar" onEdit={() => onEditStep(1)}>
           <p className="text-sm text-muted">Last 4 digits: ****{draft.aadhaar_last_4}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={draft.aadhaar_photo_url} alt="Aadhaar" className="mt-2 w-32 rounded-xl object-cover" />
+          <img src={toJpegUrl(draft.aadhaar_photo_url)} alt="Aadhaar" className="mt-2 w-32 rounded-xl object-cover" />
         </ReviewSection>
         <ReviewSection icon={<CreditCard className="w-4 h-4" />} label="PAN card" onEdit={() => onEditStep(2)}>
           <p className="text-sm text-muted font-mono tracking-widest">{draft.pan_number}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={draft.pan_photo_url} alt="PAN" className="mt-2 w-32 rounded-xl object-cover" />
+          <img src={toJpegUrl(draft.pan_photo_url)} alt="PAN" className="mt-2 w-32 rounded-xl object-cover" />
         </ReviewSection>
         <ReviewSection icon={<Camera className="w-4 h-4" />} label="Selfie" onEdit={() => onEditStep(3)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={draft.selfie_url} alt="Selfie" className="w-20 rounded-xl object-cover" />
+          <img src={toJpegUrl(draft.selfie_url)} alt="Selfie" className="w-20 rounded-xl object-cover" />
         </ReviewSection>
         <ReviewSection icon={<Building2 className="w-4 h-4" />} label="Payout" onEdit={() => onEditStep(4)}>
           {draft.payment_method === 'bank' ? (

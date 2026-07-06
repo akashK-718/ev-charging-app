@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { ImagePlus, X, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toJpegUrl } from '@/lib/cloudinary-url';
+import { ImageCropper } from '@/components/ui/ImageCropper';
 import type { NewChargerDraft } from '@/types/charger-draft';
 
 const MAX_PHOTOS = 5;
@@ -43,6 +45,8 @@ function uploadToCloudinary(
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
     formData.append('folder', 'ev-chargers');
+    formData.append('format', 'jpg');
+    formData.append('quality', 'auto');
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`);
@@ -83,6 +87,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
     })),
   );
   const [isDragOver, setIsDragOver] = useState(false);
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Drag-to-reorder state
@@ -114,42 +119,45 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
     const slotsLeft = MAX_PHOTOS - photos.length;
     const toAdd = fileArray.slice(0, slotsLeft);
     if (toAdd.length === 0) return;
+    setCropQueue(toAdd);
+  }
 
-    const newItems: PhotoItem[] = toAdd.map(file => ({
+  function startUpload(file: File, previewUrl: string) {
+    const item: PhotoItem = {
       id: `${file.name}-${Date.now()}-${Math.random()}`,
-      previewUrl: URL.createObjectURL(file),
+      previewUrl,
       progress: 0,
-    }));
-
-    setPhotos(prev => [...prev, ...newItems]);
-
-    // Start uploading each file immediately.
-    newItems.forEach(item => {
-      const file = toAdd[newItems.indexOf(item)];
-      uploadToCloudinary(file, pct => {
+    };
+    setPhotos(prev => [...prev, item]);
+    uploadToCloudinary(file, pct => {
+      setPhotos(prev => prev.map(p => (p.id === item.id ? { ...p, progress: pct } : p)));
+    })
+      .then(url => {
         setPhotos(prev =>
-          prev.map(p => (p.id === item.id ? { ...p, progress: pct } : p)),
+          prev.map(p =>
+            p.id === item.id ? { ...p, cloudinaryUrl: url, previewUrl: url, progress: 100 } : p,
+          ),
         );
       })
-        .then(url => {
-          setPhotos(prev =>
-            prev.map(p =>
-              p.id === item.id
-                ? { ...p, cloudinaryUrl: url, previewUrl: url, progress: 100 }
-                : p,
-            ),
-          );
-        })
-        .catch((err: Error) => {
-          setPhotos(prev =>
-            prev.map(p =>
-              p.id === item.id
-                ? { ...p, error: err.message ?? 'Upload failed. Tap × and try again.' }
-                : p,
-            ),
-          );
-        });
-    });
+      .catch((err: Error) => {
+        setPhotos(prev =>
+          prev.map(p =>
+            p.id === item.id ? { ...p, error: err.message ?? 'Upload failed. Tap × and try again.' } : p,
+          ),
+        );
+      });
+  }
+
+  function handleCropConfirm(blob: Blob) {
+    const [current, ...rest] = cropQueue;
+    const croppedFile = new File([blob], current.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+    const previewUrl = URL.createObjectURL(blob);
+    startUpload(croppedFile, previewUrl);
+    setCropQueue(rest);
+  }
+
+  function handleCropCancel() {
+    setCropQueue(prev => prev.slice(1));
   }
 
   function removePhoto(id: string) {
@@ -220,6 +228,15 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
+    <>
+    {cropQueue.length > 0 && (
+      <ImageCropper
+        file={cropQueue[0]}
+        aspectRatio="4:3"
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
+    )}
     <div>
       <h1 className="text-2xl font-medium text-ink">Photos</h1>
       <p className="mt-2 text-base text-muted">
@@ -293,7 +310,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
                 {/* Preview image */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={photo.previewUrl}
+                  src={toJpegUrl(photo.previewUrl)}
                   alt={`Photo ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
@@ -358,5 +375,6 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
         </p>
       )}
     </div>
+    </>
   );
 }

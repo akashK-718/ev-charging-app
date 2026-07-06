@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { X, Zap, Star } from 'lucide-react';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 import { cn } from '@/lib/utils';
 import type { ChargerRow } from './ChargerCard';
 
@@ -135,7 +136,7 @@ function MobileCard({
         {/* Cover photo */}
         <div className="shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-volt-soft">
           {cover ? (
-            <img src={cover} alt={charger.title} className="w-full h-full object-cover" />
+            <img src={toJpegUrl(cover)} alt={charger.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Zap className="w-7 h-7 text-volt opacity-40" />

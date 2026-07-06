@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ExternalLink, CheckCircle2, XCircle, RefreshCw, X } from 'lucide-react';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
@@ -168,7 +169,7 @@ export default function AdminKycDetailPage() {
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightboxUrl}
+            src={toJpegUrl(lightboxUrl)}
             alt="Document"
             className="max-w-full max-h-full object-contain rounded-xl"
             onClick={e => e.stopPropagation()}
@@ -261,7 +262,7 @@ export default function AdminKycDetailPage() {
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={url}
+                src={toJpegUrl(url)}
                 alt={label}
                 className="w-full rounded-2xl border border-gray-100 object-cover max-h-56 cursor-zoom-in"
                 onClick={() => setLightboxUrl(url)}
