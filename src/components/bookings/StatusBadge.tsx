@@ -21,7 +21,7 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelled',
   awaiting_driver_confirmation: 'Awaiting driver',
   in_progress: 'Session in progress',
-  awaiting_end_confirmation: 'Ending session',
+  awaiting_end_confirmation: 'Awaiting confirmation',
   completed: 'Completed',
   no_show: 'No show',
 };

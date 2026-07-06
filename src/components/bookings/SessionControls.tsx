@@ -237,13 +237,20 @@ export function SessionControls({
     : now + SESSION_END_AUTO_COMPLETE_MINUTES * 60 * 1000;
   const remainingMs = Math.max(0, autoCompleteMs - now);
 
+  // Format the absolute auto-complete wall-clock time as HH:MM
+  const autoCompleteTime = new Date(autoCompleteMs).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
   if (userRole === 'driver') {
     return (
       <div className="space-y-2">
         <div className="px-4 py-3 bg-orange-50 rounded-2xl border border-orange-200">
-          <p className="text-sm font-semibold text-orange-700">Lender has requested to end the session</p>
-          <p className="text-xs text-orange-600 mt-1">
-            Auto-completes in {formatClock(remainingMs)} if not confirmed.
+          <p className="text-sm font-semibold text-orange-700">
+            Lender has ended the session — confirm below to complete your charge.
+            {' '}Auto-completes at {autoCompleteTime} if not confirmed.
           </p>
         </div>
         {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
@@ -251,10 +258,9 @@ export function SessionControls({
           variant="secondary"
           size="lg"
           disabled={loading}
-          className="flex items-center gap-2 justify-center"
+          className="justify-center"
           onClick={() => { void handleAction('end'); }}
         >
-          <Square className="w-5 h-5" />
           {loading ? 'Confirming…' : 'Confirm end'}
         </Button>
       </div>
