@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Zap, Star, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { Plus, Zap, Star, ArrowUpDown, ChevronDown, Filter, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
@@ -131,7 +131,7 @@ function ChargerTile({
   );
 }
 
-// ─── Filter chip ──────────────────────────────────────────────────────────────
+// ─── Filter button + bottom sheet ────────────────────────────────────────────
 
 const FILTER_LABELS: Record<FilterKey, string> = {
   all: 'All',
@@ -141,15 +141,45 @@ const FILTER_LABELS: Record<FilterKey, string> = {
   suspended: 'Suspended',
 };
 
-function FilterChips({
+function FilterButton({ activeFilter, onClick }: { activeFilter: FilterKey; onClick: () => void }) {
+  const isFiltered = activeFilter !== 'all';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex-1 flex items-center gap-2 h-9 px-3 rounded-lg text-xs font-semibold text-ink bg-gray-50',
+        'border-[0.5px] transition-colors',
+        isFiltered ? 'border-ink' : 'border-gray-300',
+      )}
+    >
+      <Filter className="w-3.5 h-3.5 shrink-0" />
+      <span className="flex-1 text-left">Filter: {FILTER_LABELS[activeFilter]}</span>
+      <ChevronDown className="w-3 h-3 shrink-0" />
+    </button>
+  );
+}
+
+function StatusFilterSheet({
+  isOpen,
   chargers,
-  activeFilters,
-  onChange,
+  activeFilter,
+  onSelect,
+  onClose,
 }: {
+  isOpen: boolean;
   chargers: Charger[];
-  activeFilters: Set<FilterKey>;
-  onChange: (next: Set<FilterKey>) => void;
+  activeFilter: FilterKey;
+  onSelect: (key: FilterKey) => void;
+  onClose: () => void;
 }) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
   const counts: Record<FilterKey, number> = {
     all: chargers.length,
     active: chargers.filter(c => c.status === 'active').length,
@@ -158,43 +188,64 @@ function FilterChips({
     suspended: chargers.filter(c => c.status === 'suspended').length,
   };
 
-  function toggle(key: FilterKey) {
-    if (key === 'all') {
-      onChange(new Set(['all']));
-      return;
-    }
-    const next = new Set(activeFilters);
-    next.delete('all');
-    if (next.has(key)) {
-      next.delete(key);
-      if (next.size === 0) next.add('all');
-    } else {
-      next.add(key);
-    }
-    onChange(next);
-  }
+  const options: { key: FilterKey; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'active', label: 'Live' },
+    { key: 'paused', label: 'Paused' },
+    { key: 'draft', label: 'Draft' },
+    { key: 'suspended', label: 'Suspended' },
+  ];
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
-      {(['all', 'active', 'paused', 'draft', 'suspended'] as FilterKey[]).map(key => {
-        const active = activeFilters.has(key);
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => toggle(key)}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors shrink-0',
-              active
-                ? 'bg-ink text-white'
-                : 'bg-gray-100 text-muted hover:bg-gray-200',
-            )}
-          >
-            {FILTER_LABELS[key]} ({counts[key]})
+    <>
+      <div
+        className={cn(
+          'fixed inset-0 bg-black/40 z-40 transition-opacity duration-200',
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
+        )}
+        aria-hidden="true"
+        onClick={onClose}
+      />
+      <div
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl',
+          'transition-transform duration-300 ease-out',
+          isOpen ? 'translate-y-0' : 'translate-y-full',
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Filter by status"
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+        {/* Header */}
+        <div className="flex items-center px-4 pb-3 pt-1">
+          <h2 className="font-display font-bold text-ink text-lg flex-1">Filter</h2>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors" aria-label="Close">
+            <X className="w-4 h-4 text-muted" />
           </button>
-        );
-      })}
-    </div>
+        </div>
+        {/* Options */}
+        <div className="pb-8">
+          {options.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { onSelect(key); onClose(); }}
+              className="w-full flex items-center px-4 py-3.5 text-sm font-semibold text-ink hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex-1 text-left">{label}</span>
+              <span className="text-muted text-xs font-normal mr-3">{counts[key]}</span>
+              <div className="w-4 h-4 shrink-0 flex items-center justify-center">
+                {activeFilter === key && <Check className="w-4 h-4 text-ink" />}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -226,29 +277,29 @@ function SortButton({ sort, onChange }: { sort: SortKey; onChange: (s: SortKey) 
         type="button"
         onClick={() => setOpen(o => !o)}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white',
-          'border transition-colors whitespace-nowrap',
-          open ? 'border-ink text-ink' : 'border-gray-300 text-ink',
+          'flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-ink bg-gray-50',
+          'border-[0.5px] transition-colors whitespace-nowrap',
+          open ? 'border-ink' : 'border-gray-300',
         )}
       >
-        <ArrowUpDown className="w-3.5 h-3.5" />
+        <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
         {SORT_LABELS[sort]}
-        <ChevronDown className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('w-3 h-3 shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-md py-1 z-20 min-w-[148px]">
+        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-md py-1 z-20 min-w-[152px]">
           {(['last_active', 'most_bookings', 'highest_rated', 'date_added'] as SortKey[]).map(key => (
             <button
               key={key}
               type="button"
               onClick={() => { onChange(key); setOpen(false); }}
-              className={cn(
-                'w-full text-left px-3 py-2 text-xs font-semibold transition-colors',
-                sort === key ? 'text-ink bg-gray-50' : 'text-muted hover:bg-gray-50',
-              )}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-ink hover:bg-gray-50 transition-colors"
             >
-              {SORT_LABELS[key]}
+              <span className="flex-1 text-left">{SORT_LABELS[key]}</span>
+              <div className="w-3.5 h-3.5 shrink-0 flex items-center justify-center">
+                {sort === key && <Check className="w-3.5 h-3.5 text-ink" />}
+              </div>
             </button>
           ))}
         </div>
@@ -267,7 +318,8 @@ function LenderChargersContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>('last_active');
-  const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set(['all']));
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -305,9 +357,9 @@ function LenderChargersContent() {
   const kycApproved = profile?.kyc_status === 'approved';
 
   // Apply filter
-  const filtered = activeFilters.has('all')
+  const filtered = activeFilter === 'all'
     ? chargers
-    : chargers.filter(c => activeFilters.has(c.status as FilterKey));
+    : chargers.filter(c => c.status === activeFilter);
 
   // Apply sort
   const displayed = sortChargers(filtered, sort);
@@ -341,19 +393,10 @@ function LenderChargersContent() {
       )}
 
       {!loading && !error && chargers.length > 0 && (
-        <>
-          {/* Sort + filter row */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <FilterChips
-                chargers={chargers}
-                activeFilters={activeFilters}
-                onChange={setActiveFilters}
-              />
-            </div>
-            <SortButton sort={sort} onChange={setSort} />
-          </div>
-        </>
+        <div className="flex items-center gap-2">
+          <FilterButton activeFilter={activeFilter} onClick={() => setFilterSheetOpen(true)} />
+          <SortButton sort={sort} onChange={setSort} />
+        </div>
       )}
 
       {/* States */}
@@ -398,6 +441,14 @@ function LenderChargersContent() {
           ))}
         </div>
       )}
+
+      <StatusFilterSheet
+        isOpen={filterSheetOpen}
+        chargers={chargers}
+        activeFilter={activeFilter}
+        onSelect={setActiveFilter}
+        onClose={() => setFilterSheetOpen(false)}
+      />
     </main>
   );
 }
