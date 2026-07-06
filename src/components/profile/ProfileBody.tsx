@@ -7,6 +7,7 @@ import { NameEditor } from './NameEditor';
 import { RoleEditor } from './RoleEditor';
 import { Avatar } from '@/components/ui/Avatar';
 import { uploadImage } from '@/lib/cloudinary';
+import { ImageCropper } from '@/components/ui/ImageCropper';
 import { requiresKyc, type UserRole } from '@/lib/auth/kyc';
 
 type Role = 'driver' | 'lender' | 'both';
@@ -34,34 +35,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function resizeImage(file: File, maxSize = 400): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
-      const w = Math.round(img.naturalWidth * scale);
-      const h = Math.round(img.naturalHeight * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { reject(new Error('No 2d context')); return; }
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(
-        blob => {
-          if (!blob) { reject(new Error('Canvas toBlob failed')); return; }
-          resolve(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
-        },
-        'image/jpeg',
-        0.9,
-      );
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
-    img.src = url;
-  });
-}
 
 export function ProfileBody({
   initialName,
@@ -79,18 +52,24 @@ export function ProfileBody({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const kycRequired = requiresKyc(role as UserRole);
 
-  async function handleFileSelect(file: File) {
+  function handleFileSelect(file: File) {
+    setCropFile(file);
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setCropFile(null);
     setAvatarLoading(true);
     setAvatarError(null);
     try {
-      const resized = await resizeImage(file, 400);
-      const url = await uploadImage(resized);
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      const url = await uploadImage(file);
       const res = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -150,6 +129,15 @@ export function ProfileBody({
 
   return (
     <>
+      {cropFile && (
+        <ImageCropper
+          file={cropFile}
+          aspectRatio="1:1"
+          onConfirm={blob => { void handleCropConfirm(blob); }}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
+
       {/* Hidden file inputs */}
       <input
         ref={cameraInputRef}

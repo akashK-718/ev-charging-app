@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { PLATFORM_COMMISSION_PERCENT } from '@/lib/constants';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 import type { NewChargerDraft } from '@/types/charger-draft';
 
 const MapViewPreview = dynamic(
@@ -149,7 +150,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={i}
-                  src={url}
+                  src={toJpegUrl(url)}
                   alt={`Charger photo ${i + 1}`}
                   className="w-full aspect-square object-cover rounded-xl"
                 />

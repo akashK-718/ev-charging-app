@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Star, Zap } from 'lucide-react';
 import type { Database } from '@/lib/supabase/types';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 
 export type ChargerRow = Database['public']['Tables']['chargers']['Row'];
 
@@ -28,7 +29,7 @@ export function ChargerCard({
         <div className="aspect-[16/9] bg-volt-soft relative overflow-hidden">
           {cover ? (
             <img
-              src={cover}
+              src={toJpegUrl(cover)}
               alt={charger.title}
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
             />

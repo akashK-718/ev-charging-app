@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 
 const SIZE_CLASS = {
   sm: 'w-8 h-8 text-xs',
@@ -35,7 +36,7 @@ export function Avatar({ avatarUrl, name, size = 'md' }: AvatarProps) {
       <div className={`${sizeClass} rounded-full overflow-hidden shrink-0`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={avatarUrl}
+          src={toJpegUrl(avatarUrl)}
           alt={name ?? 'Profile photo'}
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}

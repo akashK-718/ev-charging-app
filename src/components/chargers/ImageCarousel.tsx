@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 
 export interface ImageCarouselProps {
   photos: string[];
@@ -92,7 +93,7 @@ export function ImageCarousel({
     return (
       <div ref={containerRef} className={cn('relative w-full aspect-[16/9] overflow-hidden', className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photos[0]} alt={alt} className="absolute inset-0 w-full h-full object-cover" />
+        <img src={toJpegUrl(photos[0])} alt={alt} className="absolute inset-0 w-full h-full object-cover" />
       </div>
     );
   }
@@ -112,7 +113,7 @@ export function ImageCarousel({
         {photos.map((url, i) => (
           <div key={i} className="relative h-full shrink-0" style={{ width: `${100 / photos.length}%` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={`${alt} ${i + 1}`} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={toJpegUrl(url)} alt={`${alt} ${i + 1}`} className="absolute inset-0 w-full h-full object-cover" />
           </div>
         ))}
       </div>
