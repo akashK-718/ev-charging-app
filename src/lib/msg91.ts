@@ -18,7 +18,8 @@ interface SendOtpResponse {
  * Phone should be in E.164 format without '+': "919876543210"
  */
 const isDevBypassEnabled =
-  process.env.NODE_ENV === 'development' && !process.env.MSG91_AUTH_KEY;
+  process.env.OTP_BYPASS === 'true' ||
+  (process.env.NODE_ENV === 'development' && !process.env.MSG91_AUTH_KEY);
 
 export async function sendOtp(phone: string): Promise<SendOtpResponse> {
   // Dev bypass: only active in development when MSG91 is not configured
