@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { haptic } from '@/lib/haptics';
 import { Calendar, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -165,6 +166,7 @@ function NewBookingContent() {
                 setSubmitting(false);
                 return;
               }
+              haptic('medium');
               router.push(`/bookings/${verifyBody.data.booking_id}`);
             } catch {
               setSubmitError('Payment verification failed. Contact support if you were charged.');

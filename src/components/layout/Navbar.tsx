@@ -283,7 +283,7 @@ const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(function NavItem(
       className={cn(
         'font-semibold text-sm transition-colors',
         mobile
-          ? 'flex items-center px-4 py-3 rounded-xl mb-0.5'
+          ? 'flex items-center px-4 py-3 rounded-xl mb-0.5 tap-target'
           : 'px-3 py-1.5 rounded-lg',
         isAdmin
           ? isActive

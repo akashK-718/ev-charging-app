@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Zap, Square, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { haptic } from '@/lib/haptics';
 import { SESSION_GRACE_MINUTES, SESSION_END_AUTO_COMPLETE_MINUTES } from '@/lib/constants';
 
 interface SessionControlsProps {
@@ -76,6 +77,7 @@ export function SessionControls({
         }
         return;
       }
+      haptic('light');
       await onUpdated();
     } catch {
       setError(`Failed to ${action} session`);
