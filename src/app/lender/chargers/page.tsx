@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Zap, Star, Edit3 } from 'lucide-react';
+import { Plus, Zap, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
@@ -87,7 +87,6 @@ function ChargerTile({
 }) {
   const router = useRouter();
   const isSuspended = charger.status === 'suspended';
-  const canEdit = !isSuspended;
 
   return (
     <div
@@ -117,28 +116,15 @@ function ChargerTile({
         <p className="font-medium text-sm text-ink leading-snug">{charger.title}</p>
         <p className="text-xs text-muted truncate mt-0.5">{charger.address}</p>
 
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-2 text-xs text-muted">
-            {charger.avg_rating !== null && (
-              <span className="flex items-center gap-0.5">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                <span className="font-semibold text-ink">{charger.avg_rating.toFixed(1)}</span>
-              </span>
-            )}
-            {charger.avg_rating !== null && <span>·</span>}
-            <span>{charger.total_sessions} booking{charger.total_sessions !== 1 ? 's' : ''}</span>
-          </div>
-
-          {canEdit && (
-            <Link
-              href={`/lender/chargers/${charger.id}/edit`}
-              onClick={e => e.stopPropagation()}
-              className="p-1.5 -mr-1 rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label={`Edit ${charger.title}`}
-            >
-              <Edit3 className="w-4 h-4 text-muted" />
-            </Link>
+        <div className="flex items-center gap-2 mt-2 text-xs text-muted">
+          {charger.avg_rating !== null && (
+            <span className="flex items-center gap-0.5">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span className="font-semibold text-ink">{charger.avg_rating.toFixed(1)}</span>
+            </span>
           )}
+          {charger.avg_rating !== null && <span>·</span>}
+          <span>{charger.total_sessions} booking{charger.total_sessions !== 1 ? 's' : ''}</span>
         </div>
       </div>
     </div>
