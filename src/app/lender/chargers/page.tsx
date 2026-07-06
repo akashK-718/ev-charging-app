@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Zap, Star } from 'lucide-react';
+import { Plus, Zap, Star, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
@@ -198,6 +198,65 @@ function FilterChips({
   );
 }
 
+// ─── Sort button ──────────────────────────────────────────────────────────────
+
+const SORT_LABELS: Record<SortKey, string> = {
+  last_active: 'Last active',
+  most_bookings: 'Most bookings',
+  highest_rated: 'Highest rated',
+  date_added: 'Date added',
+};
+
+function SortButton({ sort, onChange }: { sort: SortKey; onChange: (s: SortKey) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutsideClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white',
+          'border transition-colors whitespace-nowrap',
+          open ? 'border-ink text-ink' : 'border-gray-300 text-ink',
+        )}
+      >
+        <ArrowUpDown className="w-3.5 h-3.5" />
+        {SORT_LABELS[sort]}
+        <ChevronDown className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-md py-1 z-20 min-w-[148px]">
+          {(['last_active', 'most_bookings', 'highest_rated', 'date_added'] as SortKey[]).map(key => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { onChange(key); setOpen(false); }}
+              className={cn(
+                'w-full text-left px-3 py-2 text-xs font-semibold transition-colors',
+                sort === key ? 'text-ink bg-gray-50' : 'text-muted hover:bg-gray-50',
+              )}
+            >
+              {SORT_LABELS[key]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main content ─────────────────────────────────────────────────────────────
 
 function LenderChargersContent() {
@@ -292,17 +351,7 @@ function LenderChargersContent() {
                 onChange={setActiveFilters}
               />
             </div>
-            <select
-              value={sort}
-              onChange={e => setSort(e.target.value as SortKey)}
-              className="shrink-0 text-xs font-semibold text-ink bg-gray-100 rounded-xl px-3 py-2 border-none outline-none cursor-pointer appearance-none"
-              aria-label="Sort chargers"
-            >
-              <option value="last_active">Last active</option>
-              <option value="most_bookings">Most bookings</option>
-              <option value="highest_rated">Highest rated</option>
-              <option value="date_added">Date added</option>
-            </select>
+            <SortButton sort={sort} onChange={setSort} />
           </div>
         </>
       )}
