@@ -90,7 +90,7 @@ export function AddressAutocomplete({
           onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
           placeholder={placeholder}
           className={cn(
-            'w-full pl-10 pr-10 py-3.5 bg-gray-100 rounded-2xl text-ink',
+            'w-full pl-10 pr-10 py-3.5 bg-gray-100 rounded-xl text-ink',
             'placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt',
           )}
         />
@@ -100,7 +100,7 @@ export function AddressAutocomplete({
       </div>
 
       {showDropdown && suggestions.length > 0 && (
-        <ul className="absolute left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-gray-100 z-30 overflow-hidden">
+        <ul className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-30 overflow-hidden">
           {suggestions.map(s => (
             <li key={s.id}>
               <button

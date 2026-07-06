@@ -19,17 +19,16 @@ export function Button({
   return (
     <button
       className={cn(
-        'font-display font-bold rounded-2xl transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed',
+        'font-semibold rounded-xl transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed',
         {
           'bg-ink text-white hover:bg-ink-soft': variant === 'primary',
-          'bg-volt text-ink hover:bg-volt-deep hover:text-white':
-            variant === 'secondary',
+          'bg-volt text-ink hover:bg-volt-deep hover:text-white': variant === 'secondary',
           'bg-transparent text-ink hover:bg-volt-soft': variant === 'ghost'
         },
         {
-          'px-4 py-2 text-sm': size === 'sm',
-          'px-6 py-3 text-base': size === 'md',
-          'px-8 py-4 text-lg w-full': size === 'lg'
+          'h-9 px-3 text-sm': size === 'sm',
+          'h-12 px-4 text-base': size === 'md',
+          'h-12 px-4 text-base w-full': size === 'lg'
         },
         className
       )}

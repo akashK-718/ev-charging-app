@@ -39,7 +39,7 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen flex flex-col px-6 py-12 animate-page-in">
-      <h1 className="font-display font-extrabold text-3xl text-ink">Welcome</h1>
+      <h1 className="text-2xl font-medium text-ink">Welcome</h1>
       <p className="mt-2 text-muted text-sm">
         We&apos;ll send you a 6-digit code to verify.
       </p>
@@ -53,11 +53,11 @@ export default function LoginPage() {
           {/* Unified phone input */}
           <div
             className={cn(
-              'flex items-center border-2 rounded-2xl bg-gray-50 transition-colors overflow-hidden',
+              'flex items-center h-12 border-2 rounded-xl bg-gray-50 transition-colors overflow-hidden',
               error ? 'border-red-400' : 'border-gray-200 focus-within:border-volt',
             )}
           >
-            <span className="px-4 py-3.5 text-muted font-semibold text-sm shrink-0 border-r-2 border-gray-200 select-none">
+            <span className="px-4 self-stretch flex items-center text-muted font-semibold text-sm shrink-0 border-r-2 border-gray-200 select-none">
               +91
             </span>
             <input
@@ -68,7 +68,7 @@ export default function LoginPage() {
               maxLength={10}
               inputMode="numeric"
               required
-              className="flex-1 px-4 py-3.5 bg-transparent focus:outline-none text-ink font-semibold placeholder:text-muted placeholder:font-normal text-sm"
+              className="flex-1 px-4 bg-transparent focus:outline-none text-ink font-semibold placeholder:text-muted placeholder:font-normal text-base"
             />
           </div>
         </div>

@@ -97,7 +97,7 @@ function LenderBookingsContent() {
 
   return (
     <main className="min-h-screen px-6 py-10">
-      <h1 className="font-display font-extrabold text-3xl text-ink mb-6">Bookings</h1>
+      <h1 className="text-2xl font-medium text-ink mb-6">Bookings</h1>
 
       {/* Charger filter indicator */}
       {chargerId && (
@@ -137,7 +137,7 @@ function LenderBookingsContent() {
       {loading && <div className="text-center py-12 text-muted">Loading…</div>}
 
       {error && !loading && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">{error}</div>
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">{error}</div>
       )}
 
       {!loading && !error && bookings.length === 0 && (
@@ -163,7 +163,7 @@ function LenderBookingsContent() {
             <Link
               key={booking.id}
               href={`/lender/bookings/${booking.id}`}
-              className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
+              className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
             >
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-ink text-sm truncate">

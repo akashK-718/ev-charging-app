@@ -133,7 +133,7 @@ export function SessionControls({
 
     // Driver — waiting for lender
     return (
-      <div className="px-4 py-3 bg-amber-50 rounded-2xl border border-amber-200">
+      <div className="px-4 py-3 bg-amber-50 rounded-xl border border-amber-200">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-700" />
           <p className="text-sm font-semibold text-amber-700">Waiting for lender to start the session</p>
@@ -150,7 +150,7 @@ export function SessionControls({
     if (userRole === 'driver') {
       return (
         <div className="space-y-2">
-          <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+          <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
             <p className="text-sm font-semibold text-blue-700">Lender has started the session</p>
             <p className="text-xs text-blue-600 mt-1">Confirm to begin charging.</p>
           </div>
@@ -177,7 +177,7 @@ export function SessionControls({
 
     // Lender — waiting for driver to confirm
     return (
-      <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+      <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-blue-700" />
           <p className="text-sm font-semibold text-blue-700">Waiting for driver to confirm</p>
@@ -197,7 +197,7 @@ export function SessionControls({
     if (userRole === 'lender') {
       return (
         <div className="space-y-3">
-          <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+          <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
             <p className="text-sm font-semibold text-blue-700">Session in progress</p>
             <p className="text-xs text-blue-600 mt-1">
               Elapsed {formatClock(elapsedMs)}
@@ -221,7 +221,7 @@ export function SessionControls({
 
     // Driver — session running, no end action
     return (
-      <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+      <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
         <p className="text-sm font-semibold text-blue-700">Session in progress</p>
         <p className="text-xs text-blue-600 mt-1">
           Elapsed {formatClock(elapsedMs)}
@@ -247,7 +247,7 @@ export function SessionControls({
   if (userRole === 'driver') {
     return (
       <div className="space-y-2">
-        <div className="px-4 py-3 bg-orange-50 rounded-2xl border border-orange-200">
+        <div className="px-4 py-3 bg-orange-50 rounded-xl border border-orange-200">
           <p className="text-sm font-semibold text-orange-700">
             Lender has ended the session — confirm below to complete your charge.
             {' '}Auto-completes at {autoCompleteTime} if not confirmed.
@@ -269,7 +269,7 @@ export function SessionControls({
 
   // Lender — waiting for driver to confirm end
   return (
-    <div className="px-4 py-3 bg-orange-50 rounded-2xl border border-orange-200">
+    <div className="px-4 py-3 bg-orange-50 rounded-xl border border-orange-200">
       <div className="flex items-center gap-2">
         <Clock className="w-4 h-4 text-orange-700" />
         <p className="text-sm font-semibold text-orange-700">Waiting for driver to confirm end</p>

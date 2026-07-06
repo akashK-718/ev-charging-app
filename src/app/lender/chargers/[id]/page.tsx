@@ -115,7 +115,7 @@ function StatusBadge({ status }: { status: ChargerStatus }) {
 
 function StatCard({ value, label, sub }: { value: string; label: string; sub?: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
+    <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
       <p className="text-xl font-display font-extrabold text-ink">{value}</p>
       <p className="text-xs text-muted mt-0.5">{label}</p>
       {sub && <p className="text-xs font-semibold text-volt-deep mt-0.5">{sub}</p>}
@@ -137,13 +137,13 @@ function ConfirmModal({
         <div className="flex gap-3 mt-6">
           <button
             type="button" onClick={onCancel} disabled={loading}
-            className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-ink hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-bold text-ink hover:bg-gray-50 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="button" onClick={onConfirm} disabled={loading}
-            className={cn('flex-1 px-4 py-3 rounded-2xl text-sm font-bold text-white disabled:opacity-50', confirmClass)}
+            className={cn('flex-1 px-4 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50', confirmClass)}
           >
             {loading ? 'Working…' : confirmLabel}
           </button>
@@ -331,7 +331,7 @@ export default function LenderChargerDetailPage() {
 
           {/* Draft banner */}
           {charger.status === 'draft' && (
-            <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200">
+            <div className="px-4 py-3 bg-yellow-50 rounded-xl border border-yellow-200">
               <p className="text-sm text-yellow-800">
                 This charger is not live yet.{' '}
                 <Link href="/profile" className="font-semibold underline underline-offset-2">
@@ -375,7 +375,7 @@ export default function LenderChargerDetailPage() {
                   <Link
                     key={b.id}
                     href={`/lender/bookings/${b.id}`}
-                    className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
+                    className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
                   >
                     <div>
                       <p className="text-sm font-semibold text-ink">
@@ -408,7 +408,7 @@ export default function LenderChargerDetailPage() {
                     <Link
                       key={b.id}
                       href={`/lender/bookings/${b.id}`}
-                      className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
+                      className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
                     >
                       <div>
                         <p className="text-sm font-semibold text-ink">
@@ -442,7 +442,7 @@ export default function LenderChargerDetailPage() {
           <div className="space-y-4">
             <h2 className="font-semibold text-base text-ink">Details</h2>
 
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
+            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
               {/* Charger type + connectors */}
               <div>
                 <p className="text-xs text-muted mb-1.5">Charger type</p>
@@ -513,7 +513,7 @@ export default function LenderChargerDetailPage() {
         <button
           type="button"
           onClick={handleEditClick}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-ink text-white text-sm font-bold rounded-2xl hover:bg-ink/90 transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-ink text-white text-sm font-bold rounded-xl hover:bg-ink/90 transition-colors"
         >
           <Edit3 className="w-4 h-4" />
           Edit
@@ -524,7 +524,7 @@ export default function LenderChargerDetailPage() {
             type="button"
             onClick={handlePauseClick}
             disabled={actionLoading}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-ink text-sm font-bold rounded-2xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-ink text-sm font-bold rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
             <Pause className="w-4 h-4" />
             Pause
@@ -535,7 +535,7 @@ export default function LenderChargerDetailPage() {
             type="button"
             onClick={() => { void doUnpause(); }}
             disabled={actionLoading}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-volt-soft text-volt-deep text-sm font-bold rounded-2xl hover:bg-volt/20 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-volt-soft text-volt-deep text-sm font-bold rounded-xl hover:bg-volt/20 transition-colors disabled:opacity-50"
           >
             <Play className="w-4 h-4" />
             Resume
@@ -547,13 +547,13 @@ export default function LenderChargerDetailPage() {
           <button
             type="button"
             onClick={() => setMenuOpen(v => !v)}
-            className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors"
+            className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
           >
             <MoreVertical className="w-5 h-5 text-ink" />
           </button>
 
           {menuOpen && (
-            <div className="absolute bottom-14 right-0 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1 overflow-hidden z-50">
+            <div className="absolute bottom-14 right-0 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-1 overflow-hidden z-50">
               <button
                 type="button"
                 onClick={handleShare}

@@ -297,7 +297,7 @@ export default async function LenderDashboardPage({
     <main className="min-h-screen px-6 py-10 space-y-6">
       {/* Action banners */}
       {searchParams.listed === '1' && (
-        <div className="px-4 py-3 bg-volt-soft rounded-2xl border border-volt">
+        <div className="px-4 py-3 bg-volt-soft rounded-xl border border-volt">
           <p className="font-semibold text-ink">
             {kycStatus === 'approved'
               ? "Charger listed! It's now live for drivers."
@@ -306,14 +306,14 @@ export default async function LenderDashboardPage({
         </div>
       )}
       {searchParams.kyc === 'submitted' && (
-        <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+        <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
           <p className="font-semibold text-blue-800">KYC submitted! We&apos;ll review within 24–48 hours.</p>
         </div>
       )}
 
       {/* KYC status banners */}
       {kycStatus === 'not_started' && draftChargers > 0 && (
-        <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200">
+        <div className="px-4 py-3 bg-yellow-50 rounded-xl border border-yellow-200">
           <p className="text-sm text-yellow-800">
             Your {draftChargers} charger{draftChargers > 1 ? 's are' : ' is'} ready.{' '}
             <Link href="/profile" className="font-semibold underline underline-offset-2">
@@ -324,7 +324,7 @@ export default async function LenderDashboardPage({
         </div>
       )}
       {kycStatus === 'pending' && (
-        <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+        <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
           <p className="text-sm text-blue-800 font-semibold">Verification under review</p>
           <p className="text-xs text-blue-700 mt-0.5">
             Usually 24–48 hours.
@@ -333,7 +333,7 @@ export default async function LenderDashboardPage({
         </div>
       )}
       {kycStatus === 'rejected' && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-200">
+        <div className="px-4 py-3 bg-red-50 rounded-xl border border-red-200">
           <p className="text-sm text-red-800">
             Verification rejected — update your details in{' '}
             <Link href="/profile" className="font-semibold underline underline-offset-2">Profile</Link>{' '}
@@ -343,7 +343,7 @@ export default async function LenderDashboardPage({
       )}
 
       {/* Heading */}
-      <h1 className="font-display font-extrabold text-3xl text-ink">
+      <h1 className="text-2xl font-medium text-ink">
         {profile.name ? `Hi, ${profile.name.split(' ')[0]}` : 'Welcome back'}
       </h1>
 
@@ -351,7 +351,7 @@ export default async function LenderDashboardPage({
       <div className="space-y-3">
         <Link
           href="/lender/earnings"
-          className="group block bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+          className="group block bg-white rounded-xl border border-gray-100 px-5 py-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
         >
           <ChevronRight className="absolute top-4 right-4 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
           <p className="text-3xl font-display font-extrabold text-ink pr-6">{formatINR(weekEarningsPaise)}</p>
@@ -360,7 +360,7 @@ export default async function LenderDashboardPage({
         <div className="grid grid-cols-2 gap-3">
           <Link
             href="/lender/chargers?filter=active"
-            className="group bg-white rounded-2xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+            className="group bg-white rounded-xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
           >
             <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
             <p className="text-2xl font-display font-extrabold text-ink">{liveChargers}</p>
@@ -368,7 +368,7 @@ export default async function LenderDashboardPage({
           </Link>
           <Link
             href="/lender/chargers?filter=draft"
-            className="group bg-white rounded-2xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+            className="group bg-white rounded-xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
           >
             <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
             <p className="text-2xl font-display font-extrabold text-ink">{draftChargers}</p>
@@ -383,21 +383,21 @@ export default async function LenderDashboardPage({
         <div className="grid grid-cols-1 gap-2">
           <Link
             href="/lender/bookings"
-            className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
           >
             <BookOpen className="w-5 h-5 text-volt-deep" />
             <span className="font-semibold text-ink text-sm">View bookings</span>
           </Link>
           <Link
             href="/lender/chargers/new"
-            className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
           >
             <Zap className="w-5 h-5 text-volt-deep" />
             <span className="font-semibold text-ink text-sm">Add a charger</span>
           </Link>
           <Link
             href="/lender/earnings"
-            className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
           >
             <Clock className="w-5 h-5 text-volt-deep" />
             <span className="font-semibold text-ink text-sm">View earnings</span>
@@ -418,7 +418,7 @@ export default async function LenderDashboardPage({
                 <Link
                   key={charger.id}
                   href={`/lender/chargers/${charger.id}`}
-                  className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
+                  className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
@@ -457,7 +457,7 @@ export default async function LenderDashboardPage({
               <Link
                 key={booking.id}
                 href={`/lender/bookings/${booking.id}`}
-                className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
+                className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-3 hover:border-gray-200 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-ink truncate">

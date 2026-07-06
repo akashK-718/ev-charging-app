@@ -104,7 +104,7 @@ export function ChargerListView({
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl bg-gray-100 animate-pulse h-48" />
+            <div key={i} className="rounded-xl bg-gray-100 animate-pulse h-48" />
           ))}
         </div>
       ) : chargers.length === 0 ? (

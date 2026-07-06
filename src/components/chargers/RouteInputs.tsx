@@ -61,7 +61,7 @@ export function RouteInputs({
       <div className="flex items-center gap-2">
         <div
           className={cn(
-            'relative flex-1 rounded-2xl ring-2 transition-all duration-150',
+            'relative flex-1 rounded-xl ring-2 transition-all duration-150',
             activeInput === 'from' ? 'ring-volt' : 'ring-gray-200',
             isSwapping && 'opacity-0',
           )}
@@ -74,7 +74,7 @@ export function RouteInputs({
               aria-label="Change start location"
               onClick={handleChipClick}
               onKeyDown={e => e.key === 'Enter' && handleChipClick()}
-              className="w-full pl-4 pr-10 py-3.5 bg-gray-100 rounded-2xl flex items-center gap-2 cursor-text"
+              className="w-full pl-4 pr-10 py-3.5 bg-gray-100 rounded-xl flex items-center gap-2 cursor-text"
             >
               <LocateFixed className="w-4 h-4 text-volt shrink-0" />
               <span className="flex-1 text-sm text-ink font-medium truncate">Your location</span>
@@ -118,7 +118,7 @@ export function RouteInputs({
       <div className="flex items-center gap-2">
         <div
           className={cn(
-            'relative flex-1 rounded-2xl ring-2 transition-all duration-150',
+            'relative flex-1 rounded-xl ring-2 transition-all duration-150',
             activeInput === 'to' ? 'ring-volt' : 'ring-gray-200',
             isSwapping && 'opacity-0',
           )}

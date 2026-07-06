@@ -177,14 +177,14 @@ export function ProfileBody({
 
       {/* Submission success toast */}
       {showSubmittedBanner && kycRequired && kycStatus === 'pending' && (
-        <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+        <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
           <p className="font-semibold text-blue-800">Verification submitted!</p>
           <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
         </div>
       )}
 
       {/* Account info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
         <h2 className="font-semibold text-base text-ink">Account</h2>
 
         {/* Avatar */}
@@ -232,7 +232,7 @@ export function ProfileBody({
 
       {/* Identity verification */}
       {kycRequired && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-base text-ink">Identity verification</h2>
 
           {kycStatus === 'not_started' && (
@@ -250,7 +250,7 @@ export function ProfileBody({
               </div>
               <Link
                 href="/profile/verify"
-                className="block w-full text-center px-4 py-3 bg-ink text-white text-sm font-bold rounded-2xl hover:bg-ink/90 transition-colors"
+                className="block w-full text-center px-4 py-3 bg-ink text-white text-sm font-bold rounded-xl hover:bg-ink/90 transition-colors"
               >
                 Start verification
               </Link>
@@ -296,7 +296,7 @@ export function ProfileBody({
               </div>
               <Link
                 href="/profile/verify"
-                className="block w-full text-center px-4 py-3 bg-red-700 text-white text-sm font-bold rounded-2xl hover:bg-red-800 transition-colors"
+                className="block w-full text-center px-4 py-3 bg-red-700 text-white text-sm font-bold rounded-xl hover:bg-red-800 transition-colors"
               >
                 Resubmit documents
               </Link>
@@ -325,7 +325,7 @@ export function ProfileBody({
               <button
                 type="button"
                 onClick={openCamera}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
               >
                 <Camera className="w-5 h-5 text-muted shrink-0" />
                 <span className="text-sm font-semibold text-ink">Take a selfie</span>
@@ -334,7 +334,7 @@ export function ProfileBody({
               <button
                 type="button"
                 onClick={openFilePicker}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
               >
                 <ImageIcon className="w-5 h-5 text-muted shrink-0" />
                 <span className="text-sm font-semibold text-ink">Upload a photo</span>
@@ -344,7 +344,7 @@ export function ProfileBody({
                 <button
                   type="button"
                   onClick={() => { setSheetOpen(false); void handleResetAvatar(); }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
                 >
                   <ShieldQuestion className="w-5 h-5 text-muted shrink-0" />
                   <span className="text-sm font-semibold text-ink">Use verification photo</span>
@@ -355,7 +355,7 @@ export function ProfileBody({
                 <button
                   type="button"
                   onClick={() => { setSheetOpen(false); void handleRemoveAvatar(); }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 hover:bg-red-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-red-50 transition-colors text-left"
                 >
                   <Trash2 className="w-5 h-5 text-red-500 shrink-0" />
                   <span className="text-sm font-semibold text-red-600">Remove photo</span>

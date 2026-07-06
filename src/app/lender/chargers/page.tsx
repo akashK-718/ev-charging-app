@@ -369,7 +369,7 @@ function LenderChargersContent() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-display font-extrabold text-3xl text-ink">My chargers</h1>
+        <h1 className="text-2xl font-medium text-ink">My chargers</h1>
         <Link
           href="/lender/chargers/new"
           className="flex items-center gap-1.5 px-3 py-2 bg-ink text-white text-sm font-bold rounded-xl hover:bg-ink/90 transition-colors"
@@ -381,7 +381,7 @@ function LenderChargersContent() {
 
       {/* KYC warning */}
       {!profileLoading && !kycApproved && (
-        <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200">
+        <div className="px-4 py-3 bg-yellow-50 rounded-xl border border-yellow-200">
           <p className="text-sm text-yellow-800">
             Your chargers aren&apos;t visible to drivers yet.{' '}
             <Link href="/profile" className="font-semibold underline underline-offset-2">
@@ -405,21 +405,21 @@ function LenderChargersContent() {
       )}
 
       {!loading && error && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {error}
         </div>
       )}
 
       {!loading && !error && chargers.length === 0 && (
         <div className="text-center py-20">
-          <div className="w-14 h-14 bg-volt-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 bg-volt-soft rounded-xl flex items-center justify-center mx-auto mb-4">
             <Zap className="w-7 h-7 text-volt-deep" />
           </div>
           <p className="font-semibold text-ink">You haven&apos;t added any chargers yet</p>
           <p className="text-sm text-muted mt-1 mb-6">Add your first charger to start earning.</p>
           <Link
             href="/lender/chargers/new"
-            className="inline-block px-6 py-3 bg-ink text-white font-bold rounded-2xl hover:bg-ink/90 transition-colors"
+            className="inline-block px-6 py-3 bg-ink text-white font-bold rounded-xl hover:bg-ink/90 transition-colors"
           >
             Add a charger
           </Link>

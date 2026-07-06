@@ -114,12 +114,12 @@ export function LenderRatingSection({
   }
 
   if (state.kind === 'loading') {
-    return <div className="h-16 bg-gray-50 rounded-2xl animate-pulse" />;
+    return <div className="h-16 bg-gray-50 rounded-xl animate-pulse" />;
   }
 
   if (state.kind === 'suppressed' || state.kind === 'skipped') {
     return (
-      <div className="px-4 py-3 bg-gray-50 rounded-2xl">
+      <div className="px-4 py-3 bg-gray-50 rounded-xl">
         <p className="text-sm font-semibold text-ink">Session completed</p>
         {startedAt && endedAt && (
           <p className="text-xs text-muted mt-0.5">{driverName} charged for {fmtDuration(startedAt, endedAt)}</p>
@@ -134,7 +134,7 @@ export function LenderRatingSection({
 
   if (state.kind === 'submitted') {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-volt-deep shrink-0" />
           <p className="text-sm font-semibold text-ink">Your review</p>
@@ -161,7 +161,7 @@ export function LenderRatingSection({
 
   if (state.kind === 'success') {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+      <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-volt-deep shrink-0" />
           <p className="text-sm font-semibold text-ink">Thanks — your review helps the community</p>
@@ -208,7 +208,7 @@ export function LenderRatingSection({
   );
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
+    <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-4 h-4 text-volt-deep shrink-0" />
         <p className="text-sm font-semibold text-ink">Session complete</p>

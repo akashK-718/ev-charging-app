@@ -59,7 +59,7 @@ export function StepInstructions({ draft, onChange, onValidChange }: StepInstruc
 
   return (
     <div>
-      <h1 className="font-display font-extrabold text-3xl text-ink">Title & instructions</h1>
+      <h1 className="text-2xl font-medium text-ink">Title & instructions</h1>
       <p className="mt-2 text-base text-muted">
         Help drivers know what to expect.
       </p>
@@ -86,7 +86,7 @@ export function StepInstructions({ draft, onChange, onValidChange }: StepInstruc
           placeholder="e.g. Home charger – Saket"
           maxLength={TITLE_MAX}
           className={cn(
-            'w-full px-4 py-3.5 bg-gray-100 rounded-2xl text-ink',
+            'w-full h-12 px-4 bg-gray-100 rounded-xl text-ink',
             'placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt',
             titleError && 'ring-2 ring-red-400 focus:ring-red-400',
           )}
@@ -118,7 +118,7 @@ export function StepInstructions({ draft, onChange, onValidChange }: StepInstruc
           placeholder="How drivers should access your charger"
           maxLength={INSTRUCTIONS_MAX}
           className={cn(
-            'w-full px-4 py-3.5 bg-gray-100 rounded-2xl text-ink resize-none',
+            'w-full px-4 py-3 bg-gray-100 rounded-xl text-ink resize-none',
             'placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt',
             instrError && 'ring-2 ring-red-400 focus:ring-red-400',
           )}

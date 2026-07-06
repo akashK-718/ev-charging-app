@@ -221,7 +221,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
 
   return (
     <div>
-      <h1 className="font-display font-extrabold text-3xl text-ink">Photos</h1>
+      <h1 className="text-2xl font-medium text-ink">Photos</h1>
       <p className="mt-2 text-base text-muted">
         Add at least 1 photo. The first photo is the cover.
       </p>
@@ -238,7 +238,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
           className={cn(
-            'mt-8 w-full rounded-2xl border-2 border-dashed cursor-pointer',
+            'mt-8 w-full rounded-xl border-2 border-dashed cursor-pointer',
             'flex flex-col items-center justify-center gap-2 py-10 transition-colors',
             isDragOver
               ? 'border-volt bg-volt-soft'
@@ -284,7 +284,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
                 onDrop={e => handleThumbDrop(e, index)}
                 onDragEnd={handleThumbDragEnd}
                 className={cn(
-                  'relative rounded-2xl overflow-hidden aspect-[4/3] bg-gray-100',
+                  'relative rounded-xl overflow-hidden aspect-[4/3] bg-gray-100',
                   'border-2 transition-all',
                   dropTargetIndex === index ? 'border-volt scale-[0.97]' : 'border-transparent',
                   index === 0 && 'col-span-2 aspect-video',

@@ -755,7 +755,7 @@ export default function ChargersPage() {
           {/* ── Map overlay: controls ─────────────────────────────────────── */}
           {!locationLoading && (
             <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-3 pointer-events-auto">
+              <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 pointer-events-auto">
                 {isRouteMode ? (
                   routeResult && !routeEditOpen ? (
                     /* State 3: compact summary */
@@ -861,7 +861,7 @@ export default function ChargersPage() {
               ? visibleRouteChargers.length === 0 && routeResult !== null
               : visibleChargers.length === 0) && (
             <div className="absolute inset-0 flex items-end justify-center pb-28 pointer-events-none z-10">
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-5 py-4 mx-4 text-center pointer-events-auto">
+              <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-5 py-4 mx-4 text-center pointer-events-auto">
                 {isRouteMode ? (
                   <>
                     <p className="font-semibold text-ink text-sm">No chargers along this route</p>
@@ -912,7 +912,7 @@ export default function ChargersPage() {
       {viewMode === 'list' && (
         <div className="flex-1 px-4 sm:px-6 py-4 max-w-5xl mx-auto w-full">
           {/* Search controls — same logic as map overlay but inline */}
-          <div className="mb-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-3 space-y-2">
+          <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-3 space-y-2">
             {isRouteMode ? (
               routeResult && !routeEditOpen ? (
                 <RouteCompactSummary

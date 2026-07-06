@@ -60,11 +60,11 @@ export function StepPricing({ draft, onChange, onValidChange }: StepPricingProps
 
   return (
     <div>
-      <h1 className="font-display font-extrabold text-3xl text-ink">Pricing</h1>
+      <h1 className="text-2xl font-medium text-ink">Pricing</h1>
       <p className="mt-2 text-base text-muted">Set how much you charge per kWh.</p>
 
       {priceRange && (
-        <div className="mt-6 px-4 py-3 bg-volt-soft rounded-2xl">
+        <div className="mt-6 px-4 py-3 bg-volt-soft rounded-xl">
           <p className="text-sm text-ink">
             <span className="font-semibold">Suggested for your charger:</span>{' '}
             ₹{priceRange.min}–₹{priceRange.max}/kWh
@@ -92,7 +92,7 @@ export function StepPricing({ draft, onChange, onValidChange }: StepPricingProps
             onBlur={() => setTouched(true)}
             placeholder="14"
             className={cn(
-              'w-full pl-8 pr-4 py-3 bg-gray-100 rounded-2xl',
+              'w-full h-12 pl-8 pr-4 bg-gray-100 rounded-xl',
               'focus:outline-none focus:ring-2 focus:ring-volt',
               errorMessage && 'ring-2 ring-red-400 focus:ring-red-400',
             )}
@@ -104,7 +104,7 @@ export function StepPricing({ draft, onChange, onValidChange }: StepPricingProps
       </div>
 
       {estimatedEarnings !== null && (
-        <div className="mt-6 p-5 rounded-2xl border-2 border-volt-soft bg-white">
+        <div className="mt-6 p-4 rounded-xl border-2 border-volt-soft bg-white">
           <p className="text-xs text-muted uppercase tracking-wide font-semibold">
             Estimated per session
           </p>

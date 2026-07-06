@@ -69,7 +69,7 @@ export default async function ChargerDetailPage({
           alt={charger.title}
           autoRotate
           useIntersectionObserver={false}
-          className="rounded-2xl"
+          className="rounded-xl"
         />
       </div>
 

@@ -152,7 +152,7 @@ export default function NewChargerPage() {
 
       {/* Submit error */}
       {submitError && (
-        <p className="mt-4 px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <p className="mt-4 px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {submitError}
         </p>
       )}

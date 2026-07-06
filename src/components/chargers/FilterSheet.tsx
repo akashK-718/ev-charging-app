@@ -140,13 +140,13 @@ export function FilterSheet({ isOpen, selectedConnectors, maxPrice, onApply, onC
           <div className="flex gap-3 pt-1">
             <button
               onClick={handleClear}
-              className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-muted hover:text-ink hover:border-gray-300 transition-colors"
+              className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-muted hover:text-ink hover:border-gray-300 transition-colors"
             >
               Clear all
             </button>
             <button
               onClick={handleApply}
-              className="flex-[2] py-3 rounded-2xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors"
+              className="flex-[2] py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors"
             >
               Apply
             </button>

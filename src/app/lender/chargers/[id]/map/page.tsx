@@ -96,7 +96,7 @@ export default function LenderChargerMapPage() {
 
       {/* Bottom overlay — info card */}
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6">
-        <div className="bg-white rounded-2xl shadow-xl px-4 py-4 flex items-start justify-between gap-3">
+        <div className="bg-white rounded-xl shadow-xl px-4 py-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-bold text-ink truncate">{charger.title}</p>
             <p className="text-xs text-muted mt-0.5 leading-snug line-clamp-2">{charger.address}</p>

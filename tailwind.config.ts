@@ -16,8 +16,14 @@ const config: Config = {
         'volt-soft': '#e4faee'
       },
       fontFamily: {
-        sans: ['Manrope', 'system-ui', 'sans-serif'],
-        display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif']
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-sans)', 'system-ui', 'sans-serif']
+      },
+      height: {
+        control: 'var(--height-control)'
+      },
+      borderRadius: {
+        token: 'var(--radius)'
       }
     }
   },

@@ -77,7 +77,7 @@ export default function LenderPayoutsPage() {
 
   return (
     <main className="min-h-screen px-6 py-10">
-      <h1 className="font-display font-extrabold text-3xl text-ink mb-6">Payouts</h1>
+      <h1 className="text-2xl font-medium text-ink mb-6">Payouts</h1>
 
       {/* Tabs */}
       <div className="flex gap-1.5 mb-6">
@@ -100,7 +100,7 @@ export default function LenderPayoutsPage() {
       {loading && <div className="text-center py-12 text-muted">Loading…</div>}
 
       {error && !loading && (
-        <div className="px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {error}
         </div>
       )}
@@ -122,7 +122,7 @@ export default function LenderPayoutsPage() {
               ) : (
                 <>
                   {/* Summary card */}
-                  <div className="bg-volt-soft rounded-2xl border border-volt p-4">
+                  <div className="bg-volt-soft rounded-xl border border-volt p-4">
                     <p className="text-sm text-muted">Total pending</p>
                     <p className="font-display font-extrabold text-3xl text-ink mt-0.5">
                       ₹{(data.pending.total_paise / 100).toFixed(0)}
@@ -133,7 +133,7 @@ export default function LenderPayoutsPage() {
                   </div>
 
                   {/* Hold period notice */}
-                  <div className="px-4 py-3 bg-blue-50 rounded-2xl text-sm text-blue-700">
+                  <div className="px-4 py-3 bg-blue-50 rounded-xl text-sm text-blue-700">
                     Payouts are released {PAYOUT_HOLD_HOURS} hours after session completion.
                   </div>
 
@@ -142,7 +142,7 @@ export default function LenderPayoutsPage() {
                     {data.pending.items.map(item => (
                       <div
                         key={item.booking_id}
-                        className="bg-white rounded-2xl border border-gray-100 p-4"
+                        className="bg-white rounded-xl border border-gray-100 p-4"
                       >
                         <div className="flex items-start justify-between">
                           <div>
@@ -187,7 +187,7 @@ export default function LenderPayoutsPage() {
                   {data.processed.map(payout => (
                     <div
                       key={payout.id}
-                      className="bg-white rounded-2xl border border-gray-100 p-4"
+                      className="bg-white rounded-xl border border-gray-100 p-4"
                     >
                       <div className="flex items-start justify-between">
                         <div>

@@ -67,7 +67,7 @@ function PhotoUploader({ label, hint, value, onChange, capture }: PhotoUploaderP
       {hint && <p className="text-xs text-muted">{hint}</p>}
 
       {value ? (
-        <div className="relative rounded-2xl overflow-hidden border border-gray-100">
+        <div className="relative rounded-xl overflow-hidden border border-gray-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt={label} className="w-full max-h-52 object-cover" />
           <button
@@ -85,7 +85,7 @@ function PhotoUploader({ label, hint, value, onChange, capture }: PhotoUploaderP
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           className={cn(
-            'w-full rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50',
+            'w-full rounded-xl border-2 border-dashed border-gray-300 bg-gray-50',
             'flex flex-col items-center justify-center gap-2 py-10',
             'hover:border-gray-400 transition-colors disabled:opacity-60',
           )}
@@ -154,7 +154,7 @@ function StepAadhaar({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display font-extrabold text-3xl text-ink">Aadhaar card</h1>
+        <h1 className="text-2xl font-medium text-ink">Aadhaar card</h1>
         <p className="mt-2 text-muted">Upload a clear photo of your Aadhaar card.</p>
       </div>
       <PhotoUploader label="Aadhaar photo" hint="Front side showing your name and photo" value={draft.aadhaar_photo_url} onChange={url => onChange({ aadhaar_photo_url: url })} />
@@ -162,7 +162,7 @@ function StepAadhaar({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
         <label className="text-sm font-semibold text-ink" htmlFor="aadhaar_last_4">Last 4 digits of Aadhaar</label>
         <input id="aadhaar_last_4" type="tel" inputMode="numeric" maxLength={4} placeholder="e.g. 1234" value={draft.aadhaar_last_4}
           onChange={e => onChange({ aadhaar_last_4: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-          className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt" />
+          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt" />
         <p className="text-xs text-muted">We only store the last 4 digits for verification.</p>
       </div>
     </div>
@@ -177,7 +177,7 @@ function StepPan({ draft, onChange, onValidChange }: { draft: KycDraft; onChange
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display font-extrabold text-3xl text-ink">PAN card</h1>
+        <h1 className="text-2xl font-medium text-ink">PAN card</h1>
         <p className="mt-2 text-muted">Upload your PAN card and enter the PAN number.</p>
       </div>
       <PhotoUploader label="PAN card photo" hint="Clear photo showing the PAN number" value={draft.pan_photo_url} onChange={url => onChange({ pan_photo_url: url })} />
@@ -186,7 +186,7 @@ function StepPan({ draft, onChange, onValidChange }: { draft: KycDraft; onChange
         <input id="pan_number" type="text" inputMode="text" maxLength={10} placeholder="ABCDE1234F" value={draft.pan_number}
           onChange={e => onChange({ pan_number: e.target.value.toUpperCase().trim() })}
           className={cn(
-            'w-full rounded-2xl border px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt font-mono tracking-widest',
+            'w-full rounded-xl border px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt font-mono tracking-widest',
             draft.pan_number.length > 0 && !panValid ? 'border-red-300' : 'border-gray-200',
           )} />
         {draft.pan_number.length > 0 && !panValid && (
@@ -204,10 +204,10 @@ function StepSelfie({ draft, onChange, onValidChange }: { draft: KycDraft; onCha
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display font-extrabold text-3xl text-ink">Take a selfie</h1>
+        <h1 className="text-2xl font-medium text-ink">Take a selfie</h1>
         <p className="mt-2 text-muted">A clear photo of your face for identity verification.</p>
       </div>
-      <div className="px-4 py-3 bg-volt-soft rounded-2xl text-sm text-ink">
+      <div className="px-4 py-3 bg-volt-soft rounded-xl text-sm text-ink">
         <p className="font-semibold mb-1">Tips for a good selfie:</p>
         <ul className="text-muted space-y-0.5 list-disc list-inside">
           <li>Good lighting, face clearly visible</li>
@@ -229,10 +229,10 @@ function StepBankUpi({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display font-extrabold text-3xl text-ink">Payout details</h1>
+        <h1 className="text-2xl font-medium text-ink">Payout details</h1>
         <p className="mt-2 text-muted">Choose how you want to receive your earnings.</p>
       </div>
-      <div className="flex rounded-2xl overflow-hidden border border-gray-200">
+      <div className="flex rounded-xl overflow-hidden border border-gray-200">
         <button type="button" onClick={() => onChange({ payment_method: 'bank' })}
           className={cn('flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors',
             draft.payment_method === 'bank' ? 'bg-ink text-white' : 'bg-white text-muted hover:text-ink')}>
@@ -250,13 +250,13 @@ function StepBankUpi({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
             <label className="text-sm font-semibold text-ink" htmlFor="bank_acc">Account number</label>
             <input id="bank_acc" type="tel" inputMode="numeric" placeholder="Enter account number" value={draft.bank_account_number}
               onChange={e => onChange({ bank_account_number: e.target.value.replace(/\D/g, '') })}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt" />
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt" />
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink" htmlFor="bank_ifsc">IFSC code</label>
             <input id="bank_ifsc" type="text" maxLength={11} placeholder="e.g. SBIN0001234" value={draft.bank_ifsc}
               onChange={e => onChange({ bank_ifsc: e.target.value.toUpperCase() })}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt font-mono" />
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt font-mono" />
           </div>
         </div>
       ) : (
@@ -264,7 +264,7 @@ function StepBankUpi({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
           <label className="text-sm font-semibold text-ink" htmlFor="upi_id">UPI ID</label>
           <input id="upi_id" type="text" placeholder="yourname@upi" value={draft.upi_id}
             onChange={e => onChange({ upi_id: e.target.value.trim() })}
-            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt" />
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-base text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-volt" />
         </div>
       )}
     </div>
@@ -273,7 +273,7 @@ function StepBankUpi({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
 
 function ReviewSection({ icon, label, onEdit, children }: { icon: React.ReactNode; label: string; onEdit: () => void; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+    <div className="bg-white rounded-xl border border-gray-100 p-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-ink font-semibold text-sm">{icon}{label}</div>
         <button type="button" onClick={onEdit} className="text-xs font-semibold text-volt-deep hover:underline">Edit</button>
@@ -289,12 +289,12 @@ function StepReview({ draft, onEditStep, onValidChange, displayName }: { draft: 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display font-extrabold text-3xl text-ink">Review & submit</h1>
+        <h1 className="text-2xl font-medium text-ink">Review & submit</h1>
         <p className="mt-2 text-muted">Check everything before submitting.</p>
       </div>
       <div className="space-y-3">
         {displayName && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
             <div className="flex items-center gap-2 text-ink font-semibold text-sm mb-2">
               <User className="w-4 h-4" />Display name
             </div>
@@ -327,7 +327,7 @@ function StepReview({ draft, onEditStep, onValidChange, displayName }: { draft: 
           )}
         </ReviewSection>
       </div>
-      <div className="px-4 py-3 bg-yellow-50 rounded-2xl text-sm text-yellow-700">
+      <div className="px-4 py-3 bg-yellow-50 rounded-xl text-sm text-yellow-700">
         By submitting, you confirm the documents are genuine. Fake documents will result in permanent account suspension.
       </div>
     </div>
@@ -426,7 +426,7 @@ export default function ProfileVerifyPage() {
       </div>
 
       {submitError && (
-        <p className="mt-4 px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
+        <p className="mt-4 px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {submitError}
         </p>
       )}

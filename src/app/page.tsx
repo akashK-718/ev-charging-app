@@ -17,7 +17,7 @@ export default function HomePage() {
         <div className="mt-8">
           <Link
             href="/login"
-            className="block w-full bg-volt text-ink font-display font-bold text-center py-4 rounded-2xl hover:bg-volt-deep hover:text-white transition-colors"
+            className="block w-full bg-volt text-ink font-display font-bold text-center py-4 rounded-xl hover:bg-volt-deep hover:text-white transition-colors"
           >
             Get started
           </Link>

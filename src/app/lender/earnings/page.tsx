@@ -92,24 +92,24 @@ export default async function LenderEarningsPage() {
 
   return (
     <main className="min-h-screen px-6 py-10 space-y-6">
-      <h1 className="font-display font-extrabold text-3xl text-ink">Earnings</h1>
+      <h1 className="text-2xl font-medium text-ink">Earnings</h1>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs text-muted uppercase tracking-wide font-semibold">Total earned</p>
           <p className="font-display font-extrabold text-3xl text-ink mt-1">
             ₹{(totalEarned / 100).toFixed(0)}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
             <p className="text-xs text-muted">This month</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
               ₹{(thisMonth / 100).toFixed(0)}
             </p>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
             <p className="text-xs text-muted">Pending payout</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
               ₹{(pendingPayout / 100).toFixed(0)}
@@ -121,7 +121,7 @@ export default async function LenderEarningsPage() {
       {/* Link to payouts */}
       <Link
         href="/lender/payouts"
-        className="block px-4 py-3 bg-volt-soft rounded-2xl border border-volt text-sm font-semibold text-ink hover:border-volt-deep transition-colors"
+        className="block px-4 py-3 bg-volt-soft rounded-xl border border-volt text-sm font-semibold text-ink hover:border-volt-deep transition-colors"
       >
         View detailed payout history →
       </Link>
@@ -134,7 +134,7 @@ export default async function LenderEarningsPage() {
         ) : (
           <div className="space-y-2">
             {enrichedBookings.map(booking => (
-              <div key={booking.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div key={booking.id} className="bg-white rounded-xl border border-gray-100 p-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-semibold text-ink text-sm">
