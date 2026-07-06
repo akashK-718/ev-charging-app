@@ -26,6 +26,7 @@ type BookingDetail = {
   rejected_at: string | null;
   started_at: string | null;
   ended_at: string | null;
+  end_initiated_at: string | null;
   no_show_at: string | null;
   cancelled_at: string | null;
   cancellation_reason: string | null;
@@ -188,6 +189,12 @@ export default function BookingDetailPage() {
         </div>
       )}
 
+      {booking.status === 'awaiting_end_confirmation' && (
+        <div className="px-4 py-3 bg-orange-50 rounded-2xl border border-orange-200">
+          <p className="text-sm font-semibold text-orange-700">Lender has requested to end the session — confirm below to complete your charge.</p>
+        </div>
+      )}
+
       {(booking.status === 'rejected' || booking.status === 'auto_rejected') && (
         <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-200">
           <p className="text-sm font-semibold text-red-700">Booking was declined. Refund initiated.</p>
@@ -225,6 +232,7 @@ export default function BookingDetailPage() {
         scheduledStart={booking.scheduled_start}
         scheduledEnd={booking.scheduled_end}
         startedAt={booking.started_at}
+        endInitiatedAt={booking.end_initiated_at}
         onUpdated={() => fetchBooking(false)}
         userRole="driver"
       />

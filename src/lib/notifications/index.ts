@@ -7,6 +7,7 @@ type NotificationType =
   | 'booking_no_show'
   | 'session_initiation_requested'
   | 'session_started'
+  | 'session_end_requested'
   | 'session_completed'
   | 'kyc_approved'
   | 'kyc_rejected'

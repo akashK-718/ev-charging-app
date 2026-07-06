@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Zap, Square, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { SESSION_GRACE_MINUTES } from '@/lib/constants';
+import { SESSION_GRACE_MINUTES, SESSION_END_AUTO_COMPLETE_MINUTES } from '@/lib/constants';
 
 interface SessionControlsProps {
   bookingId: string;
@@ -11,6 +11,7 @@ interface SessionControlsProps {
   scheduledStart: string;
   scheduledEnd: string;
   startedAt: string | null;
+  endInitiatedAt?: string | null;
   onUpdated: () => void | Promise<void>;
   userRole: 'driver' | 'lender';
 }
@@ -30,6 +31,7 @@ export function SessionControls({
   scheduledStart,
   scheduledEnd,
   startedAt,
+  endInitiatedAt,
   onUpdated,
   userRole,
 }: SessionControlsProps) {
@@ -43,7 +45,12 @@ export function SessionControls({
     return () => clearInterval(interval);
   }, []);
 
-  if (status !== 'confirmed' && status !== 'awaiting_driver_confirmation' && status !== 'in_progress') return null;
+  if (
+    status !== 'confirmed' &&
+    status !== 'awaiting_driver_confirmation' &&
+    status !== 'in_progress' &&
+    status !== 'awaiting_end_confirmation'
+  ) return null;
 
   const graceMs = SESSION_GRACE_MINUTES * 60 * 1000;
   const windowStart = new Date(scheduledStart).getTime() - graceMs;
@@ -183,11 +190,37 @@ export function SessionControls({
   }
 
   // ── in_progress ────────────────────────────────────────────────────────────
-  const expectedEndMs = new Date(scheduledEnd).getTime() - now;
-  const elapsedMs = now - new Date(startedAt ?? scheduledStart).getTime();
+  if (status === 'in_progress') {
+    const expectedEndMs = new Date(scheduledEnd).getTime() - now;
+    const elapsedMs = now - new Date(startedAt ?? scheduledStart).getTime();
 
-  return (
-    <div className="space-y-3">
+    if (userRole === 'lender') {
+      return (
+        <div className="space-y-3">
+          <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
+            <p className="text-sm font-semibold text-blue-700">Session in progress</p>
+            <p className="text-xs text-blue-600 mt-1">
+              Elapsed {formatClock(elapsedMs)}
+              {expectedEndMs > 0 && ` · Expected end in ${formatClock(expectedEndMs)}`}
+            </p>
+          </div>
+          {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+          <Button
+            variant="secondary"
+            size="lg"
+            disabled={loading}
+            className="flex items-center gap-2 justify-center"
+            onClick={() => { void handleAction('end'); }}
+          >
+            <Square className="w-5 h-5" />
+            {loading ? 'Requesting end…' : 'End session'}
+          </Button>
+        </div>
+      );
+    }
+
+    // Driver — session running, no end action
+    return (
       <div className="px-4 py-3 bg-blue-50 rounded-2xl border border-blue-200">
         <p className="text-sm font-semibold text-blue-700">Session in progress</p>
         <p className="text-xs text-blue-600 mt-1">
@@ -195,17 +228,49 @@ export function SessionControls({
           {expectedEndMs > 0 && ` · Expected end in ${formatClock(expectedEndMs)}`}
         </p>
       </div>
-      {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
-      <Button
-        variant="secondary"
-        size="lg"
-        disabled={loading}
-        className="flex items-center gap-2 justify-center"
-        onClick={() => { void handleAction('end'); }}
-      >
-        <Square className="w-5 h-5" />
-        {loading ? 'Ending…' : 'End session'}
-      </Button>
+    );
+  }
+
+  // ── awaiting_end_confirmation ──────────────────────────────────────────────
+  const autoCompleteMs = endInitiatedAt
+    ? new Date(endInitiatedAt).getTime() + SESSION_END_AUTO_COMPLETE_MINUTES * 60 * 1000
+    : now + SESSION_END_AUTO_COMPLETE_MINUTES * 60 * 1000;
+  const remainingMs = Math.max(0, autoCompleteMs - now);
+
+  if (userRole === 'driver') {
+    return (
+      <div className="space-y-2">
+        <div className="px-4 py-3 bg-orange-50 rounded-2xl border border-orange-200">
+          <p className="text-sm font-semibold text-orange-700">Lender has requested to end the session</p>
+          <p className="text-xs text-orange-600 mt-1">
+            Auto-completes in {formatClock(remainingMs)} if not confirmed.
+          </p>
+        </div>
+        {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+        <Button
+          variant="secondary"
+          size="lg"
+          disabled={loading}
+          className="flex items-center gap-2 justify-center"
+          onClick={() => { void handleAction('end'); }}
+        >
+          <Square className="w-5 h-5" />
+          {loading ? 'Confirming…' : 'Confirm end'}
+        </Button>
+      </div>
+    );
+  }
+
+  // Lender — waiting for driver to confirm end
+  return (
+    <div className="px-4 py-3 bg-orange-50 rounded-2xl border border-orange-200">
+      <div className="flex items-center gap-2">
+        <Clock className="w-4 h-4 text-orange-700" />
+        <p className="text-sm font-semibold text-orange-700">Waiting for driver to confirm end</p>
+      </div>
+      <p className="text-xs text-orange-600 mt-1">
+        Auto-completes in {formatClock(remainingMs)}.
+      </p>
     </div>
   );
 }

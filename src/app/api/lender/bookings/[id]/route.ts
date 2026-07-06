@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
+import { runAutoCompleteEndSweep } from '@/lib/bookings/auto-complete-end';
 
 export async function GET(
   _request: NextRequest,
@@ -15,10 +16,11 @@ export async function GET(
 
   const adminSupabase = createAdminClient();
   await runAutoRejectSweep(adminSupabase);
+  await runAutoCompleteEndSweep(adminSupabase);
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
-    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, cancellation_reason, rejection_reason, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, no_show_at, created_at, updated_at')
+    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, cancellation_reason, rejection_reason, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, end_initiated_at, no_show_at, created_at, updated_at')
     .eq('id', params.id)
     .eq('lender_id', user.id)
     .single();
