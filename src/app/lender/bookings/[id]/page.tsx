@@ -32,6 +32,7 @@ type BookingDetail = {
   rejected_at: string | null;
   started_at: string | null;
   ended_at: string | null;
+  end_initiated_at: string | null;
   no_show_at: string | null;
   created_at: string;
   charger: { id: string; title: string; address: string } | null;
@@ -250,6 +251,7 @@ export default function LenderBookingDetailPage() {
         scheduledStart={booking.scheduled_start}
         scheduledEnd={booking.scheduled_end}
         startedAt={booking.started_at}
+        endInitiatedAt={booking.end_initiated_at}
         onUpdated={() => fetchBooking(false)}
         userRole="lender"
       />

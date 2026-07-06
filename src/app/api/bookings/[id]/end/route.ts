@@ -11,9 +11,13 @@ const NOMINAL_KW: Record<string, number> = {
 };
 
 /**
- * POST /api/bookings/[id]/end — either party can end an in-progress session.
- * Marks the booking completed, records actual session duration as
- * kwh_delivered, and queues the lender's payout.
+ * POST /api/bookings/[id]/end — two-step session end.
+ *
+ * Lender calls while in_progress        → awaiting_end_confirmation + notifies driver.
+ * Driver calls while awaiting_end_confirmation → completed + payout queued.
+ *
+ * The driver→completed transition uses an atomic WHERE status = 'awaiting_end_confirmation'
+ * guard so payout fires exactly once even if the auto-complete sweep runs concurrently.
  */
 export async function POST(
   _request: NextRequest,
@@ -41,41 +45,78 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  if (booking.status !== 'in_progress') {
-    return NextResponse.json({ error: `Booking is ${booking.status}, not in progress` }, { status: 409 });
+  // ── Step 1: lender initiates end ──────────────────────────────────────────
+  if (booking.status === 'in_progress') {
+    if (booking.lender_id !== user.id) {
+      return NextResponse.json({ error: 'Only the lender can initiate session end' }, { status: 403 });
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const { error: updateError } = await adminSupabase
+      .from('bookings')
+      .update({ status: 'awaiting_end_confirmation', end_initiated_at: nowIso })
+      .eq('id', params.id);
+
+    if (updateError) {
+      return NextResponse.json({ error: 'Failed to initiate session end' }, { status: 500 });
+    }
+
+    await notify(booking.driver_id, 'session_end_requested', { booking_id: params.id });
+
+    return NextResponse.json({ ok: true, status: 'awaiting_end_confirmation' });
   }
 
-  const nowIso = new Date().toISOString();
-  const startedAt = booking.started_at ?? nowIso;
-  const durationHours = Math.max(0, (new Date(nowIso).getTime() - new Date(startedAt).getTime()) / (1000 * 60 * 60));
+  // ── Step 2: driver confirms end ───────────────────────────────────────────
+  if (booking.status === 'awaiting_end_confirmation') {
+    if (booking.driver_id !== user.id) {
+      return NextResponse.json({ error: 'Only the driver can confirm session end' }, { status: 403 });
+    }
 
-  const { data: charger } = await adminSupabase
-    .from('chargers')
-    .select('charger_type')
-    .eq('id', booking.charger_id)
-    .single();
+    const nowIso = new Date().toISOString();
+    const startedAt = booking.started_at ?? nowIso;
+    const durationHours = Math.max(
+      0,
+      (new Date(nowIso).getTime() - new Date(startedAt).getTime()) / (1000 * 60 * 60),
+    );
 
-  const nominalKw = charger ? (NOMINAL_KW[charger.charger_type] ?? 7) : 7;
-  const kwhDelivered = Math.round(nominalKw * durationHours * 100) / 100;
+    const { data: charger } = await adminSupabase
+      .from('chargers')
+      .select('charger_type')
+      .eq('id', booking.charger_id)
+      .single();
 
-  const { error: updateError } = await adminSupabase
-    .from('bookings')
-    .update({
-      status: 'completed',
-      ended_at: nowIso,
-      actual_end: nowIso,
-      kwh_delivered: kwhDelivered,
-    })
-    .eq('id', params.id);
+    const nominalKw = charger ? (NOMINAL_KW[charger.charger_type] ?? 7) : 7;
+    const kwhDelivered = Math.round(nominalKw * durationHours * 100) / 100;
 
-  if (updateError) {
-    return NextResponse.json({ error: 'Failed to end session' }, { status: 500 });
+    // Atomic guard: only completes if still in awaiting_end_confirmation.
+    // Prevents double-payout if the auto-complete sweep fires concurrently.
+    const { data: updated } = await adminSupabase
+      .from('bookings')
+      .update({
+        status: 'completed',
+        ended_at: nowIso,
+        actual_end: nowIso,
+        kwh_delivered: kwhDelivered,
+      })
+      .eq('id', params.id)
+      .eq('status', 'awaiting_end_confirmation')
+      .select('id')
+      .maybeSingle();
+
+    if (!updated) {
+      return NextResponse.json({ error: 'Session state has changed' }, { status: 409 });
+    }
+
+    await queuePayoutForBooking(adminSupabase, params.id, booking.lender_id);
+    await notify(booking.driver_id, 'session_completed', { booking_id: params.id });
+    await notify(booking.lender_id, 'session_completed', { booking_id: params.id });
+
+    return NextResponse.json({ ok: true });
   }
 
-  await queuePayoutForBooking(adminSupabase, params.id, booking.lender_id);
-
-  await notify(booking.driver_id, 'session_completed', { booking_id: params.id });
-  await notify(booking.lender_id, 'session_completed', { booking_id: params.id });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(
+    { error: `Booking is ${booking.status} — cannot end from this state` },
+    { status: 409 },
+  );
 }

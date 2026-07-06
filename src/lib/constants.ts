@@ -8,6 +8,9 @@ export const PLATFORM_COMMISSION_PERCENT = 15;
 // Booking auto-cancel if not confirmed by lender within this many minutes
 export const BOOKING_AUTO_CANCEL_MINUTES = 30;
 
+// Auto-complete session end if driver doesn't confirm within this many minutes
+export const SESSION_END_AUTO_COMPLETE_MINUTES = 15;
+
 // Hold payment for this long after session completion before releasing to lender
 export const PAYOUT_HOLD_HOURS = 24;
 
@@ -52,6 +55,7 @@ export const BOOKING_STATES = [
   'cancelled',                    // driver cancelled (future PR)
   'awaiting_driver_confirmation', // lender initiated session, driver must confirm
   'in_progress',                  // session started (both parties confirmed)
+  'awaiting_end_confirmation',    // lender requested end, driver must confirm
   'completed',                    // session ended successfully
   'no_show'                       // driver didn't show up (future PR)
 ] as const;
@@ -59,7 +63,7 @@ export const BOOKING_STATES = [
 export type BookingStatus = (typeof BOOKING_STATES)[number];
 
 // Statuses considered "active" — shown in default lists, eligible for polling
-export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'awaiting_driver_confirmation', 'in_progress'];
+export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'awaiting_driver_confirmation', 'in_progress', 'awaiting_end_confirmation'];
 
 // Statuses considered "declined" — driver-facing message + refund already triggered
 export const DECLINED_BOOKING_STATUSES: BookingStatus[] = ['rejected', 'auto_rejected', 'cancelled'];

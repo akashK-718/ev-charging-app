@@ -6,6 +6,7 @@ interface TimelineBooking {
   rejected_at?: string | null;
   rejection_reason?: string | null;
   started_at?: string | null;
+  end_initiated_at?: string | null;
   ended_at?: string | null;
   no_show_at?: string | null;
   cancelled_at?: string | null;
@@ -35,6 +36,9 @@ export function BookingTimeline({ booking }: { booking: TimelineBooking }) {
   }
   if (booking.started_at) {
     events.push({ label: 'Session started', time: booking.started_at });
+  }
+  if (booking.end_initiated_at && !booking.ended_at) {
+    events.push({ label: 'End requested by lender', time: booking.end_initiated_at });
   }
   if (booking.ended_at) {
     events.push({ label: 'Session completed', time: booking.ended_at });
