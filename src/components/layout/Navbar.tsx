@@ -23,6 +23,7 @@ const DRIVER_LINKS: NavLink[] = [
 
 const LENDER_LINKS: NavLink[] = [
   { href: '/lender/dashboard', label: 'Dashboard' },
+  { href: '/lender/chargers', label: 'My chargers' },
   { href: '/lender/bookings', label: 'Bookings' },
   { href: '/lender/earnings', label: 'Earnings' },
   { href: '/profile', label: 'Profile' },

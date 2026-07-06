@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, Edit3, Pause, Play, MoreVertical,
   Trash2, Copy, ExternalLink, Zap, MapPin, Star,
 } from 'lucide-react';
+import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import { cn } from '@/lib/utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -280,7 +281,6 @@ export default function LenderChargerDetailPage() {
   const { charger, slots, stats, upcoming, recent, activeCount } = data;
   const earningsRupees = Math.floor(stats.totalEarningsPaise / 100);
   const weekEarningsRupees = Math.floor(stats.weekEarningsPaise / 100);
-  const coverPhoto = charger.photos?.[0] ?? null;
   const instructions = charger.instructions ?? '';
   const instructionsTruncated = instructions.length > 160 && !expandInstructions;
 
@@ -290,18 +290,16 @@ export default function LenderChargerDetailPage() {
 
         {/* ── Header ── */}
         <div className="relative">
-          {coverPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverPhoto} alt={charger.title} className="w-full aspect-[16/9] object-cover" />
-          ) : (
-            <div className="w-full aspect-[16/9] bg-volt-soft flex items-center justify-center">
-              <Zap className="w-16 h-16 text-volt opacity-30" />
-            </div>
-          )}
+          <ImageCarousel
+            photos={charger.photos ?? []}
+            alt={charger.title}
+            autoRotate
+            useIntersectionObserver={false}
+          />
           <button
             type="button"
             onClick={() => router.back()}
-            className="absolute top-4 left-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
+            className="absolute top-4 left-4 z-10 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
           >
             <ChevronLeft className="w-5 h-5 text-ink" />
           </button>
@@ -505,18 +503,6 @@ export default function LenderChargerDetailPage() {
               )}
             </div>
 
-            {/* Photo carousel */}
-            {charger.photos.length > 1 && (
-              <div>
-                <p className="text-xs text-muted mb-2">Photos</p>
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                  {charger.photos.map((url, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={i} src={url} alt={`Photo ${i + 1}`} className="w-28 h-20 rounded-xl object-cover shrink-0" />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
         </div>
