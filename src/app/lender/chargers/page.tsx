@@ -1,212 +1,253 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { MoreVertical, Plus, Zap, Pause, Play, Trash2, Edit3 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Zap, Star, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
+import { ImageCarousel } from '@/components/chargers/ImageCarousel';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type ChargerStatus = 'draft' | 'active' | 'paused' | 'suspended';
 
 type Charger = {
   id: string;
   title: string;
   address: string;
   price_per_kwh: number;
-  status: 'draft' | 'active' | 'paused' | 'suspended';
+  status: ChargerStatus;
   total_sessions: number;
   charger_type: string;
   connector_types: string[];
+  photos: string[];
+  avg_rating: number | null;
+  created_at: string;
 };
 
-type Filter = 'all' | 'active' | 'draft' | 'paused';
+type SortKey = 'last_active' | 'most_bookings' | 'highest_rated' | 'date_added';
+type FilterKey = 'all' | 'active' | 'paused' | 'draft' | 'suspended';
 
-function ActionMenu({
-  charger,
-  onPause,
-  onUnpause,
-  onDelete,
-}: {
-  charger: Charger;
-  onPause: () => void;
-  onUnpause: () => void;
-  onDelete: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!open) return;
-    function onClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+function sortChargers(chargers: Charger[], sort: SortKey): Charger[] {
+  const arr = [...chargers];
+  switch (sort) {
+    case 'most_bookings':
+      return arr.sort((a, b) => b.total_sessions - a.total_sessions);
+    case 'highest_rated':
+      return arr.sort((a, b) => {
+        if (a.avg_rating === null && b.avg_rating === null) return 0;
+        if (a.avg_rating === null) return 1;
+        if (b.avg_rating === null) return -1;
+        return b.avg_rating - a.avg_rating;
+      });
+    case 'date_added':
+      return arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    default: // last_active → most recent first
+      return arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+}
+
+// ─── Tile status badge ────────────────────────────────────────────────────────
+
+function TileStatusBadge({ status, inUse }: { status: ChargerStatus; inUse: boolean }) {
+  const { label, className } = (() => {
+    if (status === 'active' && inUse) {
+      return { label: 'Live · In use', className: 'bg-amber-500/90 text-white' };
     }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [open]);
+    if (status === 'active') {
+      return { label: 'Live · Available', className: 'bg-[#10d96a]/90 text-[#0a5c2e]' };
+    }
+    if (status === 'paused') {
+      return { label: 'Paused', className: 'bg-gray-800/70 text-white' };
+    }
+    if (status === 'draft') {
+      return { label: 'Pending verification', className: 'bg-blue-500/90 text-white' };
+    }
+    return { label: 'Suspended', className: 'bg-red-600/90 text-white' };
+  })();
 
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-        aria-label="Charger options"
-      >
-        <MoreVertical className="w-4 h-4 text-muted" />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-8 z-10 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-1 overflow-hidden">
-          <Link
-            href={`/lender/chargers/${charger.id}/edit`}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-gray-50 transition-colors"
-            onClick={() => setOpen(false)}
-          >
-            <Edit3 className="w-4 h-4 text-muted" />
-            Edit
-          </Link>
-
-          {charger.status === 'active' && (
-            <button
-              type="button"
-              onClick={() => { setOpen(false); onPause(); }}
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-gray-50 transition-colors"
-            >
-              <Pause className="w-4 h-4 text-muted" />
-              Pause
-            </button>
-          )}
-          {charger.status === 'paused' && (
-            <button
-              type="button"
-              onClick={() => { setOpen(false); onUnpause(); }}
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-gray-50 transition-colors"
-            >
-              <Play className="w-4 h-4 text-muted" />
-              Unpause
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
+    <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap backdrop-blur-sm', className)}>
+      {label}
+    </span>
   );
 }
 
-function DeleteModal({
+// ─── Charger tile ─────────────────────────────────────────────────────────────
+
+function ChargerTile({
   charger,
-  onConfirm,
-  onCancel,
-  loading,
+  inUse,
 }: {
   charger: Charger;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading: boolean;
+  inUse: boolean;
 }) {
+  const router = useRouter();
+  const isSuspended = charger.status === 'suspended';
+  const canEdit = !isSuspended;
+
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-6 w-full max-w-sm">
-        <h2 className="font-display font-extrabold text-xl text-ink">Delete charger?</h2>
-        <p className="text-sm text-muted mt-2">
-          {charger.status === 'draft'
-            ? `"${charger.title}" is a draft and will be deleted. You can recreate it anytime.`
-            : `"${charger.title}" will be removed. Active bookings will still be honored.`}
-        </p>
-        <div className="flex gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-ink hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 px-4 py-3 rounded-2xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Deleting…' : 'Delete'}
-          </button>
+    <div
+      className={cn(
+        'bg-white rounded-xl overflow-hidden border border-gray-100 cursor-pointer',
+        'transition-shadow hover:shadow-md active:shadow-none',
+        isSuspended && 'opacity-70',
+      )}
+      onClick={() => router.push(`/lender/chargers/${charger.id}`)}
+    >
+      {/* Image area */}
+      <div className="relative">
+        <ImageCarousel
+          photos={charger.photos}
+          alt={charger.title}
+          useIntersectionObserver
+          autoRotate
+        />
+        {/* Status badge overlay */}
+        <div className="absolute top-2 right-2">
+          <TileStatusBadge status={charger.status} inUse={inUse} />
+        </div>
+      </div>
+
+      {/* Info section */}
+      <div className="p-3">
+        <p className="font-medium text-sm text-ink leading-snug">{charger.title}</p>
+        <p className="text-xs text-muted truncate mt-0.5">{charger.address}</p>
+
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-2 text-xs text-muted">
+            {charger.avg_rating !== null && (
+              <span className="flex items-center gap-0.5">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span className="font-semibold text-ink">{charger.avg_rating.toFixed(1)}</span>
+              </span>
+            )}
+            {charger.avg_rating !== null && <span>·</span>}
+            <span>{charger.total_sessions} booking{charger.total_sessions !== 1 ? 's' : ''}</span>
+          </div>
+
+          {canEdit && (
+            <Link
+              href={`/lender/chargers/${charger.id}/edit`}
+              onClick={e => e.stopPropagation()}
+              className="p-1.5 -mr-1 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label={`Edit ${charger.title}`}
+            >
+              <Edit3 className="w-4 h-4 text-muted" />
+            </Link>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function FilterTabs({
+// ─── Filter chip ──────────────────────────────────────────────────────────────
+
+const FILTER_LABELS: Record<FilterKey, string> = {
+  all: 'All',
+  active: 'Live',
+  paused: 'Paused',
+  draft: 'Draft',
+  suspended: 'Suspended',
+};
+
+function FilterChips({
   chargers,
-  currentFilter,
+  activeFilters,
+  onChange,
 }: {
   chargers: Charger[];
-  currentFilter: Filter;
+  activeFilters: Set<FilterKey>;
+  onChange: (next: Set<FilterKey>) => void;
 }) {
-  const router = useRouter();
+  const counts: Record<FilterKey, number> = {
+    all: chargers.length,
+    active: chargers.filter(c => c.status === 'active').length,
+    paused: chargers.filter(c => c.status === 'paused').length,
+    draft: chargers.filter(c => c.status === 'draft').length,
+    suspended: chargers.filter(c => c.status === 'suspended').length,
+  };
 
-  const tabs: { key: Filter; label: string; count: number }[] = [
-    { key: 'all',    label: 'All',    count: chargers.length },
-    { key: 'active', label: 'Live',   count: chargers.filter(c => c.status === 'active').length },
-    { key: 'draft',  label: 'Drafts', count: chargers.filter(c => c.status === 'draft').length },
-    { key: 'paused', label: 'Paused', count: chargers.filter(c => c.status === 'paused').length },
-  ];
+  function toggle(key: FilterKey) {
+    if (key === 'all') {
+      onChange(new Set(['all']));
+      return;
+    }
+    const next = new Set(activeFilters);
+    next.delete('all');
+    if (next.has(key)) {
+      next.delete(key);
+      if (next.size === 0) next.add('all');
+    } else {
+      next.add(key);
+    }
+    onChange(next);
+  }
 
   return (
-    <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-      {tabs.map(tab => (
-        <button
-          key={tab.key}
-          type="button"
-          onClick={() => router.replace(`/lender/chargers?filter=${tab.key}`)}
-          className={cn(
-            'px-3 py-1.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors',
-            currentFilter === tab.key
-              ? 'bg-ink text-white'
-              : 'bg-gray-100 text-muted hover:bg-gray-200'
-          )}
-        >
-          {tab.label} ({tab.count})
-        </button>
-      ))}
+    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+      {(['all', 'active', 'paused', 'draft', 'suspended'] as FilterKey[]).map(key => {
+        const active = activeFilters.has(key);
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => toggle(key)}
+            className={cn(
+              'px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors shrink-0',
+              active
+                ? 'bg-ink text-white'
+                : 'bg-gray-100 text-muted hover:bg-gray-200',
+            )}
+          >
+            {FILTER_LABELS[key]} ({counts[key]})
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function LenderChargersContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawFilter = searchParams.get('filter') ?? 'all';
-  const currentFilter: Filter = ['all', 'active', 'draft', 'paused'].includes(rawFilter)
-    ? (rawFilter as Filter)
-    : 'all';
+// ─── Main content ─────────────────────────────────────────────────────────────
 
+function LenderChargersContent() {
   const { profile, loading: profileLoading } = useProfile();
 
   const [chargers, setChargers] = useState<Charger[]>([]);
+  const [inProgressIds, setInProgressIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Charger | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>('last_active');
+  const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set(['all']));
 
-  const fetchLenderChargers = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/lender/chargers');
-      if (!res.ok) { setError('Failed to load chargers'); return; }
-      const body = await res.json() as { data: Charger[] };
-      setChargers(body.data ?? []);
+      const [chargersRes, bookingsRes] = await Promise.all([
+        fetch('/api/lender/chargers'),
+        fetch('/api/lender/bookings?filter=active'),
+      ]);
+
+      if (!chargersRes.ok) { setError('Failed to load chargers'); return; }
+      const { data: chargerData } = await chargersRes.json() as { data: Charger[] };
+      setChargers(chargerData ?? []);
+
+      if (bookingsRes.ok) {
+        const { data: bookingData } = await bookingsRes.json() as {
+          data: Array<{ charger_id: string; status: string }>;
+        };
+        const ids = new Set(
+          (bookingData ?? [])
+            .filter(b => b.status === 'in_progress' || b.status === 'awaiting_end_confirmation')
+            .map(b => b.charger_id),
+        );
+        setInProgressIds(ids);
+      }
     } catch {
       setError('Failed to load chargers');
     } finally {
@@ -214,49 +255,24 @@ function LenderChargersContent() {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchLenderChargers();
-  }, [fetchLenderChargers]);
-
-  async function handlePause(charger: Charger) {
-    setActionError(null);
-    const res = await fetch(`/api/chargers/${charger.id}/pause`, { method: 'POST' });
-    if (!res.ok) { setActionError('Failed to pause charger'); return; }
-    setChargers(prev => prev.map(c => c.id === charger.id ? { ...c, status: 'paused' } : c));
-  }
-
-  async function handleUnpause(charger: Charger) {
-    setActionError(null);
-    const res = await fetch(`/api/chargers/${charger.id}/unpause`, { method: 'POST' });
-    if (!res.ok) { setActionError('Failed to unpause charger'); return; }
-    setChargers(prev => prev.map(c => c.id === charger.id ? { ...c, status: 'active' } : c));
-  }
-
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    setDeleteLoading(true);
-    const res = await fetch(`/api/chargers/${deleteTarget.id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      setActionError('Failed to delete charger');
-      setDeleteLoading(false);
-      setDeleteTarget(null);
-      return;
-    }
-    setChargers(prev => prev.filter(c => c.id !== deleteTarget.id));
-    setDeleteTarget(null);
-    setDeleteLoading(false);
-  }
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const kycApproved = profile?.kyc_status === 'approved';
 
-  const filteredChargers = currentFilter === 'all'
+  // Apply filter
+  const filtered = activeFilters.has('all')
     ? chargers
-    : chargers.filter(c => c.status === currentFilter);
+    : chargers.filter(c => activeFilters.has(c.status as FilterKey));
+
+  // Apply sort
+  const displayed = sortChargers(filtered, sort);
 
   return (
-    <main className="min-h-screen px-6 py-10">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display font-extrabold text-3xl text-ink">Your chargers</h1>
+    <main className="min-h-screen px-4 sm:px-6 py-8 space-y-4">
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="font-display font-extrabold text-3xl text-ink">My chargers</h1>
         <Link
           href="/lender/chargers/new"
           className="flex items-center gap-1.5 px-3 py-2 bg-ink text-white text-sm font-bold rounded-xl hover:bg-ink/90 transition-colors"
@@ -266,8 +282,9 @@ function LenderChargersContent() {
         </Link>
       </div>
 
+      {/* KYC warning */}
       {!profileLoading && !kycApproved && (
-        <div className="mb-6 px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200">
+        <div className="px-4 py-3 bg-yellow-50 rounded-2xl border border-yellow-200">
           <p className="text-sm text-yellow-800">
             Your chargers aren&apos;t visible to drivers yet.{' '}
             <Link href="/profile" className="font-semibold underline underline-offset-2">
@@ -278,17 +295,33 @@ function LenderChargersContent() {
         </div>
       )}
 
-      {actionError && (
-        <div className="mb-4 px-4 py-3 bg-red-50 rounded-2xl text-sm text-red-600 font-semibold">
-          {actionError}
-        </div>
+      {!loading && !error && chargers.length > 0 && (
+        <>
+          {/* Sort + filter row */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <FilterChips
+                chargers={chargers}
+                activeFilters={activeFilters}
+                onChange={setActiveFilters}
+              />
+            </div>
+            <select
+              value={sort}
+              onChange={e => setSort(e.target.value as SortKey)}
+              className="shrink-0 text-xs font-semibold text-ink bg-gray-100 rounded-xl px-3 py-2 border-none outline-none cursor-pointer appearance-none"
+              aria-label="Sort chargers"
+            >
+              <option value="last_active">Last active</option>
+              <option value="most_bookings">Most bookings</option>
+              <option value="highest_rated">Highest rated</option>
+              <option value="date_added">Date added</option>
+            </select>
+          </div>
+        </>
       )}
 
-      {/* Filter tabs — only show once chargers are loaded */}
-      {!loading && !error && (
-        <FilterTabs chargers={chargers} currentFilter={currentFilter} />
-      )}
-
+      {/* States */}
       {loading && (
         <div className="text-center py-12 text-muted">Loading…</div>
       )}
@@ -299,82 +332,36 @@ function LenderChargersContent() {
         </div>
       )}
 
-      {!loading && !error && filteredChargers.length === 0 && (
-        currentFilter === 'all' ? (
-          <div className="text-center py-16">
-            <div className="w-14 h-14 bg-volt-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-7 h-7 text-volt-deep" />
-            </div>
-            <p className="font-semibold text-ink">No chargers yet</p>
-            <p className="text-sm text-muted mt-1 mb-4">
-              Add your first charger to start earning.
-            </p>
-            <Link
-              href="/lender/chargers/new"
-              className="inline-block px-6 py-3 bg-ink text-white font-bold rounded-2xl hover:bg-ink/90 transition-colors"
-            >
-              Add charger
-            </Link>
+      {!loading && !error && chargers.length === 0 && (
+        <div className="text-center py-20">
+          <div className="w-14 h-14 bg-volt-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Zap className="w-7 h-7 text-volt-deep" />
           </div>
-        ) : (
-          <div className="text-center py-12 text-muted text-sm">
-            No {currentFilter === 'active' ? 'live' : currentFilter} chargers.
-          </div>
-        )
-      )}
-
-      {!loading && !error && filteredChargers.length > 0 && (
-        <div className="space-y-3">
-          {filteredChargers.map(charger => (
-            <div
-              key={charger.id}
-              className="bg-white rounded-2xl border border-gray-100 p-4"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <Link href={`/lender/chargers/${charger.id}`} className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold text-ink text-sm truncate group-hover:underline">{charger.title}</p>
-                    <span className={cn(
-                      'px-2 py-0.5 rounded-full text-xs font-semibold shrink-0',
-                      charger.status === 'active' ? 'bg-volt-soft text-volt-deep' :
-                      charger.status === 'paused' ? 'bg-yellow-50 text-yellow-700' :
-                      charger.status === 'draft'  ? 'bg-gray-100 text-muted' :
-                      'bg-red-50 text-red-700',
-                    )}>
-                      {charger.status === 'active' ? 'Live' :
-                       charger.status === 'paused' ? 'Paused' :
-                       charger.status === 'draft'  ? 'Awaiting verification' :
-                       'Suspended'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted truncate">{charger.address}</p>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-                    <span>₹{charger.price_per_kwh}/kWh</span>
-                    <span>·</span>
-                    <span>{charger.total_sessions} sessions</span>
-                    <span>·</span>
-                    <span>{charger.charger_type}</span>
-                  </div>
-                </Link>
-                <ActionMenu
-                  charger={charger}
-                  onPause={() => { void handlePause(charger); }}
-                  onUnpause={() => { void handleUnpause(charger); }}
-                  onDelete={() => setDeleteTarget(charger)}
-                />
-              </div>
-            </div>
-          ))}
+          <p className="font-semibold text-ink">You haven&apos;t added any chargers yet</p>
+          <p className="text-sm text-muted mt-1 mb-6">Add your first charger to start earning.</p>
+          <Link
+            href="/lender/chargers/new"
+            className="inline-block px-6 py-3 bg-ink text-white font-bold rounded-2xl hover:bg-ink/90 transition-colors"
+          >
+            Add a charger
+          </Link>
         </div>
       )}
 
-      {deleteTarget && (
-        <DeleteModal
-          charger={deleteTarget}
-          onConfirm={() => { void handleDelete(); }}
-          onCancel={() => setDeleteTarget(null)}
-          loading={deleteLoading}
-        />
+      {!loading && !error && chargers.length > 0 && displayed.length === 0 && (
+        <p className="text-center text-sm text-muted py-12">No chargers match this filter.</p>
+      )}
+
+      {!loading && !error && displayed.length > 0 && (
+        <div className="space-y-4">
+          {displayed.map(charger => (
+            <ChargerTile
+              key={charger.id}
+              charger={charger}
+              inUse={inProgressIds.has(charger.id)}
+            />
+          ))}
+        </div>
       )}
     </main>
   );

@@ -26,7 +26,7 @@ export async function GET() {
 
   const { data: chargers, error } = await adminSupabase
     .from('chargers')
-    .select('id, title, address, price_per_kwh, status, total_sessions, charger_type, connector_types, created_at')
+    .select('id, title, address, price_per_kwh, status, total_sessions, charger_type, connector_types, photos, avg_rating, created_at')
     .eq('lender_id', user.id)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });

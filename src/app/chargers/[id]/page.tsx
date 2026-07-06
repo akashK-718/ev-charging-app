@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, MapPin, Zap, Info } from 'lucide-react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/Button';
+import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import type { Database } from '@/lib/supabase/types';
 
 type ChargerRow = Database['public']['Tables']['chargers']['Row'];
@@ -62,26 +63,15 @@ export default async function ChargerDetailPage({
       </div>
 
       {/* Photos */}
-      {charger.photos && charger.photos.length > 0 ? (
-        <div className="flex overflow-x-auto gap-2 px-4 sm:px-6 pb-2 scrollbar-none">
-          {charger.photos.map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt={`${charger.title} photo ${i + 1}`}
-              className={
-                i === 0
-                  ? 'rounded-2xl object-cover w-full max-w-full aspect-[16/9] shrink-0'
-                  : 'rounded-2xl object-cover w-40 h-28 shrink-0'
-              }
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="mx-4 sm:mx-6 aspect-[16/9] rounded-2xl bg-volt-soft flex items-center justify-center">
-          <Zap className="w-16 h-16 text-volt opacity-30" />
-        </div>
-      )}
+      <div className="mx-4 sm:mx-6">
+        <ImageCarousel
+          photos={charger.photos ?? []}
+          alt={charger.title}
+          autoRotate
+          useIntersectionObserver={false}
+          className="rounded-2xl"
+        />
+      </div>
 
       {/* Details */}
       <div className="px-4 sm:px-6 py-6 space-y-6">
