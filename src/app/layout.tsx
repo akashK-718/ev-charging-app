@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
+import { PageTransition } from '@/components/ui/PageTransition';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -23,7 +24,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#10d96a'
+  themeColor: '#ffffff'
 };
 
 export default function RootLayout({
@@ -35,7 +36,9 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body>
         <Navbar />
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

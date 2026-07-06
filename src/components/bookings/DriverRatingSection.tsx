@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { StarRating } from './StarRating';
+import { haptic } from '@/lib/haptics';
 import { Button } from '@/components/ui/Button';
 
 interface ExistingReview {
@@ -137,6 +138,7 @@ export function DriverRatingSection({
         setSubmitError(body.error ?? 'Failed to submit review');
         return;
       }
+      haptic('light');
       setState({ kind: 'success', chargerRating, lenderRating, reviewText: reviewText.trim() });
     } catch {
       setSubmitError('Failed to submit review');

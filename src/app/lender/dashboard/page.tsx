@@ -351,7 +351,7 @@ export default async function LenderDashboardPage({
       <div className="space-y-3">
         <Link
           href="/lender/earnings"
-          className="group block bg-white rounded-xl border border-gray-100 px-5 py-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+          className="group block bg-white rounded-xl border border-gray-100 px-5 py-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative tap-target"
         >
           <ChevronRight className="absolute top-4 right-4 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
           <p className="text-3xl font-display font-extrabold text-ink pr-6">{formatINR(weekEarningsPaise)}</p>
@@ -360,7 +360,7 @@ export default async function LenderDashboardPage({
         <div className="grid grid-cols-2 gap-3">
           <Link
             href="/lender/chargers?filter=active"
-            className="group bg-white rounded-xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+            className="group bg-white rounded-xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative tap-target"
           >
             <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
             <p className="text-2xl font-display font-extrabold text-ink">{liveChargers}</p>
@@ -368,7 +368,7 @@ export default async function LenderDashboardPage({
           </Link>
           <Link
             href="/lender/chargers?filter=draft"
-            className="group bg-white rounded-xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative"
+            className="group bg-white rounded-xl border border-gray-100 p-4 hover:bg-gray-50 hover:border-gray-200 transition-colors relative tap-target"
           >
             <ChevronRight className="absolute top-3 right-3 w-4 h-4 text-muted group-hover:text-ink transition-colors" />
             <p className="text-2xl font-display font-extrabold text-ink">{draftChargers}</p>
@@ -383,21 +383,21 @@ export default async function LenderDashboardPage({
         <div className="grid grid-cols-1 gap-2">
           <Link
             href="/lender/bookings"
-            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors tap-target"
           >
             <BookOpen className="w-5 h-5 text-volt-deep" />
             <span className="font-semibold text-ink text-sm">View bookings</span>
           </Link>
           <Link
             href="/lender/chargers/new"
-            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors tap-target"
           >
             <Zap className="w-5 h-5 text-volt-deep" />
             <span className="font-semibold text-ink text-sm">Add a charger</span>
           </Link>
           <Link
             href="/lender/earnings"
-            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors"
+            className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3 hover:border-gray-200 transition-colors tap-target"
           >
             <Clock className="w-5 h-5 text-volt-deep" />
             <span className="font-semibold text-ink text-sm">View earnings</span>

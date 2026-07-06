@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { haptic } from '@/lib/haptics';
 import { Button } from '@/components/ui/Button';
 import type { NewChargerDraft } from '@/types/charger-draft';
 import { StepBasics } from './steps/StepBasics';
@@ -97,6 +98,7 @@ export default function NewChargerPage() {
       }
 
       localStorage.removeItem(DRAFT_KEY);
+      haptic('light');
       router.push('/lender/dashboard?listed=1');
     } catch {
       setSubmitError("Couldn't save charger, please try again.");

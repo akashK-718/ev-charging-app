@@ -22,7 +22,7 @@ export function ChargerCard({
   const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
 
   return (
-    <Link href={`/chargers/${charger.id}`} className="block group">
+    <Link href={`/chargers/${charger.id}`} className="block group tap-target">
       <div className="rounded-xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         {/* Cover photo */}
         <div className="aspect-[16/9] bg-volt-soft relative overflow-hidden">

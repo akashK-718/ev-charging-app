@@ -163,7 +163,7 @@ function LenderBookingsContent() {
             <Link
               key={booking.id}
               href={`/lender/bookings/${booking.id}`}
-              className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
+              className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors tap-target"
             >
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-ink text-sm truncate">

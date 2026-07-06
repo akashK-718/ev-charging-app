@@ -70,6 +70,27 @@ h3 { font-size: var(--font-size-title); font-weight: 500; }
   animation: pageIn 0.25s ease-out both;
 }
 
+/* ─── Scroll behaviour ────────────────────────────────────────────────────── */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Touch tap feedback ──────────────────────────────────────────────────── */
+a, button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tap-target {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.tap-target:active {
+  opacity: 0.7;
+  transition: opacity 0.08s ease;
+}
+
 /* Hide scrollbar for filter chips */
 .scrollbar-none {
   scrollbar-width: none;
