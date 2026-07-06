@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Phone, MapPin, Clock, ShieldCheck } from 'lucide-react';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
@@ -162,7 +163,10 @@ export default function BookingDetailPage() {
           <h1 className="text-2xl font-medium text-ink">Booking</h1>
           <p className="text-xs text-muted mt-1 font-mono">{booking.confirmation_code}</p>
         </div>
-        <StatusBadge status={booking.status} />
+        <StatusBadge
+          status={booking.status}
+          label={booking.status === 'awaiting_driver_confirmation' ? 'Awaiting your confirmation' : undefined}
+        />
       </div>
 
       {/* Status messages */}
@@ -299,18 +303,27 @@ export default function BookingDetailPage() {
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
         <h2 className="font-semibold text-sm text-ink">Charger</h2>
         <p className="font-semibold text-ink">{booking.charger?.title ?? '—'}</p>
-        {booking.confirmed_at ? (
-          booking.charger?.address && (
+        {booking.charger?.address && booking.confirmed_at ? (
+          ['confirmed', 'awaiting_driver_confirmation', 'in_progress'].includes(booking.status) ? (
+            <Link
+              href={`/lender/chargers/${booking.charger_id}/map?readonly=true`}
+              className="flex items-center gap-1.5 text-xs text-volt-deep font-semibold tap-target"
+            >
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1">{booking.charger.address}</span>
+              <span className="shrink-0">View on map →</span>
+            </Link>
+          ) : (
             <div className="flex items-center gap-1.5 text-xs text-muted">
               <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span>{booking.charger.address}</span>
             </div>
           )
-        ) : (
+        ) : !booking.confirmed_at ? (
           <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
             Approximate location — exact address shared after booking confirmed.
           </p>
-        )}
+        ) : null}
       </div>
 
       {/* Time slot */}
