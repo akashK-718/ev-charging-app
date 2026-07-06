@@ -60,6 +60,17 @@ function isValid(days: DayState[]): boolean {
 export function StepAvailability({ draft, onChange, onValidChange }: StepAvailabilityProps) {
   const [days, setDays] = useState<DayState[]>(() => buildDays(draft.availability));
 
+  // In edit mode the parent fetches charger data asynchronously. If draft.availability
+  // arrives after this component mounts (e.g. before the loading gate fires), the
+  // useState initializer will have run with undefined and all days stay disabled.
+  // This effect syncs the local days state once the saved slots land in draft.
+  useEffect(() => {
+    if (draft.availability?.length && !days.some(d => d.enabled)) {
+      setDays(buildDays(draft.availability));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.availability]);
+
   const valid = isValid(days);
 
   useEffect(() => {
