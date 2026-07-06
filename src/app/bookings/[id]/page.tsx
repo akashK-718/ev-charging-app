@@ -189,11 +189,6 @@ export default function BookingDetailPage() {
         </div>
       )}
 
-      {booking.status === 'awaiting_end_confirmation' && (
-        <div className="px-4 py-3 bg-orange-50 rounded-2xl border border-orange-200">
-          <p className="text-sm font-semibold text-orange-700">Lender has requested to end the session — confirm below to complete your charge.</p>
-        </div>
-      )}
 
       {(booking.status === 'rejected' || booking.status === 'auto_rejected') && (
         <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-200">
