@@ -73,14 +73,19 @@ export async function POST(
     if (updateError) {
       return NextResponse.json({ error: 'Failed to initiate session' }, { status: 500 });
     }
-    await notify(booking.driver_id, 'session_initiation_requested', { booking_id: params.id });
+    void notify(booking.driver_id, 'session_initiation_requested', { booking_id: params.id });
     const lenderName = (user.user_metadata?.name as string | undefined) ?? 'Your host';
-    await sendPushNotification({
-      userId: booking.driver_id,
-      title: 'Start your charging session',
-      body: `${lenderName} has started the session — open the app to confirm`,
-      url: `/bookings/${params.id}`,
-    });
+    void (async () => {
+      const { data: charger } = await adminSupabase
+        .from('chargers').select('title').eq('id', booking.charger_id).single();
+      const chargerName = charger?.title ?? 'your charger';
+      await sendPushNotification({
+        userId: booking.driver_id,
+        title: 'Start your charging session',
+        body: `${lenderName} is ready — confirm to start charging at ${chargerName}`,
+        url: `/bookings/${params.id}`,
+      });
+    })();
     return NextResponse.json({ ok: true });
   }
 
@@ -111,16 +116,14 @@ export async function POST(
     // body absent or non-JSON — treat as no coords provided
   }
 
-  // Fetch proximity settings + charger coords in parallel (charger only if coords present)
+  // Fetch proximity settings + charger in parallel (charger always fetched for name + coords)
   const b = booking as { charger_id: string };
   const [settingsRes, chargerRes] = await Promise.all([
     adminSupabase
       .from('app_settings')
       .select('key, value')
       .in('key', ['proximity_check_enabled', 'proximity_check_radius_km']),
-    driverLat !== undefined
-      ? adminSupabase.from('chargers').select('latitude, longitude').eq('id', b.charger_id).single()
-      : Promise.resolve({ data: null, error: null }),
+    adminSupabase.from('chargers').select('title, latitude, longitude').eq('id', b.charger_id).single(),
   ]);
 
   // Parse settings — fall back to defaults on any failure (never fail open)
@@ -164,12 +167,13 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: 'Failed to start session' }, { status: 500 });
   }
-  await notify(booking.lender_id, 'session_started', { booking_id: params.id });
+  void notify(booking.lender_id, 'session_started', { booking_id: params.id });
   const driverName = (user.user_metadata?.name as string | undefined) ?? 'Your driver';
-  await sendPushNotification({
+  const chargerName = (chargerRes.data as { title?: string } | null)?.title ?? 'your charger';
+  void sendPushNotification({
     userId: booking.lender_id,
     title: 'Session started',
-    body: `${driverName} confirmed — session is now active`,
+    body: `${driverName} confirmed — session at ${chargerName} is now active`,
     url: `/lender/bookings/${params.id}`,
   });
   return NextResponse.json({ ok: true });
