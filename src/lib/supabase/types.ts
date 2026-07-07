@@ -36,6 +36,7 @@ export type Database = {
           razorpay_fund_account_id: string | null;
           is_admin: boolean;
           avatar_url: string | null;
+          fcm_token: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -48,6 +49,7 @@ export type Database = {
           kyc_doc_url?: string | null;
           is_admin?: boolean;
           avatar_url?: string | null;
+          fcm_token?: string | null;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
