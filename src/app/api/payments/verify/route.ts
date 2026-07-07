@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getRazorpay, verifyPaymentSignature } from '@/lib/razorpay';
 import { notify } from '@/lib/notifications';
-import { sendPushNotification } from '@/lib/notifications/push';
 import { generateConfirmationCode } from '@/lib/utils';
 
 /**
@@ -89,19 +88,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await notify(lenderId, 'booking_received', { booking_id: bookingId, charger_id: chargerId });
+  // Atomic idempotency guard: only the first caller sets notification_sent_at.
+  // Razorpay may retry this endpoint; without this, each retry sends a duplicate push.
+  const { data: claimed } = await adminSupabase
+    .from('bookings')
+    .update({ notification_sent_at: new Date().toISOString() })
+    .eq('id', bookingId)
+    .is('notification_sent_at', null)
+    .select('id');
 
-  // Push: notify lender of new booking request (fire-and-forget)
+  if (!claimed?.length) {
+    // Another request already sent the notification — skip
+    return NextResponse.json({ data: { booking_id: bookingId } });
+  }
+
+  // Fetch charger name for the rich notification body (fire-and-forget)
   const driverName = (user.user_metadata?.name as string | undefined) ?? 'A driver';
   void (async () => {
     const { data: charger } = await adminSupabase
       .from('chargers').select('title').eq('id', chargerId).single();
     const chargerName = charger?.title ?? 'your charger';
-    await sendPushNotification({
-      userId: lenderId,
-      title: 'New booking request',
-      body: `${driverName} wants to charge at ${chargerName}`,
-      url: `/lender/bookings/${bookingId}`,
+    await notify(lenderId, 'booking_received', {
+      booking_id: bookingId,
+      charger_id: chargerId,
+      driver_name: driverName,
+      charger_name: chargerName,
     });
   })();
 

@@ -168,6 +168,7 @@ export type Database = {
           no_show_at: string | null;
           cancelled_at: string | null;
           rejection_reason: string | null;
+          notification_sent_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -192,6 +193,7 @@ export type Database = {
           no_show_at?: string | null;
           cancelled_at?: string | null;
           rejection_reason?: string | null;
+          notification_sent_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
         Relationships: [];
