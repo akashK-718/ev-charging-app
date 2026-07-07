@@ -1,8 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { getFcmAdmin } from '@/lib/firebase-admin';
 
 /**
- * Send a push notification to a single user via FCM legacy HTTP API.
- * Fire-and-forget safe: never throws, silently skips if token is absent.
+ * Send a push notification to a single user via Firebase Admin SDK (FCM v1).
+ * Fire-and-forget safe: never throws, silently skips if token is absent or
+ * FCM is not configured (dev environment without FIREBASE_SERVICE_ACCOUNT_JSON).
  */
 export async function sendPushNotification({
   userId,
@@ -16,6 +18,9 @@ export async function sendPushNotification({
   url: string;
 }): Promise<void> {
   try {
+    const messaging = getFcmAdmin();
+    if (!messaging) return;
+
     const supabase = createAdminClient();
     const { data: userRow } = await supabase
       .from('users')
@@ -25,22 +30,23 @@ export async function sendPushNotification({
 
     if (!userRow?.fcm_token) return;
 
-    const res = await fetch('https://fcm.googleapis.com/fcm/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `key=${process.env.FIREBASE_SERVER_KEY}`,
-        'Content-Type': 'application/json',
+    await messaging.send({
+      token: userRow.fcm_token,
+      notification: {
+        title,
+        body,
       },
-      body: JSON.stringify({
-        to: userRow.fcm_token,
-        notification: { title, body },
-        data: { url },
-      }),
+      webpush: {
+        notification: {
+          title,
+          body,
+          icon: '/icons/icon-192x192.png',
+        },
+        fcmOptions: {
+          link: url,
+        },
+      },
     });
-
-    if (!res.ok) {
-      console.warn(`[push] FCM send failed for user ${userId}: HTTP ${res.status}`);
-    }
   } catch (err) {
     console.warn(`[push] Failed to send push notification to user ${userId}:`, err);
   }
