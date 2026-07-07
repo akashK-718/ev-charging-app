@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
-import { runAutoCompleteEndSweep } from '@/lib/bookings/auto-complete-end';
 
 /**
  * GET /api/bookings/[id] — booking detail for the driver who made it.
@@ -17,8 +15,6 @@ export async function GET(
   }
 
   const adminSupabase = createAdminClient();
-  await runAutoRejectSweep(adminSupabase);
-  await runAutoCompleteEndSweep(adminSupabase);
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
