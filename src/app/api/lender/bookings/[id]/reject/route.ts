@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { notify } from '@/lib/notifications';
 import { sendPushNotification } from '@/lib/notifications/push';
 import { refundPayment } from '@/lib/razorpay';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
@@ -70,11 +69,6 @@ export async function POST(
   }
 
   await refundIfNeeded(adminSupabase, params.id);
-
-  await notify(booking.driver_id, 'booking_rejected', {
-    booking_id: params.id,
-    reason,
-  });
 
   // Push: notify driver that booking was rejected (fire-and-forget)
   void (async () => {

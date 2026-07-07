@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { notify } from '@/lib/notifications';
 import { sendPushNotification } from '@/lib/notifications/push';
 import { SESSION_GRACE_MINUTES, PROXIMITY_CHECK_DEFAULTS } from '@/lib/constants';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
@@ -73,7 +72,6 @@ export async function POST(
     if (updateError) {
       return NextResponse.json({ error: 'Failed to initiate session' }, { status: 500 });
     }
-    void notify(booking.driver_id, 'session_initiation_requested', { booking_id: params.id });
     const lenderName = (user.user_metadata?.name as string | undefined) ?? 'Your host';
     void (async () => {
       const { data: charger } = await adminSupabase
@@ -167,7 +165,6 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: 'Failed to start session' }, { status: 500 });
   }
-  void notify(booking.lender_id, 'session_started', { booking_id: params.id });
   const driverName = (user.user_metadata?.name as string | undefined) ?? 'Your driver';
   const chargerName = (chargerRes.data as { title?: string } | null)?.title ?? 'your charger';
   void sendPushNotification({

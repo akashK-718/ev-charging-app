@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { refundPayment } from '@/lib/razorpay';
-import { notify } from '@/lib/notifications';
 import { sendPushNotification } from '@/lib/notifications/push';
 import { FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES } from '@/lib/constants';
 
 /**
- * POST /api/bookings/[id]/cancel — driver cancels their own booking.
+ * POST /api/bookings/[id]/cancel
  *
- * Refund logic:
- *   - Within FREE_CANCEL_WINDOW_MINUTES of payment: full refund (free window)
+ * Driver cancel refund logic:
+ *   - Within FREE_CANCEL_WINDOW_MINUTES of payment: full refund
  *   - Outside free window, >FREE_CANCEL_MINUTES before slot: full refund
  *   - Outside free window, <FREE_CANCEL_MINUTES before slot: no refund
+ *
+ * Lender cancel: always full refund.
  *
  * Razorpay refund is server-side only. Idempotent: checks razorpay_refund_id
  * before calling the refund API.
@@ -38,7 +39,10 @@ export async function POST(
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
-  if (booking.driver_id !== user.id) {
+  const isDriver = user.id === booking.driver_id;
+  const isLender = user.id === booking.lender_id;
+
+  if (!isDriver && !isLender) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -55,7 +59,54 @@ export async function POST(
     .eq('booking_id', params.id)
     .maybeSingle();
 
-  // Determine refund amount and reason
+  // ── Lender-initiated cancellation ─────────────────────────────────────────
+  if (isLender) {
+    if (
+      payment &&
+      payment.status === 'paid' &&
+      !payment.razorpay_refund_id &&
+      payment.razorpay_payment_id
+    ) {
+      try {
+        const refund = await refundPayment(payment.razorpay_payment_id, payment.gross_amount);
+        await adminSupabase
+          .from('payments')
+          .update({ status: 'refunded', razorpay_refund_id: refund.id })
+          .eq('id', payment.id);
+      } catch (err) {
+        console.error(`[cancel] lender refund failed for booking ${params.id}:`, err);
+        return NextResponse.json(
+          { error: 'Refund could not be processed. Please contact support.' },
+          { status: 502 },
+        );
+      }
+    }
+
+    const { error: updateError } = await adminSupabase
+      .from('bookings')
+      .update({ status: 'cancelled', cancellation_reason: 'lender_cancelled', cancelled_at: new Date().toISOString() })
+      .eq('id', params.id);
+
+    if (updateError) {
+      return NextResponse.json({ error: 'Failed to cancel booking' }, { status: 500 });
+    }
+
+    void (async () => {
+      const { data: charger } = await adminSupabase
+        .from('chargers').select('title').eq('id', booking.charger_id).single();
+      const chargerName = charger?.title ?? 'your charger';
+      await sendPushNotification({
+        userId: booking.driver_id,
+        title: 'Booking cancelled by host',
+        body: `Your booking at ${chargerName} was cancelled. Full refund issued.`,
+        url: `/bookings/${params.id}`,
+      });
+    })();
+
+    return NextResponse.json({ ok: true, refunded: true });
+  }
+
+  // ── Driver-initiated cancellation ──────────────────────────────────────────
   const paymentAgeMs = payment?.created_at
     ? Date.now() - new Date(payment.created_at).getTime()
     : Infinity;
@@ -76,7 +127,6 @@ export async function POST(
     cancellationReason = 'driver_late_cancel';
   }
 
-  // Issue refund if applicable — idempotent: skip if already refunded
   if (
     refundAmount > 0 &&
     payment &&
@@ -99,31 +149,25 @@ export async function POST(
     }
   }
 
-  const nowIso = new Date().toISOString();
   const { error: updateError } = await adminSupabase
     .from('bookings')
-    .update({ status: 'cancelled', cancellation_reason: cancellationReason, cancelled_at: nowIso })
+    .update({ status: 'cancelled', cancellation_reason: cancellationReason, cancelled_at: new Date().toISOString() })
     .eq('id', params.id);
 
   if (updateError) {
     return NextResponse.json({ error: 'Failed to cancel booking' }, { status: 500 });
   }
 
-  void notify(booking.lender_id, 'booking_cancelled', { booking_id: params.id });
-
-  // Push: notify lender of driver cancellation (fire-and-forget)
   const driverName = (user.user_metadata?.name as string | undefined) ?? 'The driver';
-  void (async () => {
-    const { data: charger } = await adminSupabase
-      .from('chargers').select('title').eq('id', booking.charger_id).single();
-    const chargerName = charger?.title ?? 'your charger';
-    await sendPushNotification({
-      userId: booking.lender_id,
-      title: 'Booking cancelled',
-      body: `${driverName} cancelled their booking for ${chargerName}`,
-      url: `/lender/bookings/${params.id}`,
-    });
-  })();
+  const when = new Date(booking.scheduled_start).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short',
+  });
+  void sendPushNotification({
+    userId: booking.lender_id,
+    title: 'Booking cancelled',
+    body: `${driverName} cancelled their booking for ${when}`,
+    url: `/lender/bookings/${params.id}`,
+  });
 
   return NextResponse.json({ ok: true, refunded: refundAmount > 0 });
 }
