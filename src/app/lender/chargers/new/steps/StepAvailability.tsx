@@ -163,21 +163,24 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
 
               {/* Day label */}
               <span className={cn(
-                'w-8 text-xs font-bold shrink-0',
+                'min-w-[40px] text-xs font-bold shrink-0',
                 day.enabled ? 'text-ink' : 'text-muted',
               )}>
                 {day.shortLabel}
               </span>
 
+              {/* Spacer */}
+              <div className="flex-1" />
+
               {/* Time inputs */}
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <input
                   type="time"
                   value={day.start_time}
                   disabled={!day.enabled}
                   onChange={e => setTime(day.day_of_week, 'start_time', e.target.value)}
                   className={cn(
-                    'flex-1 min-w-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
+                    'shrink-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
                     'bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-volt',
                     !day.enabled && 'opacity-40',
                     endError && 'border-red-400',
@@ -190,7 +193,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
                   disabled={!day.enabled}
                   onChange={e => setTime(day.day_of_week, 'end_time', e.target.value)}
                   className={cn(
-                    'flex-1 min-w-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
+                    'shrink-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
                     'bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-volt',
                     !day.enabled && 'opacity-40',
                     endError && 'border-red-400',
