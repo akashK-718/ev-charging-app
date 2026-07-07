@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { notify } from '@/lib/notifications';
 import { sendPushNotification } from '@/lib/notifications/push';
 import { queuePayoutForBooking } from '@/lib/bookings/queue-payout';
 
@@ -63,7 +62,6 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to initiate session end' }, { status: 500 });
     }
 
-    void notify(booking.driver_id, 'session_end_requested', { booking_id: params.id });
     const lenderName = (user.user_metadata?.name as string | undefined) ?? 'Your host';
     void sendPushNotification({
       userId: booking.driver_id,
@@ -117,8 +115,6 @@ export async function POST(
     }
 
     await queuePayoutForBooking(adminSupabase, params.id, booking.lender_id);
-    void notify(booking.driver_id, 'session_completed', { booking_id: params.id });
-    void notify(booking.lender_id, 'session_completed', { booking_id: params.id });
     const chargerName = (charger as { title?: string } | null)?.title ?? 'your charger';
     const driverName = (user.user_metadata?.name as string | undefined) ?? 'Your driver';
     void Promise.all([

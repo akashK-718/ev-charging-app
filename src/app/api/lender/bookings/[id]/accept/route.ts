@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { notify } from '@/lib/notifications';
 import { sendPushNotification } from '@/lib/notifications/push';
 import { BOOKING_AUTO_CANCEL_MINUTES } from '@/lib/constants';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
@@ -56,8 +55,6 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: 'Failed to accept booking' }, { status: 500 });
   }
-
-  await notify(booking.driver_id, 'booking_accepted', { booking_id: params.id });
 
   // Push: notify driver that booking is confirmed (fire-and-forget)
   void (async () => {
