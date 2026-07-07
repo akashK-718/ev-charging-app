@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { queuePayoutForBooking } from '@/lib/bookings/queue-payout';
 
 const NOMINAL_KW: Record<string, number> = {
@@ -63,6 +64,12 @@ export async function POST(
     }
 
     await notify(booking.driver_id, 'session_end_requested', { booking_id: params.id });
+    await sendPushNotification({
+      userId: booking.driver_id,
+      title: 'Confirm session end',
+      body: 'The session end has been requested — confirm to complete',
+      url: `/bookings/${params.id}`,
+    });
 
     return NextResponse.json({ ok: true, status: 'awaiting_end_confirmation' });
   }
@@ -111,6 +118,20 @@ export async function POST(
     await queuePayoutForBooking(adminSupabase, params.id, booking.lender_id);
     await notify(booking.driver_id, 'session_completed', { booking_id: params.id });
     await notify(booking.lender_id, 'session_completed', { booking_id: params.id });
+    await Promise.all([
+      sendPushNotification({
+        userId: booking.driver_id,
+        title: 'Session complete',
+        body: 'Your charging session is complete',
+        url: `/bookings/${params.id}`,
+      }),
+      sendPushNotification({
+        userId: booking.lender_id,
+        title: 'Session complete',
+        body: 'Session complete — payout processing in 24h',
+        url: `/lender/bookings/${params.id}`,
+      }),
+    ]);
 
     return NextResponse.json({ ok: true });
   }

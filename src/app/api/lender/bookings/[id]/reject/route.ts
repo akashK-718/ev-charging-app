@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { refundPayment } from '@/lib/razorpay';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
 
@@ -38,7 +39,7 @@ export async function POST(
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
-    .select('id, driver_id, lender_id, status')
+    .select('id, charger_id, driver_id, lender_id, status')
     .eq('id', params.id)
     .eq('lender_id', user.id)
     .single();
@@ -74,6 +75,19 @@ export async function POST(
     booking_id: params.id,
     reason,
   });
+
+  // Push: notify driver that booking was rejected (fire-and-forget)
+  void (async () => {
+    const { data: charger } = await adminSupabase
+      .from('chargers').select('title').eq('id', booking.charger_id).single();
+    const chargerName = charger?.title ?? 'your charger';
+    await sendPushNotification({
+      userId: booking.driver_id,
+      title: 'Booking not accepted',
+      body: `${chargerName} couldn't accept your booking. Try another charger.`,
+      url: `/bookings/${params.id}`,
+    });
+  })();
 
   return NextResponse.json({ ok: true });
 }

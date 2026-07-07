@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getRazorpay, verifyPaymentSignature } from '@/lib/razorpay';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { generateConfirmationCode } from '@/lib/utils';
 
 /**
@@ -89,6 +90,20 @@ export async function POST(request: NextRequest) {
   }
 
   await notify(lenderId, 'booking_received', { booking_id: bookingId, charger_id: chargerId });
+
+  // Push: notify lender of new booking request (fire-and-forget)
+  const driverName = (user.user_metadata?.name as string | undefined) ?? 'A driver';
+  void (async () => {
+    const { data: charger } = await adminSupabase
+      .from('chargers').select('title').eq('id', chargerId).single();
+    const chargerName = charger?.title ?? 'your charger';
+    await sendPushNotification({
+      userId: lenderId,
+      title: 'New booking request',
+      body: `${driverName} wants to charge at ${chargerName}`,
+      url: `/lender/bookings/${bookingId}`,
+    });
+  })();
 
   return NextResponse.json({ data: { booking_id: bookingId } });
 }

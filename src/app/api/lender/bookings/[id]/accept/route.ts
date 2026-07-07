@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { BOOKING_AUTO_CANCEL_MINUTES } from '@/lib/constants';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
 
@@ -20,7 +21,7 @@ export async function POST(
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
-    .select('id, driver_id, lender_id, status, created_at')
+    .select('id, charger_id, driver_id, lender_id, status, scheduled_start, created_at')
     .eq('id', params.id)
     .eq('lender_id', user.id)
     .single();
@@ -57,6 +58,22 @@ export async function POST(
   }
 
   await notify(booking.driver_id, 'booking_accepted', { booking_id: params.id });
+
+  // Push: notify driver that booking is confirmed (fire-and-forget)
+  void (async () => {
+    const { data: charger } = await adminSupabase
+      .from('chargers').select('title').eq('id', booking.charger_id).single();
+    const chargerName = charger?.title ?? 'your charger';
+    const when = new Date(booking.scheduled_start).toLocaleString('en-IN', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+    await sendPushNotification({
+      userId: booking.driver_id,
+      title: 'Booking confirmed!',
+      body: `${chargerName} on ${when} is confirmed`,
+      url: `/bookings/${params.id}`,
+    });
+  })();
 
   return NextResponse.json({ ok: true });
 }

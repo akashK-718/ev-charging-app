@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { PageTransition } from '@/components/ui/PageTransition';
+import { PushNotificationsProvider } from '@/components/ui/PushNotificationsProvider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -36,13 +37,26 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body>
         <Navbar />
-        <PageTransition>
-          {children}
-        </PageTransition>
+        <PushNotificationsProvider>
+          <PageTransition>
+            {children}
+          </PageTransition>
+        </PushNotificationsProvider>
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-              navigator.serviceWorker.register('/sw.js');
+              navigator.serviceWorker.register('/sw.js').then(reg => {
+                var firebaseConfig = ${JSON.stringify({
+                  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+                  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+                  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+                  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+                  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+                  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+                })};
+                var sw = reg.installing || reg.waiting || reg.active;
+                if (sw) sw.postMessage({ type: 'FIREBASE_CONFIG', config: firebaseConfig });
+              });
             });
           }
         `}} />

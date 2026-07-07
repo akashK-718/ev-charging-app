@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { refundPayment } from '@/lib/razorpay';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES } from '@/lib/constants';
 
 /**
@@ -109,6 +110,18 @@ export async function POST(
   }
 
   await notify(booking.lender_id, 'booking_cancelled', { booking_id: params.id });
+
+  // Push: notify lender of driver cancellation (fire-and-forget)
+  const driverName = (user.user_metadata?.name as string | undefined) ?? 'The driver';
+  const when = new Date(booking.scheduled_start).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short',
+  });
+  await sendPushNotification({
+    userId: booking.lender_id,
+    title: 'Booking cancelled',
+    body: `${driverName} cancelled their booking for ${when}`,
+    url: `/lender/bookings/${params.id}`,
+  });
 
   return NextResponse.json({ ok: true, refunded: refundAmount > 0 });
 }

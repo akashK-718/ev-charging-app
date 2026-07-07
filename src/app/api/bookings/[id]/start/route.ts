@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { SESSION_GRACE_MINUTES, PROXIMITY_CHECK_DEFAULTS } from '@/lib/constants';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
 import { runAutoNoShowSweep } from '@/lib/bookings/auto-no-show';
@@ -73,6 +74,13 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to initiate session' }, { status: 500 });
     }
     await notify(booking.driver_id, 'session_initiation_requested', { booking_id: params.id });
+    const lenderName = (user.user_metadata?.name as string | undefined) ?? 'Your host';
+    await sendPushNotification({
+      userId: booking.driver_id,
+      title: 'Start your charging session',
+      body: `${lenderName} has started the session — open the app to confirm`,
+      url: `/bookings/${params.id}`,
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -157,5 +165,12 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to start session' }, { status: 500 });
   }
   await notify(booking.lender_id, 'session_started', { booking_id: params.id });
+  const driverName = (user.user_metadata?.name as string | undefined) ?? 'Your driver';
+  await sendPushNotification({
+    userId: booking.lender_id,
+    title: 'Session started',
+    body: `${driverName} confirmed — session is now active`,
+    url: `/lender/bookings/${params.id}`,
+  });
   return NextResponse.json({ ok: true });
 }
