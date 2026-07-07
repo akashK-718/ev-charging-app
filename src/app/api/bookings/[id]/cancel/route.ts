@@ -30,7 +30,7 @@ export async function POST(
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
-    .select('id, driver_id, lender_id, status, scheduled_start')
+    .select('id, charger_id, driver_id, lender_id, status, scheduled_start')
     .eq('id', params.id)
     .single();
 
@@ -109,19 +109,21 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to cancel booking' }, { status: 500 });
   }
 
-  await notify(booking.lender_id, 'booking_cancelled', { booking_id: params.id });
+  void notify(booking.lender_id, 'booking_cancelled', { booking_id: params.id });
 
   // Push: notify lender of driver cancellation (fire-and-forget)
   const driverName = (user.user_metadata?.name as string | undefined) ?? 'The driver';
-  const when = new Date(booking.scheduled_start).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short',
-  });
-  await sendPushNotification({
-    userId: booking.lender_id,
-    title: 'Booking cancelled',
-    body: `${driverName} cancelled their booking for ${when}`,
-    url: `/lender/bookings/${params.id}`,
-  });
+  void (async () => {
+    const { data: charger } = await adminSupabase
+      .from('chargers').select('title').eq('id', booking.charger_id).single();
+    const chargerName = charger?.title ?? 'your charger';
+    await sendPushNotification({
+      userId: booking.lender_id,
+      title: 'Booking cancelled',
+      body: `${driverName} cancelled their booking for ${chargerName}`,
+      url: `/lender/bookings/${params.id}`,
+    });
+  })();
 
   return NextResponse.json({ ok: true, refunded: refundAmount > 0 });
 }

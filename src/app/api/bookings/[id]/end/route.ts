@@ -63,11 +63,12 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to initiate session end' }, { status: 500 });
     }
 
-    await notify(booking.driver_id, 'session_end_requested', { booking_id: params.id });
-    await sendPushNotification({
+    void notify(booking.driver_id, 'session_end_requested', { booking_id: params.id });
+    const lenderName = (user.user_metadata?.name as string | undefined) ?? 'Your host';
+    void sendPushNotification({
       userId: booking.driver_id,
       title: 'Confirm session end',
-      body: 'The session end has been requested — confirm to complete',
+      body: `${lenderName} wants to end the session — tap to confirm`,
       url: `/bookings/${params.id}`,
     });
 
@@ -89,7 +90,7 @@ export async function POST(
 
     const { data: charger } = await adminSupabase
       .from('chargers')
-      .select('charger_type')
+      .select('charger_type, title')
       .eq('id', booking.charger_id)
       .single();
 
@@ -116,19 +117,21 @@ export async function POST(
     }
 
     await queuePayoutForBooking(adminSupabase, params.id, booking.lender_id);
-    await notify(booking.driver_id, 'session_completed', { booking_id: params.id });
-    await notify(booking.lender_id, 'session_completed', { booking_id: params.id });
-    await Promise.all([
+    void notify(booking.driver_id, 'session_completed', { booking_id: params.id });
+    void notify(booking.lender_id, 'session_completed', { booking_id: params.id });
+    const chargerName = (charger as { title?: string } | null)?.title ?? 'your charger';
+    const driverName = (user.user_metadata?.name as string | undefined) ?? 'Your driver';
+    void Promise.all([
       sendPushNotification({
         userId: booking.driver_id,
         title: 'Session complete',
-        body: 'Your charging session is complete',
+        body: `Your session at ${chargerName} is complete`,
         url: `/bookings/${params.id}`,
       }),
       sendPushNotification({
         userId: booking.lender_id,
         title: 'Session complete',
-        body: 'Session complete — payout processing in 24h',
+        body: `${driverName}'s session at ${chargerName} is complete — payout in 24h`,
         url: `/lender/bookings/${params.id}`,
       }),
     ]);
