@@ -37,10 +37,11 @@ export function usePushNotifications() {
         })
         .catch(() => {});
 
-      // Handle foreground messages — show inline toast instead of system notification
+      // Handle foreground messages — show inline toast instead of system notification.
+      // Read from payload.data (not payload.notification) to match the data-only send format.
       unsubscribe = onMessage(messaging, payload => {
-        const title = payload.notification?.title ?? '';
-        const body = payload.notification?.body ?? '';
+        const title = payload.data?.title ?? '';
+        const body = payload.data?.body ?? '';
         if (!title) return;
         setToast({ title, body });
         setTimeout(() => setToast(null), TOAST_DURATION_MS);

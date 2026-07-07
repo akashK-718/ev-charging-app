@@ -30,21 +30,14 @@ export async function sendPushNotification({
 
     if (!userRow?.fcm_token) return;
 
+    // Data-only payload — no `notification` key anywhere so the Firebase SDK
+    // does NOT auto-display a notification. The service worker's onBackgroundMessage
+    // handler is the single display path, preventing the double-notification bug on Android.
     await messaging.send({
       token: userRow.fcm_token,
-      notification: {
-        title,
-        body,
-      },
+      data: { title, body, url },
       webpush: {
-        notification: {
-          title,
-          body,
-          icon: '/icons/icon-192x192.png',
-        },
-        fcmOptions: {
-          link: url,
-        },
+        headers: { Urgency: 'high' },
       },
     });
   } catch (err) {

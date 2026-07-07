@@ -13,8 +13,8 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(payload => {
-  const title = payload.notification?.title ?? 'EV Charging';
-  const body = payload.notification?.body ?? '';
+  const title = payload.data?.title ?? 'EV Charging';
+  const body = payload.data?.body ?? '';
   const url = payload.data?.url ?? '/';
 
   self.registration.showNotification(title, {
