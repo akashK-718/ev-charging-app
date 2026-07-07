@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendPushNotification } from '@/lib/notifications/push';
 import { queuePayoutForBooking } from '@/lib/bookings/queue-payout';
+import { runAutoCompleteEndSweep } from '@/lib/bookings/auto-complete-end';
 
 const NOMINAL_KW: Record<string, number> = {
   'AC_3.3kW': 3.3,
@@ -30,6 +31,7 @@ export async function POST(
   }
 
   const adminSupabase = createAdminClient();
+  await runAutoCompleteEndSweep(adminSupabase);
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
