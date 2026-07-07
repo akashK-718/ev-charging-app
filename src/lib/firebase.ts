@@ -1,5 +1,4 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,4 +10,14 @@ const firebaseConfig = {
 };
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+
+/**
+ * Returns the Firebase Messaging instance on the client, null on the server.
+ * Uses a dynamic import so firebase/messaging (which references browser APIs)
+ * is never evaluated in Node.js during the build phase.
+ */
+export async function getFirebaseMessaging() {
+  if (typeof window === 'undefined') return null;
+  const { getMessaging } = await import('firebase/messaging');
+  return getMessaging(app);
+}

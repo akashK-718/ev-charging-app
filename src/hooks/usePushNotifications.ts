@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getToken, onMessage } from 'firebase/messaging';
-import { messaging } from '@/lib/firebase';
+import { getFirebaseMessaging } from '@/lib/firebase';
 
 const TOAST_DURATION_MS = 4000;
 
@@ -15,12 +14,19 @@ export function usePushNotifications() {
   const [toast, setToast] = useState<PushToast | null>(null);
 
   useEffect(() => {
-    if (!messaging) return;
+    let unsubscribe: (() => void) | undefined;
 
-    // Request permission and register token
-    void Notification.requestPermission().then(permission => {
+    void (async () => {
+      const messaging = await getFirebaseMessaging();
+      if (!messaging) return;
+
+      // Request permission and register token
+      const permission = await Notification.requestPermission();
       if (permission !== 'granted') return;
-      getToken(messaging!, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY })
+
+      const { getToken, onMessage } = await import('firebase/messaging');
+
+      getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY })
         .then(token => {
           if (!token) return;
           fetch('/api/users/fcm-token', {
@@ -30,18 +36,18 @@ export function usePushNotifications() {
           }).catch(() => {});
         })
         .catch(() => {});
-    });
 
-    // Handle foreground messages — show inline toast instead of system notification
-    const unsubscribe = onMessage(messaging!, payload => {
-      const title = payload.notification?.title ?? '';
-      const body = payload.notification?.body ?? '';
-      if (!title) return;
-      setToast({ title, body });
-      setTimeout(() => setToast(null), TOAST_DURATION_MS);
-    });
+      // Handle foreground messages — show inline toast instead of system notification
+      unsubscribe = onMessage(messaging, payload => {
+        const title = payload.notification?.title ?? '';
+        const body = payload.notification?.body ?? '';
+        if (!title) return;
+        setToast({ title, body });
+        setTimeout(() => setToast(null), TOAST_DURATION_MS);
+      });
+    })();
 
-    return unsubscribe;
+    return () => { unsubscribe?.(); };
   }, []);
 
   return { toast };
