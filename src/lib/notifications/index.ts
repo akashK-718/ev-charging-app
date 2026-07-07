@@ -25,8 +25,11 @@ function notificationMeta(
   const lenderUrl = bookingId ? `/lender/bookings/${bookingId}` : '/lender/bookings';
 
   switch (type) {
-    case 'booking_received':
-      return { title: 'New Booking Request', body: 'A driver has requested your charger', url: lenderUrl };
+    case 'booking_received': {
+      const driverName = (data.driver_name as string | undefined) ?? 'A driver';
+      const chargerName = (data.charger_name as string | undefined) ?? 'your charger';
+      return { title: 'New booking request', body: `${driverName} wants to charge at ${chargerName}`, url: lenderUrl };
+    }
     case 'booking_accepted':
       return { title: 'Booking Confirmed', body: 'Your booking has been accepted', url: driverUrl };
     case 'booking_rejected':
