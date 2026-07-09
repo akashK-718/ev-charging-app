@@ -163,7 +163,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
 
               {/* Day label */}
               <span className={cn(
-                'min-w-[40px] text-xs font-bold shrink-0',
+                'ml-3 min-w-[40px] text-xs font-bold shrink-0',
                 day.enabled ? 'text-ink' : 'text-muted',
               )}>
                 {day.shortLabel}
