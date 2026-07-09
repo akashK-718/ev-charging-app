@@ -18,9 +18,20 @@ interface StepInstructionsProps {
 export function StepInstructions({ draft, onChange, onValidChange }: StepInstructionsProps) {
   const [titleTouched, setTitleTouched] = useState(false);
   const [instrTouched, setInstrTouched] = useState(false);
+  const [title, setTitle] = useState(draft.title ?? '');
+  const [instructions, setInstructions] = useState(draft.instructions ?? '');
 
-  const title = draft.title ?? '';
-  const instructions = draft.instructions ?? '';
+  // In edit mode the parent fetches charger data asynchronously, so draft values
+  // may arrive after this component mounts (useState initialiser only runs once).
+  useEffect(() => {
+    if (draft.title && !title) setTitle(draft.title);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.title]);
+
+  useEffect(() => {
+    if (draft.instructions && !instructions) setInstructions(draft.instructions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.instructions]);
 
   const titleLen = title.length;
   const instrLen = instructions.length;
@@ -36,12 +47,14 @@ export function StepInstructions({ draft, onChange, onValidChange }: StepInstruc
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value.slice(0, TITLE_MAX);
     setTitleTouched(true);
+    setTitle(value);
     onChange({ title: value });
   }
 
   function handleInstrChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const value = e.target.value.slice(0, INSTRUCTIONS_MAX);
     setInstrTouched(true);
+    setInstructions(value);
     onChange({ instructions: value });
   }
 

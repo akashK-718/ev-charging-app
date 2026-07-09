@@ -82,8 +82,10 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
 
   function handleAddressChange(value: string) {
     setAddressText(value);
-    // Clear the confirmed location when the user types again
-    if (draft.address) {
+    // Only clear the confirmed location when the user has typed something different from
+    // the pre-filled address. Guards against autocomplete components firing onChange when
+    // their value prop is set programmatically in the edit flow.
+    if (draft.address && value !== draft.address) {
       onChange({ address: undefined, latitude: undefined, longitude: undefined });
     }
   }

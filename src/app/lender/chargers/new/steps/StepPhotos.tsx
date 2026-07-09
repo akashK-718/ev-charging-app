@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ImagePlus, X, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { ImagePlus, X, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import { ImageCropper } from '@/components/ui/ImageCropper';
@@ -93,8 +93,11 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
   const [cropQueue, setCropQueue] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Drag-to-reorder state
-  const dragIndex = useRef<number | null>(null);
+  // Drag-to-reorder state (shared by desktop HTML5 drag and touch drag)
+  const dragIndex = useRef<number | null>(null);       // desktop: source index
+  const touchDragIndex = useRef<number | null>(null);  // touch: source index
+  const dropTargetRef = useRef<number | null>(null);   // touch: reliable drop target read in onTouchEnd
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
 
   const uploadedUrls = photos
@@ -173,15 +176,38 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
     });
   }
 
-  function movePhoto(index: number, direction: 'up' | 'down') {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= photos.length) return;
-    setPhotos(prev => {
-      const next = [...prev];
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-      onChange({ photos: next.map(p => p.cloudinaryUrl).filter(Boolean) as string[] });
-      return next;
-    });
+  // ── Touch drag-to-reorder ────────────────────────────────────────────────────
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (touchDragIndex.current === null) return;
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const card = el?.closest<HTMLElement>('[data-photo-index]');
+    if (card) {
+      const targetIndex = parseInt(card.dataset.photoIndex ?? '', 10);
+      if (!isNaN(targetIndex) && targetIndex !== touchDragIndex.current) {
+        dropTargetRef.current = targetIndex;
+        setDropTargetIndex(targetIndex);
+      }
+    }
+  }
+
+  function handleTouchEnd() {
+    const sourceIndex = touchDragIndex.current;
+    const target = dropTargetRef.current;
+    if (sourceIndex !== null && target !== null && sourceIndex !== target) {
+      setPhotos(prev => {
+        const next = [...prev];
+        const [moved] = next.splice(sourceIndex, 1);
+        next.splice(target, 0, moved);
+        onChange({ photos: next.map(p => p.cloudinaryUrl).filter(Boolean) as string[] });
+        return next;
+      });
+    }
+    touchDragIndex.current = null;
+    dropTargetRef.current = null;
+    setDraggedIndex(null);
+    setDropTargetIndex(null);
   }
 
   // ── Drop-zone events (for files from OS) ─────────────────────────────────────
@@ -204,6 +230,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
 
   function handleThumbDragStart(e: React.DragEvent, index: number) {
     dragIndex.current = index;
+    setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(index));
   }
@@ -236,6 +263,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
 
   function handleThumbDragEnd() {
     dragIndex.current = null;
+    setDraggedIndex(null);
     setDropTargetIndex(null);
   }
 
@@ -303,26 +331,23 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
         <div className="mt-6">
           <p className="text-sm font-semibold text-ink mb-3">
             {photos.length} / {MAX_PHOTOS} photos
-            {photos.length > 1 && (
-              <>
-                <span className="hidden sm:inline"> · drag to reorder</span>
-                <span className="sm:hidden"> · tap arrows to reorder</span>
-              </>
-            )}
+            {photos.length > 1 && ' · drag handle to reorder'}
           </p>
           <div className="grid grid-cols-2 gap-3">
             {photos.map((photo, index) => (
               <div
                 key={photo.id}
-                draggable
-                onDragStart={e => handleThumbDragStart(e, index)}
+                data-photo-index={index}
                 onDragOver={e => handleThumbDragOver(e, index)}
                 onDrop={e => handleThumbDrop(e, index)}
-                onDragEnd={handleThumbDragEnd}
                 className={cn(
                   'relative rounded-xl overflow-hidden aspect-[4/3] bg-gray-100',
                   'border-2 transition-all',
-                  dropTargetIndex === index ? 'border-volt scale-[0.97]' : 'border-transparent',
+                  draggedIndex === index
+                    ? 'opacity-50 scale-95 border-transparent'
+                    : dropTargetIndex === index
+                    ? 'border-volt scale-[0.97]'
+                    : 'border-transparent',
                   index === 0 && 'col-span-2 aspect-video',
                 )}
               >
@@ -341,8 +366,20 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
                   </span>
                 )}
 
-                {/* Desktop drag handle — hidden on mobile */}
-                <span className="hidden sm:flex absolute top-2 right-8 z-10 p-1 bg-white/70 rounded-lg cursor-grab active:cursor-grabbing">
+                {/* Drag handle — desktop: HTML5 drag; mobile: touch drag */}
+                <span
+                  draggable
+                  className="absolute top-2 right-8 z-10 p-1 bg-white/70 rounded-lg cursor-grab active:cursor-grabbing touch-none"
+                  onDragStart={e => handleThumbDragStart(e, index)}
+                  onDragEnd={handleThumbDragEnd}
+                  onTouchStart={e => {
+                    e.stopPropagation();
+                    touchDragIndex.current = index;
+                    setDraggedIndex(index);
+                  }}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
                   <GripVertical className="w-4 h-4 text-ink" />
                 </span>
 
@@ -356,30 +393,6 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
                 >
                   <X className="w-3.5 h-3.5 text-ink" />
                 </button>
-
-                {/* Mobile up/down reorder buttons — hidden on desktop */}
-                <div className="sm:hidden absolute left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-1">
-                  <button
-                    type="button"
-                    disabled={index === 0}
-                    onClick={() => movePhoto(index, 'up')}
-                    onPointerDown={e => e.stopPropagation()}
-                    className="w-6 h-6 bg-white/80 rounded-md flex items-center justify-center disabled:opacity-30"
-                    aria-label="Move photo up"
-                  >
-                    <ChevronUp className="w-3.5 h-3.5 text-ink" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={index === photos.length - 1}
-                    onClick={() => movePhoto(index, 'down')}
-                    onPointerDown={e => e.stopPropagation()}
-                    className="w-6 h-6 bg-white/80 rounded-md flex items-center justify-center disabled:opacity-30"
-                    aria-label="Move photo down"
-                  >
-                    <ChevronDown className="w-3.5 h-3.5 text-ink" />
-                  </button>
-                </div>
 
                 {/* Upload progress overlay */}
                 {photo.progress < 100 && !photo.error && (
