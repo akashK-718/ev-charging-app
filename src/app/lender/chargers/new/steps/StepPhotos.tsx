@@ -63,7 +63,12 @@ function uploadToCloudinary(
           reject(new Error('Unexpected response from Cloudinary'));
         }
       } else {
-        reject(new Error(`Upload failed (${xhr.status})`));
+        let message = `Upload failed (${xhr.status})`;
+        try {
+          const body = JSON.parse(xhr.responseText) as { error?: { message?: string } };
+          if (body.error?.message) message = body.error.message;
+        } catch { /* keep default message */ }
+        reject(new Error(message));
       }
     };
 
