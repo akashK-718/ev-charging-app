@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ImagePlus, X, GripVertical } from 'lucide-react';
+import { ImagePlus, X, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import { ImageCropper } from '@/components/ui/ImageCropper';
@@ -45,8 +45,6 @@ function uploadToCloudinary(
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
     formData.append('folder', 'ev-chargers');
-    formData.append('format', 'jpg');
-    formData.append('quality', 'auto');
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`);
@@ -165,6 +163,17 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
       const removed = prev.find(p => p.id === id);
       if (removed?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(removed.previewUrl);
       const next = prev.filter(p => p.id !== id);
+      onChange({ photos: next.map(p => p.cloudinaryUrl).filter(Boolean) as string[] });
+      return next;
+    });
+  }
+
+  function movePhoto(index: number, direction: 'up' | 'down') {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= photos.length) return;
+    setPhotos(prev => {
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
       onChange({ photos: next.map(p => p.cloudinaryUrl).filter(Boolean) as string[] });
       return next;
     });
@@ -289,7 +298,12 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
         <div className="mt-6">
           <p className="text-sm font-semibold text-ink mb-3">
             {photos.length} / {MAX_PHOTOS} photos
-            {photos.length > 0 && ' · drag to reorder'}
+            {photos.length > 1 && (
+              <>
+                <span className="hidden sm:inline"> · drag to reorder</span>
+                <span className="sm:hidden"> · tap arrows to reorder</span>
+              </>
+            )}
           </p>
           <div className="grid grid-cols-2 gap-3">
             {photos.map((photo, index) => (
@@ -317,25 +331,50 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
 
                 {/* Cover badge */}
                 {index === 0 && (
-                  <span className="absolute top-2 left-2 px-2 py-0.5 bg-ink/70 text-white text-xs font-semibold rounded-lg">
+                  <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-ink/70 text-white text-xs font-semibold rounded-lg">
                     Cover
                   </span>
                 )}
 
-                {/* Drag handle */}
-                <span className="absolute top-2 right-8 p-1 bg-white/70 rounded-lg cursor-grab active:cursor-grabbing">
+                {/* Desktop drag handle — hidden on mobile */}
+                <span className="hidden sm:flex absolute top-2 right-8 z-10 p-1 bg-white/70 rounded-lg cursor-grab active:cursor-grabbing">
                   <GripVertical className="w-4 h-4 text-ink" />
                 </span>
 
-                {/* Remove button */}
+                {/* Remove button — z-10 so it renders above progress/error overlays */}
                 <button
                   type="button"
                   onClick={() => removePhoto(photo.id)}
-                  className="absolute top-2 right-2 w-6 h-6 bg-white/70 rounded-lg flex items-center justify-center hover:bg-white transition-colors"
+                  onPointerDown={e => e.stopPropagation()}
+                  className="absolute top-2 right-2 z-10 w-6 h-6 bg-white/70 rounded-lg flex items-center justify-center hover:bg-white transition-colors"
                   aria-label="Remove photo"
                 >
                   <X className="w-3.5 h-3.5 text-ink" />
                 </button>
+
+                {/* Mobile up/down reorder buttons — hidden on desktop */}
+                <div className="sm:hidden absolute left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-1">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => movePhoto(index, 'up')}
+                    onPointerDown={e => e.stopPropagation()}
+                    className="w-6 h-6 bg-white/80 rounded-md flex items-center justify-center disabled:opacity-30"
+                    aria-label="Move photo up"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5 text-ink" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === photos.length - 1}
+                    onClick={() => movePhoto(index, 'down')}
+                    onPointerDown={e => e.stopPropagation()}
+                    className="w-6 h-6 bg-white/80 rounded-md flex items-center justify-center disabled:opacity-30"
+                    aria-label="Move photo down"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5 text-ink" />
+                  </button>
+                </div>
 
                 {/* Upload progress overlay */}
                 {photo.progress < 100 && !photo.error && (
