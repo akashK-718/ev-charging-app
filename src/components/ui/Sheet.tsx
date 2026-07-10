@@ -27,7 +27,7 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
       <div
         role="presentation"
         className={cn(
-          'fixed inset-0 z-40 bg-ink/30 transition-opacity',
+          'fixed inset-0 z-40 bg-black/50 transition-opacity',
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         )}
         style={{ transitionDuration: 'var(--dur-fast)' }}
