@@ -26,7 +26,6 @@ interface AvatarProps {
 export function Avatar({ avatarUrl, name, size = 'md' }: AvatarProps) {
   const [imgError, setImgError] = useState(false);
 
-  // Reset error state whenever the URL changes (e.g. after a new upload)
   useEffect(() => { setImgError(false); }, [avatarUrl]);
 
   const sizeClass = SIZE_CLASS[size];
@@ -47,7 +46,7 @@ export function Avatar({ avatarUrl, name, size = 'md' }: AvatarProps) {
 
   return (
     <div className={`${sizeClass} rounded-full bg-volt-soft flex items-center justify-center shrink-0 select-none`}>
-      <span className="font-bold text-ink leading-none">{getInitials(name)}</span>
+      <span className="font-medium text-ink leading-none">{getInitials(name)}</span>
     </div>
   );
 }

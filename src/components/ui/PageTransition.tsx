@@ -10,7 +10,7 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setAnimating(true);
-    timerRef.current = setTimeout(() => setAnimating(false), 260);
+    timerRef.current = setTimeout(() => setAnimating(false), 120);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
