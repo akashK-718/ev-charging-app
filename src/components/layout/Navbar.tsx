@@ -112,8 +112,41 @@ export function Navbar() {
 
   if (!user) {
     return (
-      <header className="h-14 px-4 flex items-center border-b border-gray-100 bg-white sticky top-0 z-40">
-        <Logo href="/" />
+      <header className="h-14 border-b border-gray-100 bg-white sticky top-0 z-40">
+        {/* Mobile: logo only */}
+        <div className="flex items-center h-full px-4 lg:hidden">
+          <Logo href="/" />
+        </div>
+        {/* Desktop: full shell with public nav links */}
+        <div className="hidden lg:flex items-center h-full px-6 gap-6">
+          <Logo href="/" />
+          <nav className="flex items-center gap-0.5" aria-label="Main navigation">
+            {[
+              { href: '/chargers', label: 'Explore' },
+              { href: '/bookings', label: 'My Chargers' },
+              { href: '/bookings', label: 'Bookings' },
+            ].map(link => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-muted hover:text-ink hover:bg-gray-50 transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              className="p-2 rounded-lg text-muted hover:text-ink hover:bg-gray-50 transition-colors"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+            </button>
+            <Link href="/login" className="ml-1" aria-label="Sign in">
+              <Avatar avatarUrl={null} name={null} size="sm" />
+            </Link>
+          </div>
+        </div>
       </header>
     );
   }
