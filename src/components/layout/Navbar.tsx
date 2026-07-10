@@ -3,7 +3,8 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Menu, X } from 'lucide-react';
+import { Bell, LogOut, Menu, X } from 'lucide-react';
+import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -167,13 +168,25 @@ export function Navbar() {
             ))}
           </nav>
 
-          <button
-            onClick={handleSignOut}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-muted hover:text-ink hover:bg-gray-50 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
+          {/* Right rail: sign-out · bell · avatar */}
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={handleSignOut}
+              className="p-2 rounded-lg text-muted hover:text-ink hover:bg-gray-50 transition-colors"
+              aria-label="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+            <button
+              className="p-2 rounded-lg text-muted hover:text-ink hover:bg-gray-50 transition-colors"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+            </button>
+            <Link href="/profile" className="ml-1" aria-label="Your profile">
+              <Avatar avatarUrl={null} name={user.name} size="sm" />
+            </Link>
+          </div>
         </div>
       </header>
 
