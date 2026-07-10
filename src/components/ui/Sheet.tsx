@@ -38,8 +38,12 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
         role="dialog"
         aria-modal="true"
         className={cn(
+          // Mobile: full-width bottom sheet
           'fixed bottom-0 left-0 right-0 z-50 max-h-[90vh]',
-          'bg-surface-0 rounded-t-[20px] shadow-float',
+          'rounded-t-[20px]',
+          // Desktop: centered modal with max-width, floating above bottom edge
+          'md:bottom-8 md:max-w-lg md:mx-auto md:rounded-[20px]',
+          'bg-surface-0 shadow-float',
           'flex flex-col overflow-hidden',
           'transition-transform',
           open ? 'translate-y-0' : 'translate-y-full',
@@ -47,7 +51,8 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
         )}
         style={{ transitionDuration: 'var(--dur-fast)' }}
       >
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
+        {/* Drag handle — mobile only */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
           <div className="w-10 h-1 bg-surface-2 rounded-full" />
         </div>
 
