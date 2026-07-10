@@ -27,21 +27,32 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
   const [mapKey, setMapKey] = useState(0);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  // Tracks the latest drag position to discard stale reverse-geocode responses
+  // Local coords state — decoupled from draft so validation survives any draft merges
+  // that might clear latitude/longitude in the edit flow.
+  const [coords, setCoords] = useState<Coords | null>(() =>
+    draft.latitude !== undefined && draft.longitude !== undefined
+      ? { lat: draft.latitude, lng: draft.longitude }
+      : null,
+  );
   const latestDragRef = useRef<Coords | null>(null);
 
   // Sync addressText when draft.address arrives asynchronously (edit flow).
-  // useState only reads its initial value once on mount; by the time the fetch
-  // resolves and draft.address is set, the component is already mounted.
   useEffect(() => {
     if (draft.address && !addressText) {
       setAddressText(draft.address);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.address]);
 
-  const isValid =
-    !!draft.address && draft.latitude !== undefined && draft.longitude !== undefined;
+  // Sync coords when edit-flow data arrives asynchronously after mount.
+  useEffect(() => {
+    if (draft.latitude !== undefined && draft.longitude !== undefined && coords === null) {
+      setCoords({ lat: draft.latitude, lng: draft.longitude });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.latitude, draft.longitude]);
+
+  const isValid = !!draft.address && coords !== null;
 
   useEffect(() => {
     onValidChange(isValid);
@@ -57,9 +68,9 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const coords: Coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          const result = await maps.reverseGeocode(coords);
-          handleSelect({ coords, address: result.formattedAddress });
+          const c: Coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const result = await maps.reverseGeocode(c);
+          handleSelect({ coords: c, address: result.formattedAddress });
         } catch {
           setGpsError('Could not get your location. Please enter address manually.');
         } finally {
@@ -74,32 +85,30 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
     );
   }
 
-  function handleSelect({ coords, address }: { coords: Coords; address: string }) {
+  function handleSelect({ coords: newCoords, address }: { coords: Coords; address: string }) {
     setAddressText(address);
-    setMapKey(k => k + 1); // remount map so it flies to the new address
-    onChange({ address, latitude: coords.lat, longitude: coords.lng });
+    setMapKey(k => k + 1);
+    setCoords(newCoords);
+    onChange({ address, latitude: newCoords.lat, longitude: newCoords.lng });
   }
 
   function handleAddressChange(value: string) {
     setAddressText(value);
-    // Only clear the confirmed location when the user has typed something different from
-    // the pre-filled address. Guards against autocomplete components firing onChange when
-    // their value prop is set programmatically in the edit flow.
+    // Clear confirmed location only when the user types something different.
     if (draft.address && value !== draft.address) {
+      setCoords(null);
       onChange({ address: undefined, latitude: undefined, longitude: undefined });
     }
   }
 
   function handlePinDrag(newCoords: Coords) {
-    // Update coords immediately for a responsive feel
+    setCoords(newCoords);
     onChange({ latitude: newCoords.lat, longitude: newCoords.lng });
     latestDragRef.current = newCoords;
 
-    // Reverse-geocode in the background to update the address field
     void (async () => {
       try {
         const result = await maps.reverseGeocode(newCoords);
-        // Discard if the user has already dragged to a newer position
         if (
           latestDragRef.current?.lat === newCoords.lat &&
           latestDragRef.current?.lng === newCoords.lng
@@ -112,8 +121,6 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
       }
     })();
   }
-
-  const hasCoords = draft.latitude !== undefined && draft.longitude !== undefined;
 
   return (
     <div>
@@ -152,17 +159,17 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
         </div>
       )}
 
-      {hasCoords && (
+      {coords && (
         <div className="mt-6">
           <p className="text-sm font-semibold text-ink mb-1">Fine-tune pin location</p>
           <p className="text-xs text-muted mb-3">Drag the pin to the exact charger entrance</p>
           <div className="h-[260px] rounded-xl overflow-hidden">
             <MapView
               key={mapKey}
-              center={{ lat: draft.latitude!, lng: draft.longitude! }}
+              center={coords}
               zoom={16}
               draggablePin={{
-                coords: { lat: draft.latitude!, lng: draft.longitude! },
+                coords,
                 onDragEnd: handlePinDrag,
               }}
             />
