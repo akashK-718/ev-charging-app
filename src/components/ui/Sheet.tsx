@@ -23,25 +23,28 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
   }, [open]);
 
   return (
-    <>
-      <div
-        role="presentation"
-        className={cn(
-          'fixed inset-0 z-40 bg-black/50 transition-opacity',
-          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
-        )}
-        style={{ transitionDuration: 'var(--dur-fast)' }}
-        onClick={onClose}
-      />
+    // Single fixed wrapper owns the click — clicking outside the panel closes the Sheet.
+    // stopPropagation on the panel prevents that click from bubbling up here.
+    <div
+      className={cn(
+        'fixed inset-0 z-50 transition-opacity',
+        open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+      )}
+      style={{ transitionDuration: 'var(--dur-fast)' }}
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div aria-hidden="true" className="absolute inset-0 bg-black/50" />
 
+      {/* Panel — stopPropagation keeps clicks inside from closing the Sheet */}
       <div
         role="dialog"
         aria-modal="true"
         className={cn(
-          // Mobile: full-width bottom sheet
-          'fixed bottom-0 left-0 right-0 z-50 max-h-[90vh]',
+          // Mobile: full-width, anchored to bottom
+          'absolute bottom-0 left-0 right-0 max-h-[90vh]',
           'rounded-t-[20px]',
-          // Desktop: centered modal with max-width, floating above bottom edge
+          // Desktop: centered, floating above bottom edge, all-corner radius
           'md:bottom-8 md:max-w-lg md:mx-auto md:rounded-[20px]',
           'bg-surface-0 shadow-float',
           'flex flex-col overflow-hidden',
@@ -50,6 +53,7 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
           className,
         )}
         style={{ transitionDuration: 'var(--dur-fast)' }}
+        onClick={e => e.stopPropagation()}
       >
         {/* Drag handle — mobile only */}
         <div className="flex justify-center pt-3 pb-1 shrink-0 md:hidden">
@@ -74,6 +78,6 @@ export function Sheet({ open, onClose, title, children, className }: SheetProps)
           {children}
         </div>
       </div>
-    </>
+    </div>
   );
 }
