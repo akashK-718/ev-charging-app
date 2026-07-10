@@ -1,39 +1,51 @@
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
+  loading?: boolean;
 }
+
+const VARIANT: Record<Variant, string> = {
+  primary:   'bg-volt text-volt-deep hover:bg-volt/90 active:bg-volt/80',
+  secondary: 'bg-surface-2 text-ink border border-border hover:bg-surface-1 active:bg-surface-2/70',
+  ghost:     'bg-transparent text-ink hover:bg-surface-1 active:bg-surface-2',
+  danger:    'bg-danger-soft text-danger hover:bg-danger-soft/80 active:bg-danger-soft/60',
+};
+
+const SIZE: Record<Size, string> = {
+  md: 'h-[46px] px-5 text-[15px]',
+  sm: 'h-[38px] px-4 text-[14px]',
+  lg: 'h-[46px] px-5 text-[15px]',
+};
 
 export function Button({
   variant = 'primary',
   size = 'md',
+  loading = false,
+  disabled,
   className,
   children,
   ...props
 }: ButtonProps) {
   return (
     <button
+      disabled={disabled || loading}
       className={cn(
-        'font-semibold rounded-xl transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed',
-        {
-          'bg-ink text-white hover:bg-ink-soft': variant === 'primary',
-          'bg-volt text-ink hover:bg-volt-deep hover:text-white': variant === 'secondary',
-          'bg-transparent text-ink hover:bg-volt-soft': variant === 'ghost'
-        },
-        {
-          'h-9 px-3 text-sm': size === 'sm',
-          'h-12 px-4 text-base': size === 'md',
-          'h-12 px-4 text-base w-full': size === 'lg'
-        },
-        className
+        'inline-flex items-center justify-center gap-2 rounded-token font-medium',
+        'transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+        VARIANT[variant],
+        SIZE[size],
+        className,
       )}
       {...props}
     >
+      {loading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
       {children}
     </button>
   );

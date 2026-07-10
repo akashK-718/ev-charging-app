@@ -33,6 +33,30 @@
   /* Icon sizes */
   --icon-size: 24px;
   --icon-size-sm: 16px;
+
+  /* Surface colors */
+  --color-surface-0: #ffffff;
+  --color-surface-1: #f5f6f5;
+  --color-surface-2: #ebebeb;
+  --color-border: #e0e3e1;
+
+  /* Semantic colors */
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+
+  /* Extended radius */
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 4px 0 rgba(12,22,17,0.08);
+  --shadow-float: 0 4px 16px 0 rgba(12,22,17,0.14);
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-normal: 200ms;
+  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
 }
 
 /* ─── Intentional exceptions — do NOT apply 48px control height here ──────────
@@ -67,7 +91,12 @@ h3 { font-size: var(--font-size-title); font-weight: 500; }
 }
 
 .animate-page-in {
-  animation: pageIn 0.25s ease-out both;
+  animation: pageIn var(--dur-fast) var(--ease-out) both;
+}
+
+.tappable:active {
+  transform: scale(0.97);
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
 /* ─── Scroll behaviour ────────────────────────────────────────────────────── */
