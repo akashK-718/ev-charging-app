@@ -224,10 +224,10 @@ function VerifyOtpContent() {
       <div className="mt-8">
         <Button
           onClick={() => submit(otp)}
-          variant="secondary"
+          variant="primary"
           size="lg"
-          disabled={!isComplete || loading}
-          className={cn(!isComplete && !loading && 'opacity-40')}
+          loading={loading}
+          disabled={!isComplete}
         >
           {loading ? 'Verifying…' : 'Verify'}
         </Button>

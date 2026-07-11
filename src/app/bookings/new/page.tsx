@@ -283,9 +283,9 @@ function NewBookingContent() {
       )}
 
       <Button
-        variant="secondary"
+        variant="primary"
         size="lg"
-        disabled={submitting}
+        loading={submitting}
         onClick={() => { void handlePayAndBook(); }}
       >
         {submitting ? 'Processing…' : `Pay ₹${estimate?.grossRupees ?? ''} & book`}
