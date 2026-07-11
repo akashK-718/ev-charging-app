@@ -79,10 +79,10 @@ export default function LoginPage() {
 
         <Button
           type="submit"
-          variant="secondary"
+          variant="primary"
           size="lg"
-          disabled={loading || !isValid}
-          className={cn(!isValid && !loading && 'opacity-40')}
+          loading={loading}
+          disabled={!isValid}
         >
           {loading ? 'Sending…' : 'Send OTP'}
         </Button>
