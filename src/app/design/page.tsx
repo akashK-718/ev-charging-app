@@ -27,7 +27,7 @@ const SWATCHES = [
   { name: 'ink',          bg: 'bg-ink',          text: 'text-white',    label: '#0c1611' },
   { name: 'ink-soft',     bg: 'bg-ink-soft',      text: 'text-white',    label: '#28332c' },
   { name: 'muted',        bg: 'bg-muted',         text: 'text-white',    label: '#6d7a72' },
-  { name: 'volt',         bg: 'bg-volt',          text: 'text-volt-deep',label: '#10d96a' },
+  { name: 'volt',         bg: 'bg-volt',          text: 'text-ink',      label: '#10d96a' },
   { name: 'volt-deep',    bg: 'bg-volt-deep',     text: 'text-white',    label: '#0a9e4c' },
   { name: 'volt-soft',    bg: 'bg-volt-soft',     text: 'text-volt-deep',label: '#e4faee' },
   { name: 'surface-0',    bg: 'bg-surface-0 border border-border', text: 'text-ink', label: '#ffffff' },
