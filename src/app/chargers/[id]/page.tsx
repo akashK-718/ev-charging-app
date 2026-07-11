@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronRight, Clock, MapPin, Plug, Star } from 'lucide-react';
+import { ChevronRight, MapPin, Star } from 'lucide-react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import { DisplayTitle } from '@/components/ui/DisplayTitle';
 import { EyebrowLabel } from '@/components/ui/EyebrowLabel';
 import { SpecTile } from '@/components/ui/SpecTile';
-import { InfoRow } from '@/components/ui/InfoRow';
 import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
 import { ActionBar } from '@/components/ui/ActionBar';
@@ -67,6 +66,7 @@ export default async function ChargerDetailPage({
 
   const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
   const connectorsLabel = charger.connector_types.join(' · ');
+  const isAvailable = charger.status === 'active';
 
   return (
     <div className="min-h-screen bg-surface-1">
@@ -110,23 +110,12 @@ export default async function ChargerDetailPage({
               />
             </div>
 
-            {/* Title, status pill, meta row */}
+            {/* Title + single meta line (no price — lives in ActionBar only) */}
             <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 border-b border-border md:border-0">
               <DisplayTitle>{charger.title}</DisplayTitle>
 
-              {/* Fix 2 — availability status pill */}
-              <div className="mt-2.5 flex items-center gap-1.5">
-                <span className={cn(
-                  'w-1.5 h-1.5 rounded-full shrink-0',
-                  charger.status === 'active' ? 'bg-volt-deep' : 'bg-muted',
-                )} />
-                <EyebrowLabel className={charger.status === 'active' ? 'text-volt-deep' : ''}>
-                  {charger.status === 'active' ? 'Available now' : 'Temporarily unavailable'}
-                </EyebrowLabel>
-              </div>
-
-              {/* Fix 1 — compact meta row: rating · sessions · location */}
-              <div className="mt-1.5 flex items-center gap-1.5 text-sm text-muted flex-wrap">
+              {/* ★ rating · N sessions · ● Available now */}
+              <div className="mt-2 flex items-center gap-1.5 text-sm text-muted flex-wrap">
                 {charger.avg_rating !== null && (
                   <>
                     <Star className="w-3.5 h-3.5 text-volt-deep fill-volt-deep shrink-0" />
@@ -134,33 +123,26 @@ export default async function ChargerDetailPage({
                     <span aria-hidden>·</span>
                   </>
                 )}
-                <span>{charger.total_sessions} sessions</span>
-                {hasConfirmedBooking && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span className="truncate max-w-[180px]">{charger.address}</span>
-                  </>
-                )}
+                <span>
+                  {charger.total_sessions} {charger.total_sessions === 1 ? 'session' : 'sessions'}
+                </span>
+                <span aria-hidden>·</span>
+                <span className={cn(
+                  'w-1.5 h-1.5 rounded-full shrink-0',
+                  isAvailable ? 'bg-volt-deep' : 'bg-muted',
+                )} />
+                <span className={cn(isAvailable && 'text-volt-deep font-medium')}>
+                  {isAvailable ? 'Available now' : 'Temporarily unavailable'}
+                </span>
               </div>
-
-              <p className="mt-3 text-xl font-medium text-volt-deep">
-                ₹{charger.price_per_kwh}
-                <span className="text-sm font-medium text-muted"> /kWh</span>
-              </p>
             </div>
 
-            {/* Specs */}
+            {/* Specs — connector and max power only; no rate or sessions (those are in meta line / ActionBar) */}
             <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 mt-2 md:mt-0 border-b border-border md:border-0">
               <EyebrowLabel className="mb-3">Specifications</EyebrowLabel>
-              {/* Fix 3 — Rate removed (pinned in ActionBar); replaced with Rating */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <SpecTile label="Connector" value={connectorsLabel} />
                 <SpecTile label="Max power" value={powerLabel} />
-                <SpecTile label="Sessions" value={String(charger.total_sessions)} />
-                <SpecTile
-                  label="Rating"
-                  value={charger.avg_rating !== null ? `${charger.avg_rating.toFixed(1)} ★` : 'New'}
-                />
               </div>
             </div>
 
@@ -187,29 +169,19 @@ export default async function ChargerDetailPage({
               </div>
             )}
 
-            {/* Location & availability */}
+            {/* Location — single prose line, no label-value InfoRow to avoid "Location: Location" */}
             <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-28 md:pb-6 mt-2 md:mt-0">
-              <EyebrowLabel className="mb-1">Location & Availability</EyebrowLabel>
-              <InfoRow
-                icon={MapPin}
-                label="Location"
-                value={
-                  hasConfirmedBooking
-                    ? charger.address
-                    : <span className="text-xs text-amber-600">Shown after booking confirmed</span>
-                }
-              />
-              {/* Fix 4 — was Zap (lightning bolt) which rendered ambiguously; Plug is semantically correct */}
-              <InfoRow
-                icon={Plug}
-                label="Connectors"
-                value={charger.connector_types.join(', ')}
-              />
-              <InfoRow
-                icon={Clock}
-                label="Availability"
-                value={charger.status === 'active' ? 'Available now' : 'Temporarily unavailable'}
-              />
+              <EyebrowLabel className="mb-3">Location</EyebrowLabel>
+              <div className="flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-muted shrink-0 mt-0.5" />
+                {hasConfirmedBooking ? (
+                  <p className="text-sm text-ink">{charger.address}</p>
+                ) : (
+                  <p className="text-sm text-muted">
+                    Exact address shared once your booking is confirmed.
+                  </p>
+                )}
+              </div>
 
               {hasConfirmedBooking && charger.instructions && (
                 <div className="mt-5 rounded-token border border-border p-4">
@@ -247,7 +219,7 @@ export default async function ChargerDetailPage({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted">Status</span>
                   <span className="font-medium text-ink">
-                    {charger.status === 'active' ? 'Available' : 'Unavailable'}
+                    {isAvailable ? 'Available' : 'Unavailable'}
                   </span>
                 </div>
               </div>
@@ -260,14 +232,17 @@ export default async function ChargerDetailPage({
         </div>
       </div>
 
-      {/* Pinned mobile CTA */}
+      {/* Pinned mobile ActionBar: Rate label + price on left, Book now on right */}
       <div className="md:hidden">
         <ActionBar>
           <div className="flex items-center gap-4">
-            <p className="flex-1 text-lg font-medium text-ink">
-              ₹{charger.price_per_kwh}
-              <span className="text-sm font-medium text-muted"> /kWh</span>
-            </p>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-muted">Rate</p>
+              <p className="text-lg font-medium text-volt-deep">
+                ₹{charger.price_per_kwh}
+                <span className="text-sm font-medium text-muted">/kWh</span>
+              </p>
+            </div>
             <Link href={`/bookings/new?charger=${charger.id}`} className="flex-1">
               <Button variant="primary" className="w-full">Book now</Button>
             </Link>
