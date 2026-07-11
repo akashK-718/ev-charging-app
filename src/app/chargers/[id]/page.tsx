@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronRight, Clock, MapPin, Star, Zap } from 'lucide-react';
+import { ChevronRight, Clock, MapPin, Plug, Star } from 'lucide-react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { cn } from '@/lib/utils';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import { DisplayTitle } from '@/components/ui/DisplayTitle';
 import { EyebrowLabel } from '@/components/ui/EyebrowLabel';
@@ -109,31 +110,57 @@ export default async function ChargerDetailPage({
               />
             </div>
 
-            {/* Title & rate */}
+            {/* Title, status pill, meta row */}
             <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 border-b border-border md:border-0">
               <DisplayTitle>{charger.title}</DisplayTitle>
-              <p className="mt-2 text-xl font-medium text-volt-deep">
+
+              {/* Fix 2 — availability status pill */}
+              <div className="mt-2.5 flex items-center gap-1.5">
+                <span className={cn(
+                  'w-1.5 h-1.5 rounded-full shrink-0',
+                  charger.status === 'active' ? 'bg-volt-deep' : 'bg-muted',
+                )} />
+                <EyebrowLabel className={charger.status === 'active' ? 'text-volt-deep' : ''}>
+                  {charger.status === 'active' ? 'Available now' : 'Temporarily unavailable'}
+                </EyebrowLabel>
+              </div>
+
+              {/* Fix 1 — compact meta row: rating · sessions · location */}
+              <div className="mt-1.5 flex items-center gap-1.5 text-sm text-muted flex-wrap">
+                {charger.avg_rating !== null && (
+                  <>
+                    <Star className="w-3.5 h-3.5 text-volt-deep fill-volt-deep shrink-0" />
+                    <span>{charger.avg_rating.toFixed(1)}</span>
+                    <span aria-hidden>·</span>
+                  </>
+                )}
+                <span>{charger.total_sessions} sessions</span>
+                {hasConfirmedBooking && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="truncate max-w-[180px]">{charger.address}</span>
+                  </>
+                )}
+              </div>
+
+              <p className="mt-3 text-xl font-medium text-volt-deep">
                 ₹{charger.price_per_kwh}
                 <span className="text-sm font-medium text-muted"> /kWh</span>
               </p>
-              {charger.avg_rating !== null && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted">
-                  <Star className="w-3.5 h-3.5 text-volt-deep fill-volt-deep" />
-                  <span>{charger.avg_rating.toFixed(1)}</span>
-                  <span>·</span>
-                  <span>{charger.total_sessions} sessions</span>
-                </p>
-              )}
             </div>
 
             {/* Specs */}
             <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 mt-2 md:mt-0 border-b border-border md:border-0">
               <EyebrowLabel className="mb-3">Specifications</EyebrowLabel>
+              {/* Fix 3 — Rate removed (pinned in ActionBar); replaced with Rating */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <SpecTile label="Connector" value={connectorsLabel} />
                 <SpecTile label="Max power" value={powerLabel} />
-                <SpecTile label="Rate" value={`₹${charger.price_per_kwh}/kWh`} />
                 <SpecTile label="Sessions" value={String(charger.total_sessions)} />
+                <SpecTile
+                  label="Rating"
+                  value={charger.avg_rating !== null ? `${charger.avg_rating.toFixed(1)} ★` : 'New'}
+                />
               </div>
             </div>
 
@@ -172,8 +199,9 @@ export default async function ChargerDetailPage({
                     : <span className="text-xs text-amber-600">Shown after booking confirmed</span>
                 }
               />
+              {/* Fix 4 — was Zap (lightning bolt) which rendered ambiguously; Plug is semantically correct */}
               <InfoRow
-                icon={Zap}
+                icon={Plug}
                 label="Connectors"
                 value={charger.connector_types.join(', ')}
               />
