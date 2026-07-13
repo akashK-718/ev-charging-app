@@ -39,6 +39,7 @@ function VerifyOtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const phone = searchParams.get('phone') ?? '';
+  const intent = searchParams.get('intent') ?? '';
 
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
@@ -83,7 +84,7 @@ function VerifyOtpContent() {
       // session cookies that were set server-side, triggering onAuthStateChange
       // and preventing a blank navbar on first login.
       if (isNewUser) {
-        window.location.href = '/welcome/name';
+        window.location.href = intent ? `/welcome/name?intent=${intent}` : '/welcome/name';
       } else if (isAdmin) {
         window.location.href = '/admin';
       } else if (role === 'lender' || role === 'both') {

@@ -189,7 +189,7 @@ export default function LandingPage() {
                 Find a charger
               </Link>
               <Link
-                href="/login"
+                href="/login?intent=lender"
                 className="font-bold text-[15.5px] px-4 py-[15px] rounded-full text-center bg-surface-0 text-ink border-2 border-ink hover:bg-surface-1 transition-colors"
               >
                 Earn with your charger

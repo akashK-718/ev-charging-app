@@ -18,7 +18,7 @@ function validateName(v: string): string | null {
   return null;
 }
 
-export function WelcomeNameForm({ initialName }: { initialName: string }) {
+export function WelcomeNameForm({ initialName, intent }: { initialName: string; intent?: string }) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export function WelcomeNameForm({ initialName }: { initialName: string }) {
         setLoading(false);
         return;
       }
-      router.push('/welcome/role');
+      router.push(intent ? `/welcome/role?intent=${intent}` : '/welcome/role');
     } catch {
       setError('Something went wrong. Please try again.');
       setLoading(false);
@@ -72,8 +72,7 @@ export function WelcomeNameForm({ initialName }: { initialName: string }) {
     setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
+    window.location.href = '/';
   }
 
   return (
