@@ -2,7 +2,11 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { WelcomeRoleForm } from './WelcomeRoleForm';
 
-export default async function WelcomeRolePage() {
+export default async function WelcomeRolePage({
+  searchParams,
+}: {
+  searchParams: { intent?: string };
+}) {
   const supabase = createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect('/login');
@@ -18,5 +22,5 @@ export default async function WelcomeRolePage() {
     redirect(role === 'lender' ? '/lender/dashboard' : '/chargers');
   }
 
-  return <WelcomeRoleForm />;
+  return <WelcomeRoleForm intent={searchParams.intent} />;
 }

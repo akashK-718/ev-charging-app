@@ -164,8 +164,7 @@ export function Navbar() {
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
+    window.location.href = '/';
   }
 
   return (

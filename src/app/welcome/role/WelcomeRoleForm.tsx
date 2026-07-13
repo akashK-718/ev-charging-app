@@ -31,9 +31,9 @@ const ROLES: Array<{ value: Role; label: string; description: string; Icon: Reac
   },
 ];
 
-export function WelcomeRoleForm() {
+export function WelcomeRoleForm({ intent }: { intent?: string }) {
   const router = useRouter();
-  const [selected, setSelected] = useState<Role | null>(null);
+  const [selected, setSelected] = useState<Role | null>(intent === 'lender' ? 'lender' : null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,8 +59,13 @@ export function WelcomeRoleForm() {
       const supabase = createClient();
       await supabase.auth.refreshSession();
 
-      // Drivers tend to use the app more often — "both" lands on the driver view
-      router.push(selected === 'lender' ? '/lender/dashboard' : '/chargers');
+      // Lender intent from landing page CTA → go straight to charger setup
+      if (intent === 'lender' && (selected === 'lender' || selected === 'both')) {
+        router.push('/lender/chargers/new');
+      } else {
+        // Drivers tend to use the app more often — "both" lands on the driver view
+        router.push(selected === 'lender' ? '/lender/dashboard' : '/chargers');
+      }
     } catch {
       setError('Something went wrong. Please try again.');
       setLoading(false);
