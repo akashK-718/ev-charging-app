@@ -12,16 +12,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT: Record<Variant, string> = {
-  primary:   'bg-volt text-ink hover:bg-volt/90 active:bg-volt/80',
-  secondary: 'bg-surface-2 text-ink border border-border hover:bg-surface-1 active:bg-surface-2/70',
-  ghost:     'bg-transparent text-ink hover:bg-surface-1 active:bg-surface-2',
-  danger:    'bg-danger-soft text-danger hover:bg-danger-soft/80 active:bg-danger-soft/60',
+  primary:   'bg-volt text-ink shadow-[0_8px_20px_rgba(16,217,106,.32)] enabled:hover:bg-volt/90 enabled:active:bg-volt/80 disabled:shadow-none',
+  secondary: 'bg-surface-0 text-ink border-[1.5px] border-ink enabled:hover:bg-surface-1 enabled:active:bg-surface-2',
+  ghost:     'bg-transparent text-ink enabled:hover:bg-surface-1 enabled:active:bg-surface-2',
+  danger:    'bg-danger text-white shadow-[0_8px_20px_rgba(220,38,38,.25)] enabled:hover:bg-danger/90 enabled:active:bg-danger/80 disabled:shadow-none',
 };
 
 const SIZE: Record<Size, string> = {
-  md: 'h-[46px] px-5 text-[15px]',
-  sm: 'h-[38px] px-4 text-[14px]',
-  lg: 'h-[46px] px-5 text-[15px]',
+  md: 'h-[48px] px-[26px] text-[15px]',
+  sm: 'h-[38px] px-[18px] text-[13.5px]',
+  lg: 'h-[48px] px-[26px] text-[15px]',
 };
 
 export function Button({
@@ -37,8 +37,10 @@ export function Button({
     <button
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-token font-medium',
-        'transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 rounded-pill font-bold',
+        'transition-all duration-[120ms] ease-out',
+        'enabled:hover:-translate-y-px enabled:active:translate-y-0',
+        'disabled:opacity-40 disabled:cursor-not-allowed',
         VARIANT[variant],
         SIZE[size],
         className,

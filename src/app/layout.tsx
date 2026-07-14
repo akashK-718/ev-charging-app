@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Manrope, Bricolage_Grotesque } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { PageTransition } from '@/components/ui/PageTransition';
 import { PushNotificationsProvider } from '@/components/ui/PushNotificationsProvider';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const manrope = Manrope({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['500', '700', '800'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'EV Charging Marketplace',
@@ -34,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${manrope.variable} ${bricolage.variable}`}>
       <body>
         <Navbar />
         <PushNotificationsProvider>

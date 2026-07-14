@@ -23,7 +23,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
       },
       height: {
         control: 'var(--height-control)',
@@ -32,6 +32,7 @@ const config: Config = {
         token: 'var(--radius)',
         'token-sm': 'var(--radius-sm)',
         'token-lg': 'var(--radius-lg)',
+        pill: 'var(--radius-pill)',
       },
       boxShadow: {
         card: 'var(--shadow-card)',
