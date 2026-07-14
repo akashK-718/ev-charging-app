@@ -204,21 +204,15 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              {/* Trust chips — pill shape is correct here (status chips) */}
-              <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
-                {(
-                  [
-                    { label: 'Verified hosts',    Icon: Shield },
-                    { label: 'Secure payments',   Icon: Lock   },
-                    { label: 'Real-time booking', Icon: Clock  },
-                  ] as const
-                ).map(({ label, Icon }) => (
-                  <span key={label} className="flex items-center gap-1.5 text-[11.5px] font-semibold bg-surface-card border border-border rounded-pill px-3 py-1.5 text-ink-soft">
-                    <Icon className="w-3 h-3 text-green shrink-0" />
+              {/* Trust list */}
+              <ul className="flex flex-col gap-1.5">
+                {['Verified hosts', 'Secure payments', 'Real-time booking'].map(label => (
+                  <li key={label} className="flex items-center gap-2 text-[13px] text-muted">
+                    <span className="text-green font-bold select-none">–</span>
                     {label}
-                  </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
 
             {/* Neighbourhood map scene */}
