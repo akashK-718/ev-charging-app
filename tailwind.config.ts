@@ -8,22 +8,31 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: '#0c1611',
-        'ink-soft': '#28332c',
-        muted: '#6d7a72',
-        volt: '#10d96a',
-        'volt-deep': '#0a9e4c',
-        'volt-soft': '#e4faee',
+        // Foundation v3 tokens
+        ink: '#1a1f1c',
+        'ink-soft': '#3a4139',
+        muted: '#6b7269',
+        green: '#1c6b47',
+        'green-deep': '#124a30',
+        'green-soft': '#e7f2ec',
+        copper: '#b5642f',
+        'copper-soft': '#f9ece1',
+        danger: '#b3261e',
+        'danger-soft': '#fbeceb',
+        border: '#e3e0d6',
+        'surface-page': '#faf9f5',
+        'surface-card': '#ffffff',
+        // Backward-compat aliases
+        volt: '#1c6b47',
+        'volt-deep': '#124a30',
+        'volt-soft': '#e7f2ec',
         'surface-0': '#ffffff',
-        'surface-1': '#f5f6f5',
-        'surface-2': '#ebebeb',
-        border: '#e0e3e1',
-        danger: '#dc2626',
-        'danger-soft': '#fef2f2',
+        'surface-1': '#faf9f5',
+        'surface-2': '#e3e0d6',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'monospace'],
       },
       height: {
         control: 'var(--height-control)',
@@ -35,8 +44,9 @@ const config: Config = {
         pill: 'var(--radius-pill)',
       },
       boxShadow: {
-        card: 'var(--shadow-card)',
-        float: 'var(--shadow-float)',
+        elevated: 'var(--shadow-elevated)',
+        card: 'none',
+        float: 'var(--shadow-elevated)',
       },
     }
   },
