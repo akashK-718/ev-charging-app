@@ -148,13 +148,13 @@ export default function LandingPage() {
         </nav>
 
         {/* ── Main content container ────────────────────────────────────────── */}
-        <div className="max-w-5xl mx-auto px-4 md:px-10">
+        <div className="relative max-w-5xl mx-auto px-4 md:px-10">
 
-          {/* Desktop centre route line */}
+          {/* Desktop centre route line — z:-1 keeps it behind all cards */}
           <div
             className="hidden md:block absolute left-1/2 inset-y-0 pointer-events-none"
             aria-hidden="true"
-            style={{ borderLeft: '3px dashed #1c6b47', opacity: 0.35 }}
+            style={{ borderLeft: '3px dashed #1c6b47', opacity: 0.35, zIndex: -1 }}
           />
 
           {/* ── HERO ─────────────────────────────────────────────────────── */}
@@ -205,7 +205,7 @@ export default function LandingPage() {
               </div>
 
               {/* Trust chips — pill shape is correct here (status chips) */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
                 {(
                   [
                     { label: 'Verified hosts',    Icon: Shield },
