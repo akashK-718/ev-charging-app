@@ -204,15 +204,21 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              {/* Trust list */}
-              <ul className="flex flex-col gap-1.5">
-                {['Verified hosts', 'Secure payments', 'Real-time booking'].map(label => (
-                  <li key={label} className="flex items-center gap-2 text-[13px] text-muted">
-                    <span className="text-green font-bold select-none">–</span>
+              {/* Trust items — icon + label, no box */}
+              <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
+                {(
+                  [
+                    { label: 'Verified hosts',    Icon: Shield },
+                    { label: 'Secure payments',   Icon: Lock   },
+                    { label: 'Real-time booking', Icon: Clock  },
+                  ] as const
+                ).map(({ label, Icon }) => (
+                  <span key={label} className="flex items-center gap-1.5 text-[13px] text-muted">
+                    <Icon className="w-3.5 h-3.5 text-green shrink-0" />
                     {label}
-                  </li>
+                  </span>
                 ))}
-              </ul>
+              </div>
             </div>
 
             {/* Neighbourhood map scene */}
