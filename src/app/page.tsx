@@ -57,6 +57,29 @@ function LogoPin({ size = 26 }: { size?: number }) {
   );
 }
 
+function RouteIcon() {
+  return (
+    <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
+      {/* Winding road */}
+      <path
+        d="M12 37 C 14 31 19 29 21 23 C 23 17 28 15 30 9"
+        fill="none" stroke="#1a1f1c" strokeWidth="4" strokeLinecap="round"
+      />
+      {/* Road centre dashes */}
+      <path
+        d="M12 37 C 14 31 19 29 21 23 C 23 17 28 15 30 9"
+        fill="none" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" strokeDasharray="3 5"
+      />
+      {/* Large pin — journey start */}
+      <path d="M7 28a7 7 0 1 1 14 0c0 5-7 11-7 11S7 33 7 28z" fill="#1a1f1c" />
+      <circle cx="14" cy="28" r="2.8" fill="#ffffff" />
+      {/* Small pin — destination */}
+      <path d="M25 9a5 5 0 1 1 10 0c0 3.5-5 7.5-5 7.5S25 12.5 25 9z" fill="#1a1f1c" />
+      <circle cx="30" cy="9" r="2" fill="#ffffff" />
+    </svg>
+  );
+}
+
 function WaypointPin() {
   return (
     <svg
@@ -294,7 +317,7 @@ export default function LandingPage() {
           {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
           <section className="py-10 md:py-20">
             <div className="flex flex-col items-center mb-10 md:mb-11">
-              <WaypointPin />
+              <RouteIcon />
               <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
                 How it works
               </span>
