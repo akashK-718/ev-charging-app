@@ -8,7 +8,7 @@ interface CardProps {
 
 export function Card({ children, className, padding = true }: CardProps) {
   return (
-    <div className={cn('bg-surface-0 rounded-token-lg shadow-card', padding && 'p-4', className)}>
+    <div className={cn('bg-surface-card rounded-token-lg border border-border', padding && 'p-4', className)}>
       {children}
     </div>
   );
