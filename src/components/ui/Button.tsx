@@ -12,10 +12,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT: Record<Variant, string> = {
-  primary:   'bg-volt text-ink shadow-[0_8px_20px_rgba(16,217,106,.32)] enabled:hover:bg-volt/90 enabled:active:bg-volt/80 disabled:shadow-none',
-  secondary: 'bg-surface-0 text-ink border-[1.5px] border-ink enabled:hover:bg-surface-1 enabled:active:bg-surface-2',
-  ghost:     'bg-transparent text-ink enabled:hover:bg-surface-1 enabled:active:bg-surface-2',
-  danger:    'bg-danger text-white shadow-[0_8px_20px_rgba(220,38,38,.25)] enabled:hover:bg-danger/90 enabled:active:bg-danger/80 disabled:shadow-none',
+  primary:   'bg-green text-white enabled:hover:bg-green-deep enabled:active:bg-green-deep/90',
+  secondary: 'bg-surface-page text-ink border border-border enabled:hover:bg-border enabled:active:bg-border/70',
+  ghost:     'bg-transparent text-ink enabled:hover:bg-surface-page enabled:active:bg-border',
+  danger:    'bg-danger-soft text-danger enabled:hover:bg-danger-soft/80 enabled:active:bg-danger-soft/60',
 };
 
 const SIZE: Record<Size, string> = {
@@ -37,9 +37,8 @@ export function Button({
     <button
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-pill font-bold',
-        'transition-all duration-[120ms] ease-out',
-        'enabled:hover:-translate-y-px enabled:active:translate-y-0',
+        'inline-flex items-center justify-center gap-2 rounded-token font-semibold',
+        'transition-colors duration-[120ms] ease-out',
         'disabled:opacity-40 disabled:cursor-not-allowed',
         VARIANT[variant],
         SIZE[size],

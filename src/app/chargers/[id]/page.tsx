@@ -170,7 +170,7 @@ export default async function ChargerDetailPage({
             )}
 
             {/* Location — single prose line, no label-value InfoRow to avoid "Location: Location" */}
-            <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-28 md:pb-6 mt-2 md:mt-0">
+            <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 mt-2 md:mt-0">
               <EyebrowLabel className="mb-3">Location</EyebrowLabel>
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-muted shrink-0 mt-0.5" />
