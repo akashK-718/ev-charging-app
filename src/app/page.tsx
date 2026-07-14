@@ -281,9 +281,9 @@ export default function LandingPage() {
                 Sharma&apos;s charger · Free now
               </div>
 
-              {/* Floating bubble — power spec (desktop only) */}
+              {/* Floating bubble — power spec */}
               <div
-                className="hidden md:flex absolute bg-surface-card border border-border rounded-token px-3 py-2 text-[12.5px] font-bold items-center gap-2 animate-bob-delayed z-[2]"
+                className="flex absolute bg-surface-card border border-border rounded-token px-3 py-2 text-[12.5px] font-bold items-center gap-2 animate-bob-delayed z-[2]"
                 style={{ bottom: '14%', right: '2%' }}
               >
                 ⚡ 7.4 kW · ₹ per slot
