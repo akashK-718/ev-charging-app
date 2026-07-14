@@ -40,8 +40,9 @@ export function Navbar() {
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
 
   const isAuthPage = AUTH_PAGES.some(p => pathname === p) || pathname.startsWith('/welcome');
-  // Landing page has its own nav — suppress the shared navbar entirely
+  // Landing and design pages have their own nav — suppress the shared navbar
   const isLandingPage = pathname === '/';
+  const isDesignPage = pathname === '/design';
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
@@ -88,7 +89,7 @@ export function Navbar() {
   }, [drawerOpen]);
 
   // All hooks above — conditional renders below
-  if (isAuthPage || isLandingPage) return null;
+  if (isAuthPage || isLandingPage || isDesignPage) return null;
 
   if (loading) {
     return (
