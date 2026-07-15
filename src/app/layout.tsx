@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
+import { BottomNav } from '@/components/layout/BottomNav';
 import { PageTransition } from '@/components/ui/PageTransition';
 import { PushNotificationsProvider } from '@/components/ui/PushNotificationsProvider';
 
@@ -34,6 +35,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Navbar />
+        <BottomNav />
         <PushNotificationsProvider>
           <PageTransition>
             {children}

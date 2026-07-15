@@ -2,10 +2,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/lib/supabase/types';
 
-function roleHome(role: string, isAdmin: boolean): string {
+function roleHome(_role: string, isAdmin: boolean): string {
   if (isAdmin) return '/admin';
-  if (role === 'lender' || role === 'both') return '/lender/dashboard';
-  return '/chargers';
+  return '/home';
 }
 
 export async function middleware(request: NextRequest) {
@@ -40,6 +39,9 @@ export async function middleware(request: NextRequest) {
   // ── 1. Auth gate ──────────────────────────────────────────────────────────────
 
   const requiresAuth =
+    pathname.startsWith('/home') ||
+    pathname.startsWith('/activity') ||
+    pathname.startsWith('/notifications') ||
     pathname.startsWith('/lender') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/bookings') ||
