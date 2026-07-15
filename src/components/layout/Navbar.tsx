@@ -12,11 +12,10 @@ import { useAuth } from '@/hooks/useAuth';
 const AUTH_PAGES = ['/login', '/verify-otp'];
 
 const NAV_LINKS = [
-  { href: '/home',          label: 'Home'          },
-  { href: '/chargers',      label: 'Explore'       },
-  { href: '/activity',      label: 'Activity'      },
-  { href: '/notifications', label: 'Notifications' },
-  { href: '/profile',       label: 'Profile'       },
+  { href: '/home',     label: 'Home'    },
+  { href: '/chargers', label: 'Explore' },
+  { href: '/activity', label: 'Activity'},
+  { href: '/profile',  label: 'Profile' },
 ] as const;
 
 function isLinkActive(href: string, pathname: string) {
@@ -46,7 +45,7 @@ export function Navbar() {
         <div className="hidden lg:flex items-center h-full px-6 gap-4">
           <Logo />
           <div className="flex items-center gap-2 ml-2">
-            {[1, 2, 3, 4, 5].map(i => (
+            {[1, 2, 3, 4].map(i => (
               <div key={i} className="w-20 h-6 rounded bg-surface-page animate-pulse" />
             ))}
           </div>
