@@ -256,7 +256,7 @@ export default function LandingPage() {
           />
 
           {/* ── HERO ─────────────────────────────────────────────────────── */}
-          <div className="pt-6 md:grid md:grid-cols-2 md:gap-11 md:items-center md:py-16">
+          <div id="hero" className="pt-6 md:grid md:grid-cols-2 md:gap-11 md:items-center md:py-16">
 
             {/* Hero card */}
             <div className="bg-surface-card border border-border rounded-token-lg p-6 md:p-10 mb-4 md:mb-0">
@@ -587,12 +587,14 @@ export default function LandingPage() {
               <p className="text-sm md:text-[16px] text-muted mb-6 md:max-w-md mx-auto">
                 Create your account once. Charge wherever you travel. Host whenever you&apos;re ready.
               </p>
-              <Link
-                href="/login"
-                className="inline-block font-semibold text-[15px] px-6 py-3 rounded-token bg-green text-white hover:bg-green-deep transition-colors"
-              >
-                Get Started
-              </Link>
+              <div className="mt-2 pt-6 border-t border-border">
+                <a
+                  href="#hero"
+                  className="font-semibold text-[15px] text-green hover:text-green-deep transition-colors"
+                >
+                  Start your journey ↑
+                </a>
+              </div>
             </div>
           </section>
 
