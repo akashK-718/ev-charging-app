@@ -347,10 +347,12 @@ export default function LandingPage() {
           {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
           <section id="how-it-works" className="py-10 md:py-20 scroll-mt-20">
             <div className="flex flex-col items-center mb-10 md:mb-11">
-              <RouteIcon />
-              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
-                How it works
-              </span>
+              <a href="#how-it-works" className="flex flex-col items-center group">
+                <RouteIcon />
+                <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green group-hover:text-green-deep transition-colors mt-3.5">
+                  How it works
+                </span>
+              </a>
               <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight mt-2 text-center">
                 Charging made simple
               </h2>
@@ -391,10 +393,12 @@ export default function LandingPage() {
           {/* ── COVERAGE ─────────────────────────────────────────────────── */}
           <section id="coverage" className="pb-10 md:pb-20 scroll-mt-20">
             <div className="flex flex-col items-center mb-8 md:mb-10">
-              <WaypointPin />
-              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
-                Coverage
-              </span>
+              <a href="#coverage" className="flex flex-col items-center group">
+                <WaypointPin />
+                <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green group-hover:text-green-deep transition-colors mt-3.5">
+                  Coverage
+                </span>
+              </a>
             </div>
 
             {/* Coverage card */}
@@ -425,12 +429,14 @@ export default function LandingPage() {
           </section>
 
           {/* ── HOSTING ──────────────────────────────────────────────────── */}
-          <section className="pb-10 md:pb-20">
+          <section id="hosting" className="pb-10 md:pb-20 scroll-mt-20">
             <div className="flex flex-col items-center mb-8 md:mb-10">
-              <HostIcon />
-              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
-                Hosting
-              </span>
+              <a href="#hosting" className="flex flex-col items-center group">
+                <HostIcon />
+                <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green group-hover:text-green-deep transition-colors mt-3.5">
+                  Hosting
+                </span>
+              </a>
             </div>
 
             <div className="bg-surface-card border border-border rounded-token-lg overflow-hidden">
@@ -463,12 +469,14 @@ export default function LandingPage() {
           </section>
 
           {/* ── TRUST & SAFETY ───────────────────────────────────────────── */}
-          <section className="pb-10 md:pb-20">
+          <section id="trust-safety" className="pb-10 md:pb-20 scroll-mt-20">
             <div className="flex flex-col items-center mb-8 md:mb-10">
-              <TrustIcon />
-              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
-                Trust and Safety
-              </span>
+              <a href="#trust-safety" className="flex flex-col items-center group">
+                <TrustIcon />
+                <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green group-hover:text-green-deep transition-colors mt-3.5">
+                  Trust and Safety
+                </span>
+              </a>
               <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight mt-2 text-center">
                 Built on trust, by design.
               </h2>
@@ -507,12 +515,14 @@ export default function LandingPage() {
           </section>
 
           {/* ── FAQ ──────────────────────────────────────────────────────── */}
-          <section className="pb-10 md:pb-20">
+          <section id="faq" className="pb-10 md:pb-20 scroll-mt-20">
             <div className="flex flex-col items-center mb-8 md:mb-10">
-              <QuestionIcon />
-              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
-                FAQ
-              </span>
+              <a href="#faq" className="flex flex-col items-center group">
+                <QuestionIcon />
+                <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green group-hover:text-green-deep transition-colors mt-3.5">
+                  FAQ
+                </span>
+              </a>
               <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight mt-2 text-center">
                 Common questions
               </h2>
