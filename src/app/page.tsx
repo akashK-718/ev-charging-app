@@ -478,16 +478,11 @@ export default function LandingPage() {
                   <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight leading-tight mb-3">
                     Turn your home charger into an income source.
                   </h2>
-                  <p className="text-sm md:text-[16px] text-muted leading-relaxed mb-6">
-                    Share it when you are not using it. Set your price, choose your availability,
-                    and approve every booking. Getting started takes about 5 to 10 minutes.
+                  <p className="text-sm md:text-[16px] text-muted leading-relaxed">
+                    Share your charger when you&apos;re not using it. Set your own availability
+                    and approve every booking. Hosting can be enabled anytime after creating
+                    your account.
                   </p>
-                  <Link
-                    href="/login"
-                    className="inline-block font-semibold text-[15px] px-5 py-3 rounded-token bg-green text-white hover:bg-green-deep transition-colors"
-                  >
-                    Start Hosting
-                  </Link>
                 </div>
                 <div className="mt-6 md:mt-0 grid grid-cols-2 gap-3">
                   {[
@@ -587,10 +582,10 @@ export default function LandingPage() {
           <section className="pb-10 md:pb-20">
             <div className="bg-surface-card border border-border rounded-token-lg p-8 md:p-12 text-center">
               <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight mb-3">
-                Ready to start charging?
+                Ready to join the network?
               </h2>
               <p className="text-sm md:text-[16px] text-muted mb-6 md:max-w-md mx-auto">
-                Join the network. Find a charger near you, plan your next trip, or share yours and earn.
+                Create your account once. Charge wherever you travel. Host whenever you&apos;re ready.
               </p>
               <Link
                 href="/login"
