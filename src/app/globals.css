@@ -91,6 +91,7 @@ h3 { font-size: 16px; font-weight: 700; }
 html, body {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 /* ─── Touch tap feedback ──────────────────────────────────────────────────── */
