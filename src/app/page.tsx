@@ -1,19 +1,19 @@
 import Link from 'next/link';
-import { Shield, Lock, Clock } from 'lucide-react';
+import { Shield, Lock, Star, MessageCircle, ChevronDown } from 'lucide-react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'BrandName — Home EV Charging Network',
   description:
-    'Find and book home EV chargers near you. A community-powered network: browse the map, pick a slot, and charge.',
+    'Find trusted home chargers nearby or along your journey. Book in minutes and charge with confidence.',
 };
 
-// ── Step data ──────────────────────────────────────────────────────────────────
+// ── Scenario data ──────────────────────────────────────────────────────────────
 
-const STEPS = [
+const SCENARIOS = [
   {
-    title: 'Find a charger nearby',
-    desc: 'Browse verified home chargers on the map.',
+    title: 'Around You',
+    desc: 'Need a charger nearby? Find trusted home chargers around your current location.',
     icon: (
       <svg viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
         <circle cx="22" cy="22" r="20" fill="#e7f2ec" />
@@ -23,8 +23,8 @@ const STEPS = [
     ),
   },
   {
-    title: 'Book a slot and pay',
-    desc: 'Reserve your time, pay securely in-app.',
+    title: 'Along Your Journey',
+    desc: 'Planning a trip? See chargers along your route before you leave.',
     icon: (
       <svg viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
         <circle cx="22" cy="22" r="20" fill="#e7f2ec" />
@@ -35,14 +35,35 @@ const STEPS = [
     ),
   },
   {
-    title: 'Plug in and charge',
-    desc: 'Show up, charge, and get back on the road.',
+    title: 'Share Your Charger',
+    desc: 'Have a charger at home? Share it when you are not using it and earn extra income.',
     icon: (
       <svg viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
         <circle cx="22" cy="22" r="20" fill="#e7f2ec" />
         <path d="M24.5 9 13 24h7.5L18 35l11.5-15H22l2.5-11z" fill="#1c6b47" stroke="#124a30" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
     ),
+  },
+];
+
+// ── FAQ data ───────────────────────────────────────────────────────────────────
+
+const FAQ = [
+  {
+    q: 'How do I find a charger near me?',
+    a: 'Open Explore in the app, allow location access, and you will see verified home chargers nearby. You can filter by connector type and price to narrow your options.',
+  },
+  {
+    q: 'How does booking work?',
+    a: 'Tap any charger to see availability, pick a date and time, and pay securely in-app. The host confirms your booking and you get a notification when it is approved.',
+  },
+  {
+    q: 'Is my payment secure?',
+    a: 'Yes. All payments are processed through a secure, regulated payment gateway. Your card or UPI details are never stored on our servers.',
+  },
+  {
+    q: 'How do I start hosting my charger?',
+    a: 'From your Profile, tap Hosting and follow the setup steps. It takes about 5 to 10 minutes. Your charger goes live as soon as you publish it.',
   },
 ];
 
@@ -60,20 +81,16 @@ function LogoPin({ size = 26 }: { size?: number }) {
 function RouteIcon() {
   return (
     <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
-      {/* Winding road */}
       <path
         d="M12 37 C 14 31 19 29 21 23 C 23 17 28 15 30 9"
         fill="none" stroke="#1a1f1c" strokeWidth="4" strokeLinecap="round"
       />
-      {/* Road centre dashes */}
       <path
         d="M12 37 C 14 31 19 29 21 23 C 23 17 28 15 30 9"
         fill="none" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" strokeDasharray="3 5"
       />
-      {/* Large pin — journey start */}
       <path d="M7 28a7 7 0 1 1 14 0c0 5-7 11-7 11S7 33 7 28z" fill="#1a1f1c" />
       <circle cx="14" cy="28" r="2.8" fill="#ffffff" />
-      {/* Small pin — destination */}
       <path d="M25 9a5 5 0 1 1 10 0c0 3.5-5 7.5-5 7.5S25 12.5 25 9z" fill="#1a1f1c" />
       <circle cx="30" cy="9" r="2" fill="#ffffff" />
     </svg>
@@ -82,11 +99,44 @@ function RouteIcon() {
 
 function WaypointPin() {
   return (
-    <svg
-      width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"
-    >
+    <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
       <path d="M16 2a11 11 0 0 1 11 11c0 8-11 17-11 17S5 21 5 13A11 11 0 0 1 16 2z" fill="#1a1f1c" />
       <circle cx="16" cy="13" r="4.5" fill="#fff" />
+    </svg>
+  );
+}
+
+function HostIcon() {
+  return (
+    <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
+      <circle cx="21" cy="21" r="19" fill="#e7f2ec" />
+      <path d="M21 11 10 22h3v9h7v-7h2v7h7v-9h3z"
+        fill="none" stroke="#1a1f1c" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M23 16.5l-4 5.5h3l-2 4.5 5-6.5h-3z"
+        fill="#1c6b47" />
+    </svg>
+  );
+}
+
+function TrustIcon() {
+  return (
+    <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
+      <circle cx="21" cy="21" r="19" fill="#e7f2ec" />
+      <path d="M21 11l-10 4v6c0 6 4 11 10 13 6-2 10-7 10-13v-6z"
+        fill="none" stroke="#1a1f1c" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M17 21.5l3 3 5-5"
+        stroke="#1c6b47" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
+      <circle cx="21" cy="21" r="19" fill="#e7f2ec" />
+      <path d="M17 17c0-2.2 1.8-4 4-4s4 1.8 4 4c0 1.5-.8 2.8-2 3.5-.8.5-2 1-2 2.5"
+        fill="none" stroke="#1a1f1c" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="21" cy="29" r="1.5" fill="#1a1f1c" />
     </svg>
   );
 }
@@ -161,19 +211,44 @@ export default function LandingPage() {
                 BrandName
               </span>
             </div>
-            <Link
-              href="/login"
-              className="font-semibold text-sm bg-ink text-white px-4 py-2 rounded-token hover:bg-ink-soft transition-colors"
-            >
-              Log in
-            </Link>
+
+            {/* Desktop nav links */}
+            <div className="hidden md:flex items-center gap-1">
+              <a
+                href="#how-it-works"
+                className="font-semibold text-sm text-muted hover:text-ink px-3 py-1.5 rounded-token hover:bg-surface-page transition-colors"
+              >
+                How it Works
+              </a>
+              <a
+                href="#coverage"
+                className="font-semibold text-sm text-muted hover:text-ink px-3 py-1.5 rounded-token hover:bg-surface-page transition-colors"
+              >
+                Coverage
+              </a>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="font-semibold text-sm text-ink px-3 py-2 rounded-token hover:bg-surface-page transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/login"
+                className="font-semibold text-sm bg-ink text-white px-4 py-2 rounded-token hover:bg-ink-soft transition-colors"
+              >
+                Get Started
+              </Link>
+            </div>
           </div>
         </nav>
 
         {/* ── Main content container ────────────────────────────────────────── */}
         <div className="relative max-w-5xl mx-auto px-4 md:px-10">
 
-          {/* Desktop centre route line — z:-1 keeps it behind all cards */}
+          {/* Desktop centre route line */}
           <div
             className="hidden md:block absolute left-1/2 inset-y-0 pointer-events-none"
             aria-hidden="true"
@@ -205,35 +280,29 @@ export default function LandingPage() {
                 </em>
               </h1>
 
-              {/* Subhead — no em dash */}
+              {/* Subhead */}
               <p className="text-sm md:text-[16px] text-muted leading-relaxed mb-5 md:mb-7 md:max-w-md">
-                A community-powered network of home EV chargers. Find one nearby,
-                book a slot, charge, and pay. All in one app.
+                Find trusted home chargers nearby or along your journey, book in minutes,
+                and charge with confidence.
               </p>
 
-              {/* CTAs */}
-              <div className="flex flex-col md:flex-row gap-3 mb-5 md:mb-7">
+              {/* Single CTA */}
+              <div className="mb-5 md:mb-7">
                 <Link
                   href="/login"
-                  className="font-semibold text-[15px] px-5 py-3 rounded-token text-center bg-green text-white hover:bg-green-deep transition-colors"
+                  className="inline-block font-semibold text-[15px] px-5 py-3 rounded-token bg-green text-white hover:bg-green-deep transition-colors"
                 >
-                  Find a charger
-                </Link>
-                <Link
-                  href="/login?intent=lender"
-                  className="font-semibold text-[15px] px-5 py-3 rounded-token text-center bg-surface-card text-ink border border-border hover:border-ink transition-colors"
-                >
-                  Earn with your charger
+                  Get Started
                 </Link>
               </div>
 
-              {/* Trust items — icon + label, no box */}
+              {/* Trust items */}
               <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
                 {(
                   [
                     { label: 'Verified hosts',    Icon: Shield },
                     { label: 'Secure payments',   Icon: Lock   },
-                    { label: 'Real-time booking', Icon: Clock  },
+                    { label: 'Real-time booking', Icon: Star   },
                   ] as const
                 ).map(({ label, Icon }) => (
                   <span key={label} className="flex items-center gap-1.5 text-[13px] text-muted">
@@ -315,7 +384,7 @@ export default function LandingPage() {
           </div>
 
           {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
-          <section className="py-10 md:py-20">
+          <section id="how-it-works" className="py-10 md:py-20 scroll-mt-20">
             <div className="flex flex-col items-center mb-10 md:mb-11">
               <RouteIcon />
               <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
@@ -334,18 +403,13 @@ export default function LandingPage() {
                 style={{ left: '20px', borderLeft: '3px dashed #1c6b47', opacity: 0.4 }}
               />
               <div className="space-y-5 pl-[44px]">
-                {STEPS.map((step, i) => (
+                {SCENARIOS.map((scenario, i) => (
                   <div key={i} className="bg-surface-card border border-border rounded-token-lg p-[22px] relative landing-step">
                     <div className="flex items-center gap-3 mb-2">
-                      {step.icon}
-                      <div>
-                        <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-green-deep bg-green-soft rounded-pill px-2.5 py-1 font-mono">
-                          Stop {i + 1}
-                        </span>
-                        <h3 className="font-sans font-bold text-[17px] text-ink mt-1 leading-snug">{step.title}</h3>
-                      </div>
+                      {scenario.icon}
+                      <h3 className="font-sans font-bold text-[17px] text-ink leading-snug">{scenario.title}</h3>
                     </div>
-                    <p className="text-[13.5px] text-muted leading-relaxed">{step.desc}</p>
+                    <p className="text-[13.5px] text-muted leading-relaxed">{scenario.desc}</p>
                   </div>
                 ))}
               </div>
@@ -353,21 +417,18 @@ export default function LandingPage() {
 
             {/* Desktop: 3-column grid */}
             <div className="hidden md:grid grid-cols-3 gap-[24px]">
-              {STEPS.map((step, i) => (
+              {SCENARIOS.map((scenario, i) => (
                 <div key={i} className="bg-surface-card border border-border rounded-token-lg p-[28px] text-center">
-                  <span className="inline-block text-[10px] font-bold tracking-[0.1em] uppercase text-green-deep bg-green-soft rounded-pill px-3 py-1 mb-[14px] font-mono">
-                    Stop {i + 1}
-                  </span>
-                  <div className="flex justify-center mb-4">{step.icon}</div>
-                  <h3 className="font-sans font-bold text-[18px] text-ink mb-2">{step.title}</h3>
-                  <p className="text-[14.5px] text-muted leading-relaxed">{step.desc}</p>
+                  <div className="flex justify-center mb-4">{scenario.icon}</div>
+                  <h3 className="font-sans font-bold text-[18px] text-ink mb-2">{scenario.title}</h3>
+                  <p className="text-[14.5px] text-muted leading-relaxed">{scenario.desc}</p>
                 </div>
               ))}
             </div>
           </section>
 
           {/* ── COVERAGE ─────────────────────────────────────────────────── */}
-          <section className="pb-10 md:pb-20">
+          <section id="coverage" className="pb-10 md:pb-20 scroll-mt-20">
             <div className="flex flex-col items-center mb-8 md:mb-10">
               <WaypointPin />
               <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
@@ -382,7 +443,6 @@ export default function LandingPage() {
                 <h2 className="font-sans font-bold text-[24px] text-ink tracking-tight mb-2">
                   Built for India&apos;s roads
                 </h2>
-                {/* No em dash */}
                 <p className="text-sm text-muted mb-5">Starting in Delhi NCR, expanding city by city.</p>
                 <div className="flex justify-center">
                   <IndiaMap width="76%" />
@@ -394,7 +454,6 @@ export default function LandingPage() {
                   <h2 className="font-sans font-bold text-[34px] text-ink tracking-tight leading-tight mb-3">
                     Built for India&apos;s roads
                   </h2>
-                  {/* No em dash */}
                   <p className="text-[16px] text-muted">Starting in Delhi NCR, expanding city by city.</p>
                 </div>
                 <div className="bg-surface-page p-9 grid place-items-center border-l border-border">
@@ -403,6 +462,145 @@ export default function LandingPage() {
               </div>
             </div>
           </section>
+
+          {/* ── HOSTING ──────────────────────────────────────────────────── */}
+          <section className="pb-10 md:pb-20">
+            <div className="flex flex-col items-center mb-8 md:mb-10">
+              <HostIcon />
+              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
+                Hosting
+              </span>
+            </div>
+
+            <div className="bg-surface-card border border-border rounded-token-lg overflow-hidden">
+              <div className="p-6 md:p-10 md:grid md:grid-cols-2 md:gap-10 md:items-center">
+                <div>
+                  <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight leading-tight mb-3">
+                    Turn your home charger into an income source.
+                  </h2>
+                  <p className="text-sm md:text-[16px] text-muted leading-relaxed mb-6">
+                    Share it when you are not using it. Set your price, choose your availability,
+                    and approve every booking. Getting started takes about 5 to 10 minutes.
+                  </p>
+                  <Link
+                    href="/login"
+                    className="inline-block font-semibold text-[15px] px-5 py-3 rounded-token bg-green text-white hover:bg-green-deep transition-colors"
+                  >
+                    Start Hosting
+                  </Link>
+                </div>
+                <div className="mt-6 md:mt-0 grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Set your own price',        detail: 'You decide the rate per kWh.' },
+                    { label: 'Approve every booking',     detail: 'Accept or decline each request.' },
+                    { label: 'Pause any time',            detail: 'Take a break whenever you need.' },
+                    { label: 'Get paid securely',         detail: 'Earnings transferred to your account.' },
+                  ].map(item => (
+                    <div key={item.label} className="bg-surface-page rounded-token p-4">
+                      <p className="font-semibold text-sm text-ink mb-0.5">{item.label}</p>
+                      <p className="text-xs text-muted">{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── TRUST & SAFETY ───────────────────────────────────────────── */}
+          <section className="pb-10 md:pb-20">
+            <div className="flex flex-col items-center mb-8 md:mb-10">
+              <TrustIcon />
+              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
+                Trust and Safety
+              </span>
+              <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight mt-2 text-center">
+                Built on trust, by design.
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+              {[
+                {
+                  Icon: Shield,
+                  title: 'Verified hosts',
+                  desc: 'Every host is identity-verified before their charger goes live on the network.',
+                },
+                {
+                  Icon: Lock,
+                  title: 'Secure payments',
+                  desc: 'All payments are processed in-app. No cash, no transfers, no friction.',
+                },
+                {
+                  Icon: Star,
+                  title: 'Ratings and reviews',
+                  desc: 'Honest ratings from real sessions keep the network trustworthy for everyone.',
+                },
+                {
+                  Icon: MessageCircle,
+                  title: 'Support',
+                  desc: 'Something goes wrong? Our team is available to help resolve it quickly.',
+                },
+              ].map(({ Icon, title, desc }) => (
+                <div key={title} className="bg-surface-card border border-border rounded-token-lg p-5">
+                  <Icon className="w-5 h-5 text-green mb-3" aria-hidden />
+                  <h3 className="font-semibold text-sm text-ink mb-1">{title}</h3>
+                  <p className="text-xs md:text-[13px] text-muted leading-relaxed">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── FAQ ──────────────────────────────────────────────────────── */}
+          <section className="pb-10 md:pb-20">
+            <div className="flex flex-col items-center mb-8 md:mb-10">
+              <QuestionIcon />
+              <span className="font-mono text-[11px] md:text-xs font-semibold tracking-[0.1em] uppercase text-green mt-3.5">
+                FAQ
+              </span>
+              <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight mt-2 text-center">
+                Common questions
+              </h2>
+            </div>
+
+            <div className="space-y-2">
+              {FAQ.map(({ q, a }) => (
+                <details
+                  key={q}
+                  className="bg-surface-card border border-border rounded-token-lg overflow-hidden group"
+                >
+                  <summary className="px-5 py-4 font-semibold text-sm text-ink cursor-pointer list-none flex justify-between items-center hover:bg-surface-page transition-colors">
+                    <span>{q}</span>
+                    <ChevronDown
+                      className="w-4 h-4 text-muted shrink-0 ml-3 transition-transform group-open:rotate-180"
+                      aria-hidden
+                    />
+                  </summary>
+                  <div className="px-5 pb-4">
+                    <p className="text-sm text-muted leading-relaxed">{a}</p>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+
+          {/* ── FINAL CTA ────────────────────────────────────────────────── */}
+          <section className="pb-10 md:pb-20">
+            <div className="bg-surface-card border border-border rounded-token-lg p-8 md:p-12 text-center">
+              <h2 className="font-sans font-bold text-[24px] md:text-[34px] text-ink tracking-tight mb-3">
+                Ready to start charging?
+              </h2>
+              <p className="text-sm md:text-[16px] text-muted mb-6 md:max-w-md mx-auto">
+                Join the network. Find a charger near you, plan your next trip, or share yours and earn.
+              </p>
+              <Link
+                href="/login"
+                className="inline-block font-semibold text-[15px] px-6 py-3 rounded-token bg-green text-white hover:bg-green-deep transition-colors"
+              >
+                Get Started
+              </Link>
+            </div>
+          </section>
+
         </div>
 
         {/* ── FOOTER ───────────────────────────────────────────────────────── */}
