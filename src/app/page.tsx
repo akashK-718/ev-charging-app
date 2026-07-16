@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Shield, Lock, Star, MessageCircle, ChevronDown } from 'lucide-react';
 import type { Metadata } from 'next';
+import { LandingNav } from '@/components/LandingNav';
 
 export const metadata: Metadata = {
   title: 'BrandName — Home EV Charging Network',
@@ -203,47 +204,7 @@ export default function LandingPage() {
       <div style={{ position: 'relative', zIndex: 1 }}>
 
         {/* ── NAV ──────────────────────────────────────────────────────────── */}
-        <nav className="sticky top-0 z-10 bg-surface-card border-b border-border">
-          <div className="max-w-5xl mx-auto px-4 md:px-10 flex justify-between items-center py-3 md:py-4">
-            <div className="flex items-center gap-2">
-              <LogoPin size={24} />
-              <span className="font-sans font-bold text-base md:text-[17px] text-ink leading-none">
-                BrandName
-              </span>
-            </div>
-
-            {/* Desktop nav links */}
-            <div className="hidden md:flex items-center gap-1">
-              <a
-                href="#how-it-works"
-                className="font-semibold text-sm text-muted hover:text-ink px-3 py-1.5 rounded-token hover:bg-surface-page transition-colors"
-              >
-                How it Works
-              </a>
-              <a
-                href="#coverage"
-                className="font-semibold text-sm text-muted hover:text-ink px-3 py-1.5 rounded-token hover:bg-surface-page transition-colors"
-              >
-                Coverage
-              </a>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/login"
-                className="font-semibold text-sm text-ink px-3 py-2 rounded-token hover:bg-surface-page transition-colors"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/login"
-                className="font-semibold text-sm bg-ink text-white px-4 py-2 rounded-token hover:bg-ink-soft transition-colors"
-              >
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </nav>
+        <LandingNav />
 
         {/* ── Main content container ────────────────────────────────────────── */}
         <div className="relative max-w-5xl mx-auto px-4 md:px-10">
