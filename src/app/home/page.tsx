@@ -7,6 +7,7 @@ import {
   Zap, Calendar, Shield, TrendingDown, MapPin, BookOpen,
 } from 'lucide-react';
 import { getActiveTip } from '@/lib/home/tips';
+import { HomeRealtimeSync } from './HomeRealtimeSync';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -413,6 +414,7 @@ export default async function HomePage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
+    <>
     <div
       className="min-h-screen bg-surface-page"
       style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
@@ -805,5 +807,7 @@ export default async function HomePage() {
 
       </div>
     </div>
+    <HomeRealtimeSync userId={user.id} isHosting={isHosting} />
+    </>
   );
 }
