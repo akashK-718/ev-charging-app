@@ -195,7 +195,7 @@ export default async function ChargerDetailPage({
           </div>
 
           {/* Sticky booking card — desktop only. Rate is the only place price appears. */}
-          <aside className="w-80 shrink-0 sticky top-6 hidden md:block">
+          <aside className="w-80 shrink-0 sticky top-20 hidden md:block">
             <Card>
               <p className="text-2xl font-semibold text-green font-mono">
                 ₹{charger.price_per_kwh}
