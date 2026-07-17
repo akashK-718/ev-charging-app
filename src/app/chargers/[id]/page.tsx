@@ -17,9 +17,9 @@ type ChargerRow = Database['public']['Tables']['chargers']['Row'];
 
 const CHARGER_TYPE_LABEL: Record<string, string> = {
   'AC_3.3kW': '3.3 kW · AC',
-  'AC_7kW': '7 kW · AC',
-  'AC_22kW': '22 kW · AC',
-  'DC_fast': 'DC Fast',
+  'AC_7kW':   '7 kW · AC',
+  'AC_22kW':  '22 kW · AC',
+  'DC_fast':  'DC Fast',
 };
 
 export default async function ChargerDetailPage({
@@ -64,12 +64,13 @@ export default async function ChargerDetailPage({
     hasConfirmedBooking = !!booking;
   }
 
-  const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
+  const powerLabel      = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
   const connectorsLabel = charger.connector_types.join(' · ');
-  const isAvailable = charger.status === 'active';
+  const isAvailable     = charger.status === 'active';
 
   return (
-    <div className="min-h-screen bg-surface-1">
+    <div className="min-h-screen bg-surface-page">
+
       {/* Mobile hero — edge-to-edge */}
       <div className="md:hidden">
         <ImageCarousel
@@ -77,7 +78,7 @@ export default async function ChargerDetailPage({
           alt={charger.title}
           autoRotate
           useIntersectionObserver={false}
-          className="w-full h-[200px]"
+          className="w-full h-[220px]"
         />
       </div>
 
@@ -110,15 +111,15 @@ export default async function ChargerDetailPage({
               />
             </div>
 
-            {/* Title + single meta line (no price — lives in ActionBar only) */}
-            <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 border-b border-border md:border-0">
+            {/* Title + meta line */}
+            <div className="bg-surface-card md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 border-b border-border md:border-0">
               <DisplayTitle>{charger.title}</DisplayTitle>
 
-              {/* ★ rating · N sessions · ● Available now */}
+              {/* Rating · Sessions · Availability — appears exactly once */}
               <div className="mt-2 flex items-center gap-1.5 text-sm text-muted flex-wrap">
                 {charger.avg_rating !== null && (
                   <>
-                    <Star className="w-3.5 h-3.5 text-volt-deep fill-volt-deep shrink-0" />
+                    <Star className="w-3.5 h-3.5 text-green fill-green shrink-0" />
                     <span>{charger.avg_rating.toFixed(1)}</span>
                     <span aria-hidden>·</span>
                   </>
@@ -129,16 +130,16 @@ export default async function ChargerDetailPage({
                 <span aria-hidden>·</span>
                 <span className={cn(
                   'w-1.5 h-1.5 rounded-full shrink-0',
-                  isAvailable ? 'bg-volt-deep' : 'bg-muted',
+                  isAvailable ? 'bg-green' : 'bg-muted',
                 )} />
-                <span className={cn(isAvailable && 'text-volt-deep font-medium')}>
+                <span className={cn(isAvailable ? 'text-green font-medium' : '')}>
                   {isAvailable ? 'Available now' : 'Temporarily unavailable'}
                 </span>
               </div>
             </div>
 
-            {/* Specs — connector and max power only; no rate or sessions (those are in meta line / ActionBar) */}
-            <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 mt-2 md:mt-0 border-b border-border md:border-0">
+            {/* Spec grid — connector and max power only */}
+            <div className="bg-surface-card md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 mt-2 md:mt-0 border-b border-border md:border-0">
               <EyebrowLabel className="mb-3">Specifications</EyebrowLabel>
               <div className="grid grid-cols-2 gap-2">
                 <SpecTile label="Connector" value={connectorsLabel} />
@@ -148,7 +149,7 @@ export default async function ChargerDetailPage({
 
             {/* Host */}
             {lender && (
-              <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 mt-2 md:mt-0 border-b border-border md:border-0">
+              <div className="bg-surface-card md:bg-transparent px-4 md:px-0 pt-5 pb-5 md:pb-6 mt-2 md:mt-0 border-b border-border md:border-0">
                 <EyebrowLabel className="mb-3">Host</EyebrowLabel>
                 <div className="flex items-center gap-3">
                   <Avatar
@@ -160,7 +161,7 @@ export default async function ChargerDetailPage({
                     <p className="text-base font-medium text-ink">{lender.name ?? 'Host'}</p>
                     {lender.avg_rating !== null && (
                       <p className="flex items-center gap-1 text-sm text-muted">
-                        <Star className="w-3 h-3 text-volt-deep fill-volt-deep" />
+                        <Star className="w-3 h-3 text-green fill-green" />
                         <span>{lender.avg_rating.toFixed(1)} host rating</span>
                       </p>
                     )}
@@ -169,7 +170,7 @@ export default async function ChargerDetailPage({
               </div>
             )}
 
-            {/* Location — single prose line, no label-value InfoRow to avoid "Location: Location" */}
+            {/* Location — single prose sentence, exact address revealed after confirmed booking */}
             <div className="bg-surface-0 md:bg-transparent px-4 md:px-0 pt-5 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 mt-2 md:mt-0">
               <EyebrowLabel className="mb-3">Location</EyebrowLabel>
               <div className="flex items-start gap-2.5">
@@ -178,7 +179,7 @@ export default async function ChargerDetailPage({
                   <p className="text-sm text-ink">{charger.address}</p>
                 ) : (
                   <p className="text-sm text-muted">
-                    Exact address shared once your booking is confirmed.
+                    Exact address is shared after your booking is confirmed.
                   </p>
                 )}
               </div>
@@ -190,39 +191,17 @@ export default async function ChargerDetailPage({
                 </div>
               )}
             </div>
+
           </div>
 
-          {/* Sticky booking card — desktop only */}
+          {/* Sticky booking card — desktop only. Rate is the only place price appears. */}
           <aside className="w-80 shrink-0 sticky top-6 hidden md:block">
             <Card>
-              <p className="text-2xl font-medium text-volt-deep">
+              <p className="text-2xl font-semibold text-green font-mono">
                 ₹{charger.price_per_kwh}
                 <span className="text-sm font-medium text-muted">/kWh</span>
               </p>
-              {charger.avg_rating !== null ? (
-                <p className="flex items-center gap-1.5 text-sm text-muted mt-1 mb-4">
-                  <Star className="w-3.5 h-3.5 text-volt-deep fill-volt-deep" />
-                  {charger.avg_rating.toFixed(1)} · {charger.total_sessions} sessions
-                </p>
-              ) : (
-                <div className="mb-4" />
-              )}
-              <div className="space-y-2.5 pb-4 mb-4 border-b border-border">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">Power</span>
-                  <span className="font-medium text-ink">{powerLabel}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">Connector</span>
-                  <span className="font-medium text-ink">{connectorsLabel}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">Status</span>
-                  <span className="font-medium text-ink">
-                    {isAvailable ? 'Available' : 'Unavailable'}
-                  </span>
-                </div>
-              </div>
+              <p className="text-xs text-muted mt-0.5 mb-5">Rate per unit</p>
               <Link href={`/bookings/new?charger=${charger.id}`} className="block">
                 <Button variant="primary" className="w-full">Book now</Button>
               </Link>
@@ -232,15 +211,15 @@ export default async function ChargerDetailPage({
         </div>
       </div>
 
-      {/* Pinned mobile ActionBar: Rate label + price on left, Book now on right */}
+      {/* Pinned mobile action bar — the only place rate appears on mobile */}
       <div className="md:hidden">
         <ActionBar>
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-xs font-medium text-muted">Rate</p>
-              <p className="text-lg font-medium text-volt-deep">
+              <p className="text-lg font-semibold text-green font-mono">
                 ₹{charger.price_per_kwh}
-                <span className="text-sm font-medium text-muted">/kWh</span>
+                <span className="text-sm font-normal text-muted">/kWh</span>
               </p>
             </div>
             <Link href={`/bookings/new?charger=${charger.id}`} className="flex-1">
@@ -249,6 +228,7 @@ export default async function ChargerDetailPage({
           </div>
         </ActionBar>
       </div>
+
     </div>
   );
 }
