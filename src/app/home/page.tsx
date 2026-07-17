@@ -4,11 +4,12 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { formatINR } from '@/lib/currency';
 import {
   Clock, AlertCircle, ChevronRight,
-  Zap, Calendar, Shield, TrendingDown, MapPin, BookOpen,
+  Zap, Calendar, Shield, MapPin,
 } from 'lucide-react';
 import { getActiveTip } from '@/lib/home/tips';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
+import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -367,48 +368,50 @@ export default async function HomePage() {
     snapshotCards.splice(2); // max 2
   }
 
-  // ── Nudge (0..1, cascade: unfinished → rule → discovery → evergreen) ─────
+  // ── Nudge (0..1, cascade: unfinished → install-pwa → rule → discovery → evergreen) ──
 
-  type NudgeCard =
+  // new-user and resume-draft stay server-rendered (highest priority; install card never
+  // outranks unfinished work). Everything below them is handled by DynamicNudge so the
+  // client can check install eligibility (standalone mode, localStorage, platform) before
+  // deciding whether to show the install card or fall through to the rule nudge.
+
+  type TopNudge =
     | { type: 'new-user' }
-    | { type: 'resume-draft'; charger: HostCharger; step: number }
-    | { type: 'photos'; charger: HostCharger }
-    | { type: 'lower-price'; charger: HostCharger }
-    | { type: 'hosting-discovery' }
-    | { type: 'tip' };
+    | { type: 'resume-draft'; charger: HostCharger; step: number };
 
   const isNewAccount = !d.inProgress && d.upcoming.length === 0 && d.chargeCompletedCount === 0 && !isHosting;
   const daySeed      = Math.floor(Date.now() / 86400000);
   const activeTip    = getActiveTip(daySeed, isHosting);
 
-  const nudgeCard = ((): NudgeCard | null => {
-    // Brand-new account with no state at all — greeting + one combined onboarding card
+  const topNudge = ((): TopNudge | null => {
     if (isNewAccount) return { type: 'new-user' };
-
-    // Resume unfinished work
     if (d.draftChargers.length > 0) {
       return { type: 'resume-draft', charger: d.draftChargers[0], step: getDraftStep(d.draftChargers[0]) };
     }
+    return null;
+  })();
 
-    // Rule cards (hosting only)
-    if (isHosting) {
-      if (d.activeChargersNeedingPhotos.length > 0) {
-        return { type: 'photos', charger: d.activeChargersNeedingPhotos[0] };
-      }
-      if (d.liveCount > 0 && d.recentHostBookingCount === 0) {
-        const topActive = d.hostChargers.find(c => c.status === 'active');
-        if (topActive) return { type: 'lower-price', charger: topActive };
-      }
+  // Serialisable rule nudge passed as a prop — shown by DynamicNudge only when
+  // the install card is ineligible (already installed, dismissed, or unsupported).
+  const ruleNudge = ((): RuleNudge => {
+    if (topNudge) return null;
+    if (isHosting && d.activeChargersNeedingPhotos.length > 0) {
+      const c = d.activeChargersNeedingPhotos[0];
+      return { type: 'photos', chargerId: c.id, chargerTitle: c.title };
     }
-
-    // Hosting discovery — for accounts with charging history that have not enabled hosting
-    if (!isHosting && hasChargeActivity) {
-      return { type: 'hosting-discovery' };
+    if (isHosting && d.liveCount > 0 && d.recentHostBookingCount === 0) {
+      const c = d.hostChargers.find(ch => ch.status === 'active');
+      if (c) return { type: 'lower-price', chargerId: c.id, chargerTitle: c.title };
     }
-
-    // Evergreen tip, filtered to actual context
-    if (activeTip) return { type: 'tip' };
-
+    if (!isHosting && hasChargeActivity) return { type: 'hosting-discovery' };
+    if (activeTip) return {
+      type: 'tip',
+      id: activeTip.id,
+      title: activeTip.title,
+      body: activeTip.body,
+      linkLabel: activeTip.link?.label,
+      linkHref: activeTip.link?.href,
+    };
     return null;
   })();
 
@@ -678,11 +681,11 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Nudge */}
-        {nudgeCard && (
+        {/* Nudge — top-priority cards (new-user, resume-draft) rendered by server.
+            Install-pwa eligibility and rule/tip fallback handled client-side by DynamicNudge. */}
+        {topNudge ? (
           <section aria-label="Suggestion">
-
-            {nudgeCard.type === 'new-user' && (
+            {topNudge.type === 'new-user' && (
               <div className="bg-surface-card border border-border rounded-token-lg px-4 py-5">
                 <p className="text-base font-semibold text-ink mb-1">
                   You&apos;re all set to start charging.
@@ -708,9 +711,9 @@ export default async function HomePage() {
               </div>
             )}
 
-            {nudgeCard.type === 'resume-draft' && (
+            {topNudge.type === 'resume-draft' && (
               <Link
-                href={`/lender/chargers/${nudgeCard.charger.id}/edit`}
+                href={`/lender/chargers/${topNudge.charger.id}/edit`}
                 className="flex items-center gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-4 hover:bg-surface-page transition-colors"
               >
                 <div className="w-9 h-9 rounded-token bg-copper-soft flex items-center justify-center shrink-0">
@@ -718,92 +721,18 @@ export default async function HomePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-ink">
-                    Resume charger listing{nudgeCard.step < 7 ? `, step ${nudgeCard.step} of 7` : ''}
+                    Resume charger listing{topNudge.step < 7 ? `, step ${topNudge.step} of 7` : ''}
                   </p>
                   <p className="text-xs text-muted truncate">
-                    {nudgeCard.charger.title || 'Untitled charger'}
+                    {topNudge.charger.title || 'Untitled charger'}
                   </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted shrink-0" aria-hidden />
               </Link>
             )}
-
-            {nudgeCard.type === 'photos' && (
-              <Link
-                href={`/lender/chargers/${nudgeCard.charger.id}/edit`}
-                className="flex items-start gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-4 hover:bg-surface-page transition-colors"
-              >
-                <div className="w-9 h-9 rounded-token bg-copper-soft flex items-center justify-center shrink-0 mt-0.5">
-                  <AlertCircle className="w-4 h-4 text-copper" aria-hidden />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">Add more photos</p>
-                  <p className="text-xs text-muted">
-                    Listings with 5 or more photos receive more bookings. {nudgeCard.charger.title}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-              </Link>
-            )}
-
-            {nudgeCard.type === 'lower-price' && (
-              <Link
-                href={`/lender/chargers/${nudgeCard.charger.id}/edit`}
-                className="flex items-start gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-4 hover:bg-surface-page transition-colors"
-              >
-                <div className="w-9 h-9 rounded-token bg-green-soft flex items-center justify-center shrink-0 mt-0.5">
-                  <TrendingDown className="w-4 h-4 text-green" aria-hidden />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">No bookings in 30 days</p>
-                  <p className="text-xs text-muted">
-                    Adjusting your price may help attract bookings for {nudgeCard.charger.title}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-              </Link>
-            )}
-
-            {nudgeCard.type === 'hosting-discovery' && (
-              <div className="bg-surface-card border border-border rounded-token-lg px-4 py-5">
-                <p className="text-base font-semibold text-ink mb-1">
-                  Earn with your home charger.
-                </p>
-                <p className="text-sm text-muted mb-4">
-                  Share your charger when you&apos;re not using it. Set your own hours and earn extra income.
-                </p>
-                <Link
-                  href="/profile"
-                  className="inline-flex items-center gap-2 bg-surface-page text-ink text-sm font-semibold px-4 py-2.5 rounded-token border border-border hover:bg-border transition-colors"
-                >
-                  Learn more
-                </Link>
-              </div>
-            )}
-
-            {nudgeCard.type === 'tip' && activeTip && (
-              <div className="bg-surface-card border border-border rounded-token-lg px-4 py-4">
-                <div className="flex items-start gap-3">
-                  <BookOpen className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    {activeTip.title && (
-                      <p className="text-xs font-semibold text-muted mb-1">{activeTip.title}</p>
-                    )}
-                    <p className="text-sm text-ink-soft leading-relaxed">{activeTip.body}</p>
-                    {activeTip.link && (
-                      <Link
-                        href={activeTip.link.href}
-                        className="inline-block mt-1.5 text-xs font-semibold text-copper hover:underline underline-offset-2"
-                      >
-                        {activeTip.link.label}
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
           </section>
+        ) : (
+          <DynamicNudge ruleNudge={ruleNudge} />
         )}
 
       </div>

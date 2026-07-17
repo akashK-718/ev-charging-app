@@ -2,13 +2,14 @@
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
-import { Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert, Camera, ImageIcon, ShieldQuestion, Trash2 } from 'lucide-react';
+import { Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert, Camera, ImageIcon, ShieldQuestion, Trash2, Smartphone } from 'lucide-react';
 import { NameEditor } from './NameEditor';
 import { RoleEditor } from './RoleEditor';
 import { Avatar } from '@/components/ui/Avatar';
 import { uploadImage } from '@/lib/cloudinary';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { requiresKyc, type UserRole } from '@/lib/auth/kyc';
+import { clearPwaDismissal } from '@/lib/pwa';
 
 type Role = 'driver' | 'lender' | 'both';
 
@@ -49,6 +50,7 @@ export function ProfileBody({
 }: ProfileBodyProps) {
   const [role, setRole] = useState<Role>(initialRole);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [installResetDone, setInstallResetDone] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -297,6 +299,31 @@ export function ProfileBody({
           </p>
         </div>
       )}
+
+      {/* Preferences */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+        <h2 className="font-semibold text-base text-ink">Preferences</h2>
+        <div className="flex items-start gap-3">
+          <Smartphone className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-ink">App install prompt</p>
+            <p className="text-xs text-muted mt-0.5">
+              {installResetDone
+                ? 'Done. The install prompt will appear on your next visit to Home.'
+                : 'If you dismissed the install prompt, you can restore it here.'}
+            </p>
+          </div>
+          {!installResetDone && (
+            <button
+              type="button"
+              onClick={() => { clearPwaDismissal(); setInstallResetDone(true); }}
+              className="shrink-0 text-xs font-semibold text-copper hover:underline underline-offset-2 transition-colors"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Avatar edit bottom sheet */}
       {sheetOpen && (
