@@ -41,7 +41,15 @@ export default function RootLayout({
             {children}
           </PageTransition>
         </PushNotificationsProvider>
+        {/* Capture beforeinstallprompt before React hydration so it's never missed */}
         <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.__pwaPrompt = e;
+          });
+          window.addEventListener('appinstalled', function() {
+            window.__pwaPrompt = null;
+          });
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
               navigator.serviceWorker.register('/sw.js').then(reg => {
