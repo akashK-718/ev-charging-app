@@ -8,7 +8,7 @@ import { readPwaDismissal, writePwaDismissal } from '@/lib/pwa';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
+  prompt(): Promise<{ outcome: 'accepted' | 'dismissed' } | void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
@@ -86,14 +86,30 @@ export function DynamicNudge({ ruleNudge }: Props) {
   }, []);
 
   async function handleInstall() {
+    const w = window as Window & { __pwaPrompt?: BeforeInstallPromptEvent | null };
+    // Re-capture in case the ref was lost between mount and click
+    if (!promptRef.current && w.__pwaPrompt) {
+      promptRef.current = w.__pwaPrompt;
+    }
     const p = promptRef.current;
     if (!p) return;
-    await p.prompt();
-    const { outcome } = await p.userChoice;
-    if (outcome === 'accepted') writePwaDismissal('never');
-    promptRef.current = null;
-    (window as Window & { __pwaPrompt?: null }).__pwaPrompt = null;
-    setPhase('rule');
+
+    try {
+      // Call prompt() without awaiting — then await userChoice for the outcome.
+      // This pattern works across Chrome 68 (prompt returns void) through Chrome 120+
+      // (prompt returns Promise<{outcome}>). Awaiting prompt() directly before
+      // userChoice has been observed to silently fail when the event is stale.
+      p.prompt();
+      const { outcome } = await p.userChoice;
+      if (outcome === 'accepted') writePwaDismissal('never');
+    } catch {
+      // prompt() throws when Chrome has suppressed the event (e.g. already installed,
+      // or the event object is stale after a navigation). Fall through to rule nudge.
+    } finally {
+      promptRef.current = null;
+      w.__pwaPrompt = null;
+      setPhase('rule');
+    }
   }
 
   function handleLater() { writePwaDismissal('later'); setPhase('rule'); }
