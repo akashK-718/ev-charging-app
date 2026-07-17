@@ -6,6 +6,7 @@ import { Filter, LocateFixed } from 'lucide-react';
 import { maps } from '@/lib/maps/provider';
 import { haversineKm } from '@/lib/haversine';
 import { cn } from '@/lib/utils';
+import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { ModeToggle } from '@/components/chargers/ModeToggle';
 import { FloatingViewToggle } from '@/components/chargers/FloatingViewToggle';
 import { RadiusSlider, RADIUS_STEPS } from '@/components/chargers/RadiusSlider';
@@ -539,6 +540,14 @@ export default function ChargersPage() {
     );
   }
 
+  const handleRefresh = useCallback(async () => {
+    if (searchMode === 'along_route' && routeResult) {
+      await fetchRouteChargers(routeResult.geojson, routeBuffer);
+    } else if (searchMode === 'near_me') {
+      await fetchChargers(searchCenter, radius, allIndiaMode);
+    }
+  }, [searchMode, routeResult, routeBuffer, fetchRouteChargers, searchCenter, radius, allIndiaMode, fetchChargers]);
+
   function handleGpsRouteRefresh() {
     function applyGps(gps: Coords) {
       setGpsCoords(gps);
@@ -1025,6 +1034,7 @@ export default function ChargersPage() {
         onApply={handleApplyFilters}
         onClose={() => setFiltersOpen(false)}
       />
+      <PullToRefresh onRefresh={handleRefresh} />
     </div>
   );
 }

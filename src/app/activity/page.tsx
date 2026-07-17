@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ActivityView, type HistoryItem, type UpdateItem } from './ActivityView';
+import { PullToRefresh } from '@/components/ui/PullToRefresh';
 
 export default async function ActivityPage() {
   const supabase = createClient();
@@ -86,10 +87,13 @@ export default async function ActivityPage() {
   const initialUnreadCount = updates.filter(u => !u.read).length;
 
   return (
-    <ActivityView
-      historyItems={historyItems}
-      updates={updates}
-      initialUnreadCount={initialUnreadCount}
-    />
+    <>
+      <ActivityView
+        historyItems={historyItems}
+        updates={updates}
+        initialUnreadCount={initialUnreadCount}
+      />
+      <PullToRefresh />
+    </>
   );
 }
