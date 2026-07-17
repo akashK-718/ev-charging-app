@@ -7,12 +7,45 @@ function roleHome(_role: string, isAdmin: boolean): string {
   return '/home';
 }
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+const AUTH_REQUIRED = [
+  '/home', '/activity', '/notifications', '/lender', '/admin',
+  '/bookings', '/welcome', '/chargers', '/profile',
+] as const;
 
-  // Standard Supabase SSR middleware pattern.
+function requiresAuth(pathname: string) {
+  return AUTH_REQUIRED.some(p => pathname.startsWith(p));
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ── Fast path for unauthenticated requests ────────────────────────────────────
+  // ── Fast path: skip getUser() when there is provably no session ─────────────
+  // Supabase stores the session in a cookie starting with "sb-".
+  // If no such cookie exists the user is definitely not authenticated.
+  //
+  // Security invariant: protected routes are NEVER served here — they always
+  // redirect to /login. Only genuinely public paths (/, /login, /terms, …)
+  // reach the final `return NextResponse.next()`. Any route in AUTH_REQUIRED
+  // redirects to /login regardless of this fast path. Routes that carry a
+  // session cookie always fall through to getUser() below, no exceptions.
+  const hasSession = request.cookies.getAll().some(c => c.name.startsWith('sb-'));
+
+  if (!hasSession) {
+    if (requiresAuth(pathname)) {
+      const url = new URL('/login', request.url);
+      url.searchParams.set('next', pathname);
+      return NextResponse.redirect(url);
+    }
+    // Public path with no session (/, /login, /terms, etc.) — serve directly.
+    return NextResponse.next();
+  }
+
+  // ── Authenticated path — validate session and handle role-based routing ───────
   // IMPORTANT: Do not put any logic between createServerClient and getUser —
   // the cookie refresh that keeps sessions alive happens inside getUser.
+  let supabaseResponse = NextResponse.next({ request });
+
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -34,22 +67,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
   // ── 1. Auth gate ──────────────────────────────────────────────────────────────
 
-  const requiresAuth =
-    pathname.startsWith('/home') ||
-    pathname.startsWith('/activity') ||
-    pathname.startsWith('/notifications') ||
-    pathname.startsWith('/lender') ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/bookings') ||
-    pathname.startsWith('/welcome') ||
-    pathname.startsWith('/chargers') ||
-    pathname.startsWith('/profile');
-
-  if (requiresAuth && !user) {
+  if (requiresAuth(pathname) && !user) {
     const url = new URL('/login', request.url);
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
@@ -72,7 +92,7 @@ export async function middleware(request: NextRequest) {
 
   // ── 3. Root redirect ──────────────────────────────────────────────────────────
   // Redirect logged-in users to their role's home page.
-  // Logged-out users fall through to the marketing/landing page.
+  // Logged-out users are handled by the fast path above.
   if (pathname === '/') {
     return NextResponse.redirect(new URL(roleHome(role, isAdmin), request.url));
   }
