@@ -1,137 +1,95 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { cn } from '@/lib/utils';
-
-type BookingStatus = 'confirmed' | 'awaiting_driver_confirmation' | 'in_progress' | 'completed' | 'cancelled';
-
-interface ActivityItem {
-  id: string;
-  kind: 'session' | 'booking';
-  title: string;
-  subtitle: string;
-  status: BookingStatus | null;
-  ts: string;
-}
-
-const STATUS_LABEL: Record<BookingStatus, string> = {
-  confirmed:                    'Confirmed',
-  awaiting_driver_confirmation: 'Awaiting confirmation',
-  in_progress:                  'In progress',
-  completed:                    'Completed',
-  cancelled:                    'Cancelled',
-};
-
-const STATUS_COLOR: Record<BookingStatus, string> = {
-  confirmed:                    'text-green bg-green-soft',
-  awaiting_driver_confirmation: 'text-copper bg-copper-soft',
-  in_progress:                  'text-green bg-green-soft',
-  completed:                    'text-muted bg-surface-page',
-  cancelled:                    'text-danger bg-danger-soft',
-};
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { ActivityView, type HistoryItem, type UpdateItem } from './ActivityView';
 
 export default async function ActivityPage() {
   const supabase = createClient();
-  const adminSupabase = createAdminClient();
+  const admin    = createAdminClient();
 
-  const { data: { user: rawUser } } = await supabase.auth.getUser();
-  if (!rawUser) redirect('/login');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
 
-  const role = (rawUser.user_metadata?.role as string | undefined) ?? 'driver';
-  const isDriver = role === 'driver' || role === 'both';
-  const isLender = role === 'lender' || role === 'both';
+  const role      = (user.user_metadata?.role as string | undefined) ?? '';
+  const isHosting = role === 'lender' || role === 'both';
 
-  const items: ActivityItem[] = [];
+  type BookingRow = {
+    id: string;
+    status: string;
+    scheduled_start: string;
+    scheduled_end: string | null;
+    chargers: { title?: string } | null;
+  };
 
-  if (isDriver) {
-    const { data: bookings } = await adminSupabase
+  const [driverRes, lenderRes, notifRes] = await Promise.all([
+    admin
       .from('bookings')
-      .select('id, status, scheduled_start, charger_id, chargers(title)')
-      .eq('driver_id', rawUser.id)
+      .select('id, status, scheduled_start, scheduled_end, chargers(title)')
+      .eq('driver_id', user.id)
       .order('scheduled_start', { ascending: false })
-      .limit(30);
+      .limit(50),
 
-    (bookings ?? []).forEach(b => {
-      const chargerTitle = (b.chargers as { title?: string } | null)?.title ?? 'Charger';
-      items.push({
-        id: `driver-${b.id}`,
-        kind: 'session',
-        title: chargerTitle,
-        subtitle: new Date(b.scheduled_start).toLocaleString('en-IN', {
-          dateStyle: 'medium', timeStyle: 'short',
-        }),
-        status: b.status as BookingStatus,
-        ts: b.scheduled_start,
-      });
+    isHosting
+      ? admin
+          .from('bookings')
+          .select('id, status, scheduled_start, scheduled_end, chargers(title)')
+          .eq('lender_id', user.id)
+          .order('scheduled_start', { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [] as BookingRow[] }),
+
+    admin
+      .from('notifications')
+      .select('id, type, data, created_at, read')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ]);
+
+  const historyItems: HistoryItem[] = [];
+
+  for (const b of ((driverRes.data ?? []) as BookingRow[])) {
+    historyItems.push({
+      id:             `charging-${b.id}`,
+      kind:           'charging',
+      bookingId:      b.id,
+      chargerTitle:   (b.chargers as { title?: string } | null)?.title ?? 'Charger',
+      status:         b.status,
+      scheduledStart: b.scheduled_start,
+      scheduledEnd:   b.scheduled_end ?? null,
     });
   }
 
-  if (isLender) {
-    const { data: bookings } = await adminSupabase
-      .from('bookings')
-      .select('id, status, scheduled_start, charger_id, chargers(title)')
-      .eq('lender_id', rawUser.id)
-      .order('scheduled_start', { ascending: false })
-      .limit(30);
-
-    (bookings ?? []).forEach(b => {
-      const chargerTitle = (b.chargers as { title?: string } | null)?.title ?? 'Charger';
-      items.push({
-        id: `lender-${b.id}`,
-        kind: 'booking',
-        title: chargerTitle,
-        subtitle: new Date(b.scheduled_start).toLocaleString('en-IN', {
-          dateStyle: 'medium', timeStyle: 'short',
-        }),
-        status: b.status as BookingStatus,
-        ts: b.scheduled_start,
-      });
+  for (const b of ((lenderRes.data ?? []) as BookingRow[])) {
+    historyItems.push({
+      id:             `hosting-${b.id}`,
+      kind:           'hosting',
+      bookingId:      b.id,
+      chargerTitle:   (b.chargers as { title?: string } | null)?.title ?? 'Charger',
+      status:         b.status,
+      scheduledStart: b.scheduled_start,
+      scheduledEnd:   b.scheduled_end ?? null,
     });
   }
 
-  items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+  historyItems.sort(
+    (a, b) => new Date(b.scheduledStart).getTime() - new Date(a.scheduledStart).getTime(),
+  );
+
+  const updates: UpdateItem[] = (notifRes.data ?? []).map(n => ({
+    id:        n.id,
+    type:      n.type,
+    data:      (n.data as Record<string, unknown>) ?? {},
+    createdAt: n.created_at,
+    read:      (n.read as boolean) ?? false,
+  }));
+
+  const initialUnreadCount = updates.filter(u => !u.read).length;
 
   return (
-    <div
-      className="min-h-screen bg-surface-page"
-      style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
-    >
-      <div className="max-w-2xl mx-auto px-4 pt-6 pb-6">
-        <h1 className="text-2xl font-bold text-ink mb-0.5">Activity</h1>
-        <p className="text-sm text-muted mb-7">Your sessions and bookings in one place.</p>
-
-        {items.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-sm text-muted">No activity yet.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {items.map(item => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 px-4 py-4 rounded-token bg-surface-card border border-border"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10px] font-mono font-semibold tracking-widest uppercase text-muted">
-                      {item.kind === 'session' ? 'Session' : 'Hosting'}
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-ink truncate">{item.title}</p>
-                  <p className="text-xs text-muted mt-0.5">{item.subtitle}</p>
-                </div>
-                {item.status && (
-                  <span className={cn(
-                    'shrink-0 text-[10.5px] font-semibold px-2 py-0.5 rounded-pill',
-                    STATUS_COLOR[item.status],
-                  )}>
-                    {STATUS_LABEL[item.status]}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    <ActivityView
+      historyItems={historyItems}
+      updates={updates}
+      initialUnreadCount={initialUnreadCount}
+    />
   );
 }
