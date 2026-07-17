@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ProfileBody } from '@/components/profile/ProfileBody';
 import { ProfileMenuDrawer } from '@/components/profile/ProfileMenuDrawer';
+import { PullToRefresh } from '@/components/ui/PullToRefresh';
 
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
@@ -67,23 +68,26 @@ export default async function ProfilePage({
   })();
 
   return (
-    <main className="min-h-screen px-6 py-10 space-y-6 max-w-lg mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-medium text-ink">Profile</h1>
-        <ProfileMenuDrawer isAdmin={isAdmin} />
-      </div>
+    <>
+      <main className="min-h-screen px-6 py-10 space-y-6 max-w-lg mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-medium text-ink">Profile</h1>
+          <ProfileMenuDrawer isAdmin={isAdmin} />
+        </div>
 
-      <ProfileBody
-        initialName={profile.name}
-        phone={profile.phone}
-        initialRole={profile.role as 'driver' | 'lender' | 'both'}
-        createdAt={profile.created_at}
-        kycStatus={kycStatus}
-        submission={submission}
-        draftCount={draftCount}
-        showSubmittedBanner={searchParams.verified === 'submitted'}
-        initialAvatarUrl={profile.avatar_url}
-      />
-    </main>
+        <ProfileBody
+          initialName={profile.name}
+          phone={profile.phone}
+          initialRole={profile.role as 'driver' | 'lender' | 'both'}
+          createdAt={profile.created_at}
+          kycStatus={kycStatus}
+          submission={submission}
+          draftCount={draftCount}
+          showSubmittedBanner={searchParams.verified === 'submitted'}
+          initialAvatarUrl={profile.avatar_url}
+        />
+      </main>
+      <PullToRefresh />
+    </>
   );
 }

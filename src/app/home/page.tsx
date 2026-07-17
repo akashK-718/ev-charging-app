@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { getActiveTip } from '@/lib/home/tips';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
+import { PullToRefresh } from '@/components/ui/PullToRefresh';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -808,6 +809,7 @@ export default async function HomePage() {
       </div>
     </div>
     <HomeRealtimeSync userId={user.id} isHosting={isHosting} />
+    <PullToRefresh />
     </>
   );
 }
