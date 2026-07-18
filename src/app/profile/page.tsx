@@ -59,6 +59,8 @@ export default async function ProfilePage({
   const { user: profile, submission, draftCount } = await getProfileData(user.id);
   if (!profile) redirect('/login');
 
+  const isHosting = profile.role === 'lender' || profile.role === 'both';
+
   // Derive effective KYC status from DB (migration 009 fixes phantom-pending, but be defensive)
   // If user has kyc_status='pending' but no submission row → treat as not_started
   const rawKycStatus = profile.kyc_status as string;
@@ -78,7 +80,7 @@ export default async function ProfilePage({
         <ProfileBody
           initialName={profile.name}
           phone={profile.phone}
-          initialRole={profile.role as 'driver' | 'lender' | 'both'}
+          isHosting={isHosting}
           createdAt={profile.created_at}
           kycStatus={kycStatus}
           submission={submission}

@@ -1,17 +1,21 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert, Camera, ImageIcon, ShieldQuestion, Trash2, Smartphone } from 'lucide-react';
+import {
+  Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert,
+  Camera, ImageIcon, ShieldQuestion, Trash2,
+  Smartphone, Check, Zap, Home, Car, CreditCard,
+  ChevronRight, Bell, Globe,
+} from 'lucide-react';
 import { NameEditor } from './NameEditor';
-import { RoleEditor } from './RoleEditor';
 import { Avatar } from '@/components/ui/Avatar';
 import { uploadImage } from '@/lib/cloudinary';
 import { ImageCropper } from '@/components/ui/ImageCropper';
-import { requiresKyc, type UserRole } from '@/lib/auth/kyc';
 import { clearPwaDismissal } from '@/lib/pwa';
 
-type Role = 'driver' | 'lender' | 'both';
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Submission {
   id: string;
@@ -23,7 +27,7 @@ interface Submission {
 interface ProfileBodyProps {
   initialName: string | null;
   phone: string;
-  initialRole: Role;
+  isHosting: boolean;
   createdAt: string;
   kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected';
   submission: Submission | null;
@@ -36,11 +40,12 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export function ProfileBody({
   initialName,
   phone,
-  initialRole,
+  isHosting,
   createdAt,
   kycStatus,
   submission,
@@ -48,22 +53,26 @@ export function ProfileBody({
   showSubmittedBanner,
   initialAvatarUrl,
 }: ProfileBodyProps) {
-  const [role, setRole] = useState<Role>(initialRole);
+  const router = useRouter();
+
+  // ── Avatar state ─────────────────────────────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
-  const [installResetDone, setInstallResetDone] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
-
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const kycRequired = requiresKyc(role as UserRole);
+  // ── Hosting state ─────────────────────────────────────────────────────────────
+  const [hostingEnabled, setHostingEnabled] = useState(isHosting);
+  const [hostingLoading, setHostingLoading] = useState(false);
+  const [hostingError, setHostingError] = useState<string | null>(null);
 
-  function handleFileSelect(file: File) {
-    setCropFile(file);
-  }
+  // ── Preferences state ─────────────────────────────────────────────────────────
+  const [installResetDone, setInstallResetDone] = useState(false);
+
+  // ── Avatar handlers ───────────────────────────────────────────────────────────
 
   async function handleCropConfirm(blob: Blob) {
     setCropFile(null);
@@ -129,6 +138,29 @@ export function ProfileBody({
     setTimeout(() => fileInputRef.current?.click(), 50);
   }
 
+  // ── Hosting handler ───────────────────────────────────────────────────────────
+
+  async function handleEnableHosting() {
+    setHostingLoading(true);
+    setHostingError(null);
+    try {
+      const res = await fetch('/api/profile/enable-hosting', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        setHostingError(data.error ?? 'Could not enable hosting. Please try again.');
+        return;
+      }
+      setHostingEnabled(true);
+      router.refresh();
+    } catch {
+      setHostingError('Could not enable hosting. Please try again.');
+    } finally {
+      setHostingLoading(false);
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   return (
     <>
       {cropFile && (
@@ -149,7 +181,7 @@ export function ProfileBody({
         className="hidden"
         onChange={e => {
           const f = e.target.files?.[0];
-          if (f) void handleFileSelect(f);
+          if (f) setCropFile(f);
           e.target.value = '';
         }}
       />
@@ -160,20 +192,20 @@ export function ProfileBody({
         className="hidden"
         onChange={e => {
           const f = e.target.files?.[0];
-          if (f) void handleFileSelect(f);
+          if (f) setCropFile(f);
           e.target.value = '';
         }}
       />
 
-      {/* Submission success toast */}
-      {showSubmittedBanner && kycRequired && kycStatus === 'pending' && (
+      {/* Verification submitted banner */}
+      {showSubmittedBanner && hostingEnabled && kycStatus === 'pending' && (
         <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
           <p className="font-semibold text-blue-800">Verification submitted!</p>
           <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
         </div>
       )}
 
-      {/* Account info */}
+      {/* ── 1. Account ─────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
         <h2 className="font-semibold text-base text-ink">Account</h2>
 
@@ -200,7 +232,7 @@ export function ProfileBody({
         </div>
 
         <div className="space-y-3">
-          <NameEditor initialName={initialName} showKycContext={kycRequired} />
+          <NameEditor initialName={initialName} showKycContext={hostingEnabled} />
           <div>
             <p className="text-xs text-muted mb-0.5">Phone</p>
             <p className="text-sm font-semibold text-ink">{phone}</p>
@@ -212,7 +244,6 @@ export function ProfileBody({
               .
             </p>
           </div>
-          <RoleEditor initialRole={role} onRoleChange={setRole} />
           <div>
             <p className="text-xs text-muted mb-0.5">Member since</p>
             <p className="text-sm font-semibold text-ink">{formatDate(createdAt)}</p>
@@ -220,8 +251,83 @@ export function ProfileBody({
         </div>
       </div>
 
-      {/* Identity verification */}
-      {kycRequired && (
+      {/* ── 2. Charging — always enabled, non-interactive ─────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-token bg-green-soft flex items-center justify-center shrink-0">
+            <Zap className="w-4 h-4 text-green" aria-hidden />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink">Charging</p>
+              <div className="flex items-center gap-1 shrink-0">
+                <Check className="w-3.5 h-3.5 text-green" aria-hidden />
+                <span className="text-xs font-semibold text-green">Enabled</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted mt-0.5">Find and book EV chargers near you</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Hosting ─────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex items-start gap-3">
+          <div className={`w-9 h-9 rounded-token flex items-center justify-center shrink-0 ${hostingEnabled ? 'bg-green-soft' : 'bg-copper-soft'}`}>
+            <Home className={`w-4 h-4 ${hostingEnabled ? 'text-green' : 'text-copper'}`} aria-hidden />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink">Hosting</p>
+              {hostingEnabled ? (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Check className="w-3.5 h-3.5 text-green" aria-hidden />
+                  <span className="text-xs font-semibold text-green">Enabled</span>
+                </div>
+              ) : (
+                <span className="text-xs text-muted shrink-0">Not enabled</span>
+              )}
+            </div>
+            <p className="text-xs text-muted mt-0.5">
+              {hostingEnabled
+                ? (draftCount > 0
+                    ? `${draftCount} charger draft${draftCount > 1 ? 's' : ''} in progress`
+                    : 'Manage your chargers and earnings')
+                : "Share your home charger and earn when you're not using it"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-border">
+          {hostingEnabled ? (
+            <Link
+              href="/lender/dashboard"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
+            >
+              Manage Hosting
+              <ChevronRight className="w-4 h-4" aria-hidden />
+            </Link>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted">Enable hosting to list your charger and earn income.</p>
+              <button
+                type="button"
+                onClick={() => { void handleEnableHosting(); }}
+                disabled={hostingLoading}
+                className="shrink-0 px-4 py-2 bg-ink text-white text-xs font-semibold rounded-token hover:bg-ink/90 transition-colors disabled:opacity-50"
+              >
+                {hostingLoading ? 'Enabling...' : 'Start Hosting'}
+              </button>
+            </div>
+          )}
+          {hostingError && (
+            <p className="text-xs text-danger font-medium mt-2">{hostingError}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── 4. Verification — only shown when hosting enabled ──────────────────── */}
+      {hostingEnabled && (
         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-base text-ink">Identity verification</h2>
 
@@ -300,9 +406,67 @@ export function ProfileBody({
         </div>
       )}
 
-      {/* Preferences */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
+      {/* ── 5. Vehicles ────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 opacity-50">
+          <div className="flex items-center gap-3">
+            <Car className="w-4 h-4 text-muted shrink-0" aria-hidden />
+            <p className="text-sm font-semibold text-ink">Vehicles</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted">Coming soon</span>
+            <ChevronRight className="w-4 h-4 text-muted" aria-hidden />
+          </div>
+        </div>
+      </div>
+
+      {/* ── 6. Payment methods ─────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 opacity-50">
+          <div className="flex items-center gap-3">
+            <CreditCard className="w-4 h-4 text-muted shrink-0" aria-hidden />
+            <p className="text-sm font-semibold text-ink">Payment methods</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted">Coming soon</span>
+            <ChevronRight className="w-4 h-4 text-muted" aria-hidden />
+          </div>
+        </div>
+      </div>
+
+      {/* ── 7. Preferences ─────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
         <h2 className="font-semibold text-base text-ink">Preferences</h2>
+
+        {/* Notifications */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Bell className="w-4 h-4 text-muted shrink-0" aria-hidden />
+            <div>
+              <p className="text-sm font-medium text-ink">Notifications</p>
+              <p className="text-xs text-muted mt-0.5">Booking updates and alerts</p>
+            </div>
+          </div>
+          <span className="text-xs text-muted">Coming soon</span>
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Language */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Globe className="w-4 h-4 text-muted shrink-0" aria-hidden />
+            <div>
+              <p className="text-sm font-medium text-ink">Language</p>
+              <p className="text-xs text-muted mt-0.5">English</p>
+            </div>
+          </div>
+          <span className="text-xs text-muted">Coming soon</span>
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* App install prompt reset */}
         <div className="flex items-start gap-3">
           <Smartphone className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
           <div className="flex-1 min-w-0">
