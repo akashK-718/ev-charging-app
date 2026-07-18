@@ -552,7 +552,7 @@ export default async function HomePage() {
               {/* 4. Financial: payout failed */}
               {attnPayoutFailed && (
                 <Link
-                  href="/lender/dashboard"
+                  href="/lender/chargers"
                   className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
                 >
                   <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" aria-hidden />
@@ -640,7 +640,7 @@ export default async function HomePage() {
                 return (
                   <Link
                     key={`snap-${i}`}
-                    href="/lender/dashboard"
+                    href="/lender/chargers"
                     className="flex items-center gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-3.5 hover:bg-surface-page transition-colors"
                   >
                     <div className="flex-1 min-w-0">

@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
   // ── 2. Admin-only routes ──────────────────────────────────────────────────────
   // The is_admin flag is synced to JWT metadata when admin access is granted (migration 012).
   if (pathname.startsWith('/admin') && !isAdmin) {
-    const dest = role === 'lender' || role === 'both' ? '/lender/dashboard' : '/explore';
+    const dest = role === 'lender' || role === 'both' ? '/lender/chargers' : '/explore';
     const url = new URL(dest, request.url);
     url.searchParams.set('error', 'admin_required');
     return NextResponse.redirect(url);
@@ -161,7 +161,7 @@ export async function middleware(request: NextRequest) {
       }
 
       if (isDriverRoute && !canAccessDriver) {
-        const dest = canAccessLender ? '/lender/dashboard' : '/welcome/role';
+        const dest = canAccessLender ? '/lender/chargers' : '/welcome/role';
         console.warn(`[middleware] Role '${role}' blocked from driver route ${pathname} → ${dest}`);
         return NextResponse.redirect(new URL(dest, request.url));
       }

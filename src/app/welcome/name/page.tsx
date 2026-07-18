@@ -18,7 +18,7 @@ export default async function WelcomeNamePage({
   // Already fully onboarded (name set, role explicitly chosen or a pre-existing account) —
   // never show the welcome flow, just forward to the right dashboard.
   if (name && onboarded !== false) {
-    redirect(role === 'lender' ? '/lender/dashboard' : '/explore');
+    redirect('/home');
   }
 
   return <WelcomeNameForm initialName={name ?? ''} intent={searchParams.intent} />;
