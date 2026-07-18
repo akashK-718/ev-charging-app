@@ -4,7 +4,7 @@ import { ProfileBody } from '@/components/profile/ProfileBody';
 import { ProfileMenuDrawer } from '@/components/profile/ProfileMenuDrawer';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 
-type HostingState = 'not_enabled' | 'setup_in_progress' | 'active' | 'paused';
+type HostingState = 'not_enabled' | 'setup_in_progress' | 'setup_deferred' | 'active' | 'paused';
 
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
@@ -12,7 +12,7 @@ async function getProfileData(userId: string) {
   const [userResult, submissionResult, chargersResult] = await Promise.all([
     adminSupabase
       .from('users')
-      .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused')
+      .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused, hosting_setup_deferred')
       .eq('id', userId)
       .single(),
 
@@ -42,7 +42,7 @@ async function getProfileData(userId: string) {
     user: userResult.data as {
       id: string; name: string | null; phone: string;
       role: string; kyc_status: string; created_at: string;
-      avatar_url: string | null; hosting_paused: boolean;
+      avatar_url: string | null; hosting_paused: boolean; hosting_setup_deferred: boolean;
     } | null,
     submission: submissionResult.data as {
       id: string; status: string; submitted_at: string; rejection_reason: string | null;
@@ -69,7 +69,9 @@ export default async function ProfilePage({
   const isHostingEnabled = profile.role === 'lender' || profile.role === 'both';
   const hostingState: HostingState = (() => {
     if (!isHostingEnabled) return 'not_enabled';
-    if (chargerStats.published === 0) return 'setup_in_progress';
+    if (chargerStats.published === 0) {
+      return profile.hosting_setup_deferred ? 'setup_deferred' : 'setup_in_progress';
+    }
     if (profile.hosting_paused) return 'paused';
     return 'active';
   })();

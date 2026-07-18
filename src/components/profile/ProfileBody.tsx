@@ -18,7 +18,7 @@ import { clearPwaDismissal } from '@/lib/pwa';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type HostingState = 'not_enabled' | 'setup_in_progress' | 'active' | 'paused';
+type HostingState = 'not_enabled' | 'setup_in_progress' | 'setup_deferred' | 'active' | 'paused';
 
 interface ChargerStats {
   published: number;
@@ -99,6 +99,7 @@ export function ProfileBody({
   // ── Hosting state ─────────────────────────────────────────────────────────────
   const [hostingState, setHostingState] = useState<HostingState>(initialHostingState);
   const [pauseSheetOpen, setPauseSheetOpen] = useState(false);
+  const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [hostingLoading, setHostingLoading] = useState(false);
   const [hostingError, setHostingError] = useState<string | null>(null);
 
@@ -106,6 +107,9 @@ export function ProfileBody({
   const [installResetDone, setInstallResetDone] = useState(false);
 
   const hostingStarted = hostingState !== 'not_enabled';
+
+  // Setup in progress: route to verification or first charger based on KYC status.
+  // Append ?from=onboarding so those screens know to show their destructive actions.
 
   // ── Avatar handlers ───────────────────────────────────────────────────────────
 
@@ -242,8 +246,30 @@ export function ProfileBody({
     }
   }
 
-  // Setup in progress: route to verification or first charger based on KYC status
-  const setupContinueHref = kycStatus === 'approved' ? '/lender/chargers/new' : '/profile/verify';
+  const setupContinueHref = kycStatus === 'approved'
+    ? '/lender/chargers/new?from=onboarding'
+    : '/profile/verify?from=onboarding';
+
+  async function handleLeaveSetup() {
+    setLeaveSheetOpen(false);
+    setHostingLoading(true);
+    try {
+      await fetch('/api/profile/defer-hosting-setup', { method: 'POST' });
+      setHostingState('setup_deferred');
+      router.refresh();
+    } catch {
+      // best-effort: show the softer card even if the API call fails
+      setHostingState('setup_deferred');
+    } finally {
+      setHostingLoading(false);
+    }
+  }
+
+  function handleResumeSetup() {
+    // Clear deferred flag in background — non-blocking so navigation is instant
+    void fetch('/api/profile/resume-hosting-setup', { method: 'POST' });
+    router.push(setupContinueHref);
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -343,15 +369,14 @@ export function ProfileBody({
         {/* Header row */}
         <div className="flex items-start gap-3">
           <div className={`w-9 h-9 rounded-token flex items-center justify-center shrink-0 ${
-            hostingState === 'active'           ? 'bg-green-soft' :
-            hostingState === 'setup_in_progress' ? 'bg-copper-soft' :
-            hostingState === 'paused'            ? 'bg-surface-page' :
-                                                   'bg-copper-soft'
+            hostingState === 'active'  ? 'bg-green-soft' :
+            hostingState === 'paused'  ? 'bg-surface-page' :
+                                         'bg-copper-soft'
           }`}>
             <Home className={`w-4 h-4 ${
-              hostingState === 'active'  ? 'text-green' :
-              hostingState === 'paused'  ? 'text-muted' :
-                                           'text-copper'
+              hostingState === 'active' ? 'text-green' :
+              hostingState === 'paused' ? 'text-muted' :
+                                          'text-copper'
             }`} aria-hidden />
           </div>
 
@@ -388,6 +413,7 @@ export function ProfileBody({
             <p className="text-xs text-muted mt-0.5">
               {hostingState === 'not_enabled' && 'Earn from your home charger.'}
               {hostingState === 'setup_in_progress' && 'Verify your identity and list your first charger.'}
+              {hostingState === 'setup_deferred' && 'Start earning with your home charger.'}
               {hostingState === 'active' && (
                 `${chargerStats.published} Charger${chargerStats.published !== 1 ? 's' : ''} · ${chargerStats.visible} Visible${chargerStats.draft > 0 ? ` · ${chargerStats.draft} Draft` : ''}`
               )}
@@ -413,13 +439,33 @@ export function ProfileBody({
           )}
 
           {hostingState === 'setup_in_progress' && (
-            <Link
-              href={setupContinueHref}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-ink hover:underline underline-offset-2 transition-colors"
+            <div className="flex flex-col gap-2">
+              <Link
+                href={setupContinueHref}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-ink hover:underline underline-offset-2 transition-colors"
+              >
+                Continue
+                <ArrowRight className="w-4 h-4" aria-hidden />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setLeaveSheetOpen(true)}
+                className="text-xs text-muted hover:text-ink transition-colors text-left w-fit"
+              >
+                Not now
+              </button>
+            </div>
+          )}
+
+          {hostingState === 'setup_deferred' && (
+            <button
+              type="button"
+              onClick={handleResumeSetup}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
             >
-              Continue
+              Resume setup
               <ArrowRight className="w-4 h-4" aria-hidden />
-            </Link>
+            </button>
           )}
 
           {hostingState === 'active' && (
@@ -652,6 +698,47 @@ export function ProfileBody({
               className="flex-1 py-3 rounded-xl bg-red-700 text-white text-sm font-semibold hover:bg-red-800 transition-colors"
             >
               Pause Hosting
+            </button>
+          </div>
+        </div>
+      </Sheet>
+
+      {/* ── Leave setup confirmation sheet ─────────────────────────────────────── */}
+      <Sheet open={leaveSheetOpen} onClose={() => setLeaveSheetOpen(false)} title="Leave hosting setup?">
+        <div className="space-y-4">
+          <ul className="space-y-2.5 text-sm text-ink">
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-muted shrink-0">·</span>
+              Your progress will be saved.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-muted shrink-0">·</span>
+              Your verification (if started) is preserved.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-muted shrink-0">·</span>
+              Draft chargers remain saved.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-muted shrink-0">·</span>
+              You can continue anytime from Profile.
+            </li>
+          </ul>
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setLeaveSheetOpen(false)}
+              className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-ink hover:bg-surface-page transition-colors"
+            >
+              Continue Setup
+            </button>
+            <button
+              type="button"
+              onClick={() => { void handleLeaveSetup(); }}
+              disabled={hostingLoading}
+              className="flex-1 py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors disabled:opacity-50"
+            >
+              Leave for now
             </button>
           </div>
         </div>

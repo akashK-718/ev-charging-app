@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Camera, CreditCard, User, Building2, Upload, X } from 'lucide-react';
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import { Button } from '@/components/ui/Button';
+import { Sheet } from '@/components/ui/Sheet';
 import { cn } from '@/lib/utils';
 
 const TOTAL_STEPS = 5;
@@ -335,14 +336,18 @@ function StepReview({ draft, onEditStep, onValidChange, displayName }: { draft: 
   );
 }
 
-export default function ProfileVerifyPage() {
+function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
   const router = useRouter();
+
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<KycDraft>(EMPTY_DRAFT);
   const [stepValid, setStepValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [cancelSheetOpen, setCancelSheetOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -360,6 +365,24 @@ export default function ProfileVerifyPage() {
   function goToStep(s: number) {
     setStepValid(false);
     setStep(s);
+  }
+
+  async function handleCancelSetup() {
+    setIsCancelling(true);
+    setCancelError(null);
+    try {
+      const res = await fetch('/api/profile/cancel-hosting-setup', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        setCancelError(data.error ?? 'Could not cancel setup. Please try again.');
+        return;
+      }
+      router.push('/profile');
+    } catch {
+      setCancelError('Could not cancel setup. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
   async function handleSubmit() {
@@ -403,6 +426,31 @@ export default function ProfileVerifyPage() {
 
   return (
     <main className="min-h-screen flex flex-col px-6 py-10">
+      <Sheet open={cancelSheetOpen} onClose={() => setCancelSheetOpen(false)} title="Cancel hosting setup?">
+        <div className="space-y-4">
+          <p className="text-sm text-ink">Your verification progress will be removed.</p>
+          {cancelError && (
+            <p className="text-xs text-red-600 font-medium">{cancelError}</p>
+          )}
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setCancelSheetOpen(false)}
+              className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-ink hover:bg-surface-page transition-colors"
+            >
+              Keep Going
+            </button>
+            <button
+              type="button"
+              onClick={() => { void handleCancelSetup(); }}
+              disabled={isCancelling}
+              className="flex-1 py-3 rounded-xl bg-red-700 text-white text-sm font-semibold hover:bg-red-800 transition-colors disabled:opacity-50"
+            >
+              {isCancelling ? 'Cancelling…' : 'Cancel Setup'}
+            </button>
+          </div>
+        </div>
+      </Sheet>
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-muted uppercase tracking-wide">
@@ -448,6 +496,32 @@ export default function ProfileVerifyPage() {
           {isLastStep ? (isSubmitting ? 'Submitting…' : 'Submit for verification') : 'Next'}
         </Button>
       </div>
+
+      {isOnboarding && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setCancelSheetOpen(true)}
+            className="text-xs text-muted hover:text-danger transition-colors"
+          >
+            Cancel verification
+          </button>
+        </div>
+      )}
     </main>
+  );
+}
+
+function ProfileVerifyPageWrapper() {
+  const searchParams = useSearchParams();
+  const isOnboarding = searchParams.get('from') === 'onboarding';
+  return <ProfileVerifyPageContent isOnboarding={isOnboarding} />;
+}
+
+export default function ProfileVerifyPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProfileVerifyPageWrapper />
+    </Suspense>
   );
 }
