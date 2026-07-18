@@ -134,7 +134,7 @@ export default function DesignPage() {
             <span className="logo-mark" />
             EV-Charge
           </div>
-          <a className="navlink" href="/chargers">Back to app</a>
+          <a className="navlink" href="/explore">Back to app</a>
         </div>
       </nav>
 
