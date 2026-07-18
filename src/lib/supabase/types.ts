@@ -37,6 +37,7 @@ export type Database = {
           is_admin: boolean;
           avatar_url: string | null;
           fcm_token: string | null;
+          hosting_paused: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -50,6 +51,7 @@ export type Database = {
           is_admin?: boolean;
           avatar_url?: string | null;
           fcm_token?: string | null;
+          hosting_paused?: boolean;
         };
         Update: Partial<Database['public']['Tables']['users']['Insert']>;
         Relationships: [];
