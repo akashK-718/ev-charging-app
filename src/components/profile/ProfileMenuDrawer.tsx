@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, LogOut, Shield, HelpCircle, FileText } from 'lucide-react';
+import { MoreVertical, LogOut, Shield, HelpCircle, FileText } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ export function ProfileMenuDrawer({ isAdmin }: ProfileMenuDrawerProps) {
         className="p-2 -mr-2 rounded-token text-muted hover:text-ink hover:bg-surface-page transition-colors"
         aria-label="Open profile menu"
       >
-        <Menu className="w-5 h-5" />
+        <MoreVertical className="w-5 h-5" />
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="More">
