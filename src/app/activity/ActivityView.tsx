@@ -83,8 +83,9 @@ function staticMapUrl(lat: number, lng: number, seed: string): string {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   if (!token) return '';
   const { lat: fLat, lng: fLng } = fuzzCoords(lat, lng, seed);
-  const marker = `pin-s-bolt+1c6b47(${fLng.toFixed(5)},${fLat.toFixed(5)})`;
-  const center = `${fLng.toFixed(5)},${fLat.toFixed(5)},13`;
+  // pin-s (plain coloured pin — no Maki icon name to avoid 422 errors)
+  const marker = `pin-s+1c6b47(${fLng.toFixed(5)},${fLat.toFixed(5)})`;
+  const center = `${fLng.toFixed(5)},${fLat.toFixed(5)},12`;
   return `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${marker}/${center}/480x200@2x?access_token=${token}`;
 }
 
@@ -398,24 +399,33 @@ function SortButton({ sort, onChange }: { sort: SortDir; onChange: (s: SortDir) 
 // ── Featured session card ─────────────────────────────────────────────────────
 
 function FeaturedSessionCard({ item }: { item: HistoryItem }) {
-  const detailHref = item.kind === 'charging'
+  const [mapImgError, setMapImgError] = useState(false);
+
+  const detailHref  = item.kind === 'charging'
     ? `/bookings/${item.bookingId}`
     : `/lender/bookings/${item.bookingId}`;
   const statusLabel = STATUS_LABEL[item.status];
   const statusColor = STATUS_COLOR[item.status] ?? 'text-muted bg-surface-page';
   const price       = fmtPrice(item.displayAmountPaise, item.status);
   const showRate    = item.kind === 'charging' && item.status === 'completed' && !item.hasRated;
-  const mapSrc      = item.chargerLat !== null && item.chargerLng !== null
+
+  // Only attempt the static map when we have coords and it hasn't already errored
+  const mapSrc = !mapImgError && item.chargerLat !== null && item.chargerLng !== null
     ? staticMapUrl(item.chargerLat, item.chargerLng, item.bookingId)
     : null;
 
   return (
     <div className="bg-surface-card border border-border rounded-token-lg overflow-hidden">
-      {/* Map thumbnail — approximate location only */}
-      <Link href={detailHref} className="block relative h-36 bg-surface-page">
+      {/* Map thumbnail — approximate location, fuzzed ~300 m from exact address */}
+      <Link href={detailHref} className="block h-36 bg-surface-page overflow-hidden">
         {mapSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={mapSrc} alt="" className="w-full h-full object-cover" />
+          <img
+            src={mapSrc}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={() => setMapImgError(true)}
+          />
         ) : item.chargerPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.chargerPhoto} alt="" className="w-full h-full object-cover" />
@@ -457,37 +467,34 @@ function FeaturedSessionCard({ item }: { item: HistoryItem }) {
           <p className="text-sm font-semibold text-ink mt-1">{price}</p>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 mt-3.5">
-          {showRate && (
-            <Link
-              href={detailHref}
-              className="flex-1 flex items-center justify-center h-9 rounded-token border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
-            >
-              Rate session
-            </Link>
-          )}
-          {item.kind === 'charging' ? (
+        {/* Actions — Book again always present; Rate when applicable; View booking always secondary */}
+        <div className="space-y-2 mt-3.5">
+          <div className="flex items-center gap-2">
+            {showRate && (
+              <Link
+                href={detailHref}
+                className="flex-1 flex items-center justify-center h-9 rounded-token border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
+              >
+                Rate session
+              </Link>
+            )}
             <Link
               href={`/explore/${item.chargerId}`}
               className={cn(
-                'flex items-center justify-center h-9 rounded-token text-sm font-semibold transition-colors',
-                showRate
-                  ? 'flex-1 border border-border text-ink bg-surface-card hover:bg-surface-page'
-                  : 'w-full bg-ink text-white hover:bg-ink/90',
+                'flex items-center justify-center h-9 rounded-token text-sm font-semibold bg-ink text-white hover:bg-ink/90 transition-colors',
+                showRate ? 'flex-1' : 'w-full',
               )}
             >
               Book again
             </Link>
-          ) : (
-            <Link
-              href={detailHref}
-              className="flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink transition-colors"
-            >
-              View booking
-              <ChevronRight className="w-4 h-4" aria-hidden />
-            </Link>
-          )}
+          </div>
+          <Link
+            href={detailHref}
+            className="flex items-center justify-center gap-1 py-0.5 w-full text-sm font-semibold text-muted hover:text-ink transition-colors"
+          >
+            View booking
+            <ChevronRight className="w-3.5 h-3.5" aria-hidden />
+          </Link>
         </div>
       </div>
     </div>
