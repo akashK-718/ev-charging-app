@@ -97,7 +97,7 @@ export default function BookingsPage() {
           <p className="text-muted">
             {activeTab === 'all' ? 'No bookings yet.' : `No ${activeTab} bookings.`}
           </p>
-          <Link href="/chargers" className="inline-block mt-3 text-sm font-semibold text-volt-deep hover:underline">
+          <Link href="/explore" className="inline-block mt-3 text-sm font-semibold text-volt-deep hover:underline">
             Find a charger
           </Link>
         </div>

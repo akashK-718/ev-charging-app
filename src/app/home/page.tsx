@@ -695,7 +695,7 @@ export default async function HomePage() {
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   <Link
-                    href="/chargers"
+                    href="/explore"
                     className="inline-flex items-center gap-2 bg-green text-white text-sm font-semibold px-4 py-2.5 rounded-token hover:bg-green-deep transition-colors"
                   >
                     <MapPin className="w-4 h-4" aria-hidden />

@@ -12,7 +12,7 @@ const SUPPRESSED: string[] = ['/login', '/verify-otp', '/', '/design'];
 
 const TABS = [
   { href: '/home',     Icon: Home,         label: 'Home'    },
-  { href: '/chargers', Icon: Map,          label: 'Explore' },
+  { href: '/explore',  Icon: Map,          label: 'Explore' },
   { href: '/activity', Icon: ActivityIcon, label: 'Activity'},
   { href: '/profile',  Icon: User,         label: 'Profile' },
 ] as const;

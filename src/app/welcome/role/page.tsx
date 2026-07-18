@@ -19,7 +19,7 @@ export default async function WelcomeRolePage({
 
   // Already fully onboarded — never show the welcome flow, forward to the right dashboard.
   if (onboarded !== false) {
-    redirect(role === 'lender' ? '/lender/dashboard' : '/chargers');
+    redirect(role === 'lender' ? '/lender/dashboard' : '/explore');
   }
 
   return <WelcomeRoleForm intent={searchParams.intent} />;

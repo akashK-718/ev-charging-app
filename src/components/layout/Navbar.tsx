@@ -13,7 +13,7 @@ const AUTH_PAGES = ['/login', '/verify-otp'];
 
 const NAV_LINKS = [
   { href: '/home',     label: 'Home'    },
-  { href: '/chargers', label: 'Explore' },
+  { href: '/explore',  label: 'Explore' },
   { href: '/activity', label: 'Activity'},
   { href: '/profile',  label: 'Profile' },
 ] as const;

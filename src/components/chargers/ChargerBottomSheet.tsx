@@ -132,7 +132,7 @@ function MobileCard({
       </div>
 
       {/* Tappable card — full area navigates to detail */}
-      <Link href={`/chargers/${charger.id}`} className="flex items-center gap-3 px-4 pb-5">
+      <Link href={`/explore/${charger.id}`} className="flex items-center gap-3 px-4 pb-5">
         {/* Cover photo */}
         <div className="shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-volt-soft">
           {cover ? (
@@ -258,7 +258,7 @@ function DesktopDrawer({
         <div className="flex items-center justify-between mt-4">
           <span className="font-bold text-ink text-xl">₹{charger.price_per_kwh}/kWh</span>
           <Link
-            href={`/chargers/${charger.id}`}
+            href={`/explore/${charger.id}`}
             className="px-4 py-2 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors"
           >
             View details

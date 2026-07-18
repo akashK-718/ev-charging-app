@@ -90,7 +90,7 @@ function VerifyOtpContent() {
       } else if (role === 'lender' || role === 'both') {
         window.location.href = '/lender/dashboard';
       } else {
-        window.location.href = '/chargers';
+        window.location.href = '/explore';
       }
     } catch {
       setError('Something went wrong. Please try again.');
