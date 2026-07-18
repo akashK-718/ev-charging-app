@@ -470,7 +470,7 @@ export function ProfileBody({
 
           {hostingState === 'active' && (
             <Link
-              href="/lender/dashboard"
+              href="/lender/chargers"
               className="inline-flex items-center gap-1 text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
             >
               Manage Hosting
@@ -489,7 +489,7 @@ export function ProfileBody({
                 {hostingLoading ? 'Resuming…' : 'Resume Hosting'}
               </button>
               <Link
-                href="/lender/dashboard"
+                href="/lender/chargers"
                 className="text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
               >
                 Manage Hosting

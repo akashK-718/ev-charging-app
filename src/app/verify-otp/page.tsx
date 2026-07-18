@@ -87,10 +87,8 @@ function VerifyOtpContent() {
         window.location.href = intent ? `/welcome/name?intent=${intent}` : '/welcome/name';
       } else if (isAdmin) {
         window.location.href = '/admin';
-      } else if (role === 'lender' || role === 'both') {
-        window.location.href = '/lender/dashboard';
       } else {
-        window.location.href = '/explore';
+        window.location.href = '/home';
       }
     } catch {
       setError('Something went wrong. Please try again.');

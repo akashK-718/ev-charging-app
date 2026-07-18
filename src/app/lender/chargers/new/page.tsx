@@ -123,7 +123,7 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
 
       localStorage.removeItem(DRAFT_KEY);
       haptic('light');
-      router.push('/lender/dashboard?listed=1');
+      router.push('/lender/chargers');
     } catch {
       setSubmitError("Couldn't save charger, please try again.");
     } finally {

@@ -64,7 +64,7 @@ export function WelcomeRoleForm({ intent }: { intent?: string }) {
         router.push('/lender/chargers/new');
       } else {
         // Drivers tend to use the app more often — "both" lands on the driver view
-        router.push(selected === 'lender' ? '/lender/dashboard' : '/explore');
+        router.push(selected === 'lender' ? '/lender/chargers' : '/explore');
       }
     } catch {
       setError('Something went wrong. Please try again.');
