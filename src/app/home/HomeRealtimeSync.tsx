@@ -18,6 +18,7 @@ interface Props {
 export function HomeRealtimeSync({ userId, isHosting }: Props) {
   const router        = useRouter();
   const pendingRef    = useRef(false);
+  const timerRef      = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     const supabase = createClient();
@@ -27,7 +28,7 @@ export function HomeRealtimeSync({ userId, isHosting }: Props) {
     function scheduleRefresh() {
       if (pendingRef.current) return;
       pendingRef.current = true;
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         router.refresh();
         pendingRef.current = false;
       }, 400);
@@ -64,6 +65,7 @@ export function HomeRealtimeSync({ userId, isHosting }: Props) {
     channel.subscribe();
 
     return () => {
+      clearTimeout(timerRef.current);
       supabase.removeChannel(channel);
     };
   }, [userId, isHosting, router]);

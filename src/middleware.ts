@@ -9,7 +9,7 @@ function roleHome(_role: string, isAdmin: boolean): string {
 
 const AUTH_REQUIRED = [
   '/home', '/activity', '/notifications', '/lender', '/admin',
-  '/bookings', '/welcome', '/chargers', '/profile',
+  '/bookings', '/welcome', '/explore', '/profile',
 ] as const;
 
 function requiresAuth(pathname: string) {
@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
   // ── 2. Admin-only routes ──────────────────────────────────────────────────────
   // The is_admin flag is synced to JWT metadata when admin access is granted (migration 012).
   if (pathname.startsWith('/admin') && !isAdmin) {
-    const dest = role === 'lender' || role === 'both' ? '/lender/dashboard' : '/chargers';
+    const dest = role === 'lender' || role === 'both' ? '/lender/dashboard' : '/explore';
     const url = new URL(dest, request.url);
     url.searchParams.set('error', 'admin_required');
     return NextResponse.redirect(url);
@@ -155,7 +155,7 @@ export async function middleware(request: NextRequest) {
       }
 
       if (isLenderRoute && !canAccessLender) {
-        const dest = canAccessDriver ? '/chargers' : '/welcome/role';
+        const dest = canAccessDriver ? '/explore' : '/welcome/role';
         console.warn(`[middleware] Role '${role}' blocked from lender route ${pathname} → ${dest}`);
         return NextResponse.redirect(new URL(dest, request.url));
       }

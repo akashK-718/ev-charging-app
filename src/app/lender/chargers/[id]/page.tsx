@@ -240,7 +240,7 @@ export default function LenderChargerDetailPage() {
 
   function handleShare() {
     setMenuOpen(false);
-    const url = `${window.location.origin}/chargers/${chargerId}`;
+    const url = `${window.location.origin}/explore/${chargerId}`;
     void navigator.clipboard.writeText(url).then(() => showToast('Link copied'));
   }
 
@@ -563,7 +563,7 @@ export default function LenderChargerDetailPage() {
                 Share listing
               </button>
               <a
-                href={`/chargers/${chargerId}`}
+                href={`/explore/${chargerId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setMenuOpen(false)}

@@ -44,6 +44,7 @@ async function getProfileData(userId: string) {
       role: string; kyc_status: string; created_at: string;
       avatar_url: string | null; hosting_paused: boolean; hosting_setup_deferred: boolean;
     } | null,
+    userError: userResult.error,
     submission: submissionResult.data as {
       id: string; status: string; submitted_at: string; rejection_reason: string | null;
     } | null,
@@ -62,7 +63,10 @@ export default async function ProfilePage({
 
   const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
 
-  const { user: profile, submission, chargerStats } = await getProfileData(user.id);
+  const { user: profile, userError, submission, chargerStats } = await getProfileData(user.id);
+  // DB query error (e.g. missing migration) — don't redirect to /login since the
+  // user IS authenticated; /login bounces authenticated users to /home via middleware.
+  if (userError) throw new Error(userError.message);
   if (!profile) redirect('/login');
 
   // Derive hosting state from role + hosting_paused + published charger count
