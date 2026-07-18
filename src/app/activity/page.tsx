@@ -13,20 +13,31 @@ export default async function ActivityPage() {
   const role      = (user.user_metadata?.role as string | undefined) ?? '';
   const isHosting = role === 'lender' || role === 'both';
 
+  type ChargerFields = {
+    title?: string;
+    photos?: string[];
+    latitude?: number;
+    longitude?: number;
+  };
+
   type BookingRow = {
     id: string;
+    charger_id: string;
     status: string;
     scheduled_start: string;
     scheduled_end: string | null;
-    chargers: { title?: string } | null;
+    chargers: ChargerFields | null;
     driver_id?: string;
     lender_id?: string;
   };
 
+  const SELECT_BOOKING =
+    'id, charger_id, status, scheduled_start, scheduled_end, chargers(title, photos, latitude, longitude)';
+
   const [driverRes, lenderRes, notifRes] = await Promise.all([
     admin
       .from('bookings')
-      .select('id, status, scheduled_start, scheduled_end, chargers(title), lender_id')
+      .select(`${SELECT_BOOKING}, lender_id`)
       .eq('driver_id', user.id)
       .order('scheduled_start', { ascending: false })
       .limit(50),
@@ -34,7 +45,7 @@ export default async function ActivityPage() {
     isHosting
       ? admin
           .from('bookings')
-          .select('id, status, scheduled_start, scheduled_end, chargers(title), driver_id')
+          .select(`${SELECT_BOOKING}, driver_id`)
           .eq('lender_id', user.id)
           .order('scheduled_start', { ascending: false })
           .limit(50)
@@ -48,7 +59,7 @@ export default async function ActivityPage() {
       .limit(50),
   ]);
 
-  // Batch-fetch counterparty names (host name for driver bookings, driver name for lender bookings)
+  // Batch-fetch counterparty names
   const counterpartyIds = new Set<string>();
   for (const b of (driverRes.data ?? []) as BookingRow[]) {
     if (b.lender_id) counterpartyIds.add(b.lender_id);
@@ -63,36 +74,84 @@ export default async function ActivityPage() {
       .from('users')
       .select('id, name')
       .in('id', [...counterpartyIds]);
-    for (const u of userRows ?? []) {
-      if (u.id && u.name) nameMap.set(u.id, u.name as string);
+    for (const u of (userRows ?? []) as { id: string; name: string | null }[]) {
+      if (u.id && u.name) nameMap.set(u.id, u.name);
+    }
+  }
+
+  // Batch-fetch payments (gross paid by driver; lender_payout earned by host)
+  const allBookingIds = [
+    ...(driverRes.data ?? []).map(b => (b as BookingRow).id),
+    ...(lenderRes.data ?? []).map(b => (b as BookingRow).id),
+  ];
+  const paymentMap = new Map<string, { gross_amount: number; lender_payout: number }>();
+  if (allBookingIds.length > 0) {
+    const { data: payRows } = await admin
+      .from('payments')
+      .select('booking_id, gross_amount, lender_payout')
+      .in('booking_id', allBookingIds);
+    for (const p of (payRows ?? []) as { booking_id: string; gross_amount: number; lender_payout: number }[]) {
+      paymentMap.set(p.booking_id, { gross_amount: p.gross_amount, lender_payout: p.lender_payout });
+    }
+  }
+
+  // Check which completed driver bookings the user has already rated
+  const completedDriverIds = (driverRes.data ?? [])
+    .filter(b => (b as BookingRow).status === 'completed')
+    .map(b => (b as BookingRow).id);
+  const ratedBookingIds = new Set<string>();
+  if (completedDriverIds.length > 0) {
+    const { data: reviewRows } = await admin
+      .from('reviews')
+      .select('booking_id')
+      .eq('reviewer_id', user.id)
+      .in('booking_id', completedDriverIds);
+    for (const r of (reviewRows ?? []) as { booking_id: string }[]) {
+      ratedBookingIds.add(r.booking_id);
     }
   }
 
   const historyItems: HistoryItem[] = [];
 
-  for (const b of ((driverRes.data ?? []) as BookingRow[])) {
+  for (const b of (driverRes.data ?? []) as BookingRow[]) {
+    const charger = b.chargers;
+    const payment = paymentMap.get(b.id);
     historyItems.push({
-      id:               `charging-${b.id}`,
-      kind:             'charging',
-      bookingId:        b.id,
-      chargerTitle:     (b.chargers as { title?: string } | null)?.title ?? 'Charger',
-      counterpartyName: b.lender_id ? (nameMap.get(b.lender_id) ?? null) : null,
-      status:           b.status,
-      scheduledStart:   b.scheduled_start,
-      scheduledEnd:     b.scheduled_end ?? null,
+      id:                 `charging-${b.id}`,
+      kind:               'charging',
+      bookingId:          b.id,
+      chargerId:          b.charger_id,
+      chargerTitle:       charger?.title ?? 'Charger',
+      chargerPhoto:       charger?.photos?.[0] ?? null,
+      chargerLat:         charger?.latitude ?? null,
+      chargerLng:         charger?.longitude ?? null,
+      counterpartyName:   b.lender_id ? (nameMap.get(b.lender_id) ?? null) : null,
+      displayAmountPaise: payment?.gross_amount ?? null,
+      hasRated:           ratedBookingIds.has(b.id),
+      status:             b.status,
+      scheduledStart:     b.scheduled_start,
+      scheduledEnd:       b.scheduled_end ?? null,
     });
   }
 
-  for (const b of ((lenderRes.data ?? []) as BookingRow[])) {
+  for (const b of (lenderRes.data ?? []) as BookingRow[]) {
+    const charger = b.chargers;
+    const payment = paymentMap.get(b.id);
     historyItems.push({
-      id:               `hosting-${b.id}`,
-      kind:             'hosting',
-      bookingId:        b.id,
-      chargerTitle:     (b.chargers as { title?: string } | null)?.title ?? 'Charger',
-      counterpartyName: b.driver_id ? (nameMap.get(b.driver_id) ?? null) : null,
-      status:           b.status,
-      scheduledStart:   b.scheduled_start,
-      scheduledEnd:     b.scheduled_end ?? null,
+      id:                 `hosting-${b.id}`,
+      kind:               'hosting',
+      bookingId:          b.id,
+      chargerId:          b.charger_id,
+      chargerTitle:       charger?.title ?? 'Charger',
+      chargerPhoto:       charger?.photos?.[0] ?? null,
+      chargerLat:         charger?.latitude ?? null,
+      chargerLng:         charger?.longitude ?? null,
+      counterpartyName:   b.driver_id ? (nameMap.get(b.driver_id) ?? null) : null,
+      displayAmountPaise: payment?.lender_payout ?? null,
+      hasRated:           false,
+      status:             b.status,
+      scheduledStart:     b.scheduled_start,
+      scheduledEnd:       b.scheduled_end ?? null,
     });
   }
 
