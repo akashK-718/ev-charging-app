@@ -12,6 +12,7 @@ export type HistoryItem = {
   kind: 'charging' | 'hosting';
   bookingId: string;
   chargerTitle: string;
+  counterpartyName: string | null;
   status: string;
   scheduledStart: string;
   scheduledEnd: string | null;
@@ -25,7 +26,7 @@ export type UpdateItem = {
   read: boolean;
 };
 
-type TabType    = 'history' | 'updates';
+type TabType    = 'sessions' | 'updates';
 type FilterType = 'all' | 'upcoming' | 'completed' | 'cancelled';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -202,7 +203,7 @@ interface Props {
 }
 
 export function ActivityView({ historyItems, updates, initialUnreadCount }: Props) {
-  const [tab,        setTab]        = useState<TabType>('history');
+  const [tab,        setTab]        = useState<TabType>('sessions');
   const [filter,     setFilter]     = useState<FilterType>('all');
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [markedRead, setMarkedRead] = useState(false);
@@ -231,7 +232,7 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
 
         {/* Segmented tab control */}
         <div className="flex bg-surface-page border border-border rounded-token-lg p-1 gap-1 mb-6">
-          {(['history', 'updates'] as const).map(t => (
+          {(['sessions', 'updates'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -242,7 +243,7 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
                   : 'text-muted hover:text-ink-soft',
               )}
             >
-              {t === 'history' ? 'History' : 'Updates'}
+              {t === 'sessions' ? 'Sessions' : 'Updates'}
               {t === 'updates' && unreadCount > 0 && (
                 <span className="min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-copper text-white rounded-pill leading-[18px] text-center">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -252,8 +253,8 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
           ))}
         </div>
 
-        {/* ── History ── */}
-        {tab === 'history' && (
+        {/* ── Sessions ── */}
+        {tab === 'sessions' && (
           <div>
             {/* Filter chips */}
             <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-4 px-4 pb-4">
@@ -318,6 +319,11 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
                               <p className="text-sm font-semibold text-ink truncate">
                                 {item.chargerTitle}
                               </p>
+                              {item.counterpartyName && (
+                                <p className="text-xs text-muted truncate mt-0.5">
+                                  {item.kind === 'charging' ? 'Host' : 'Driver'}: {item.counterpartyName}
+                                </p>
+                              )}
                               <p className="text-xs text-muted mt-0.5">
                                 {fmtDate(item.scheduledStart)} at {fmtTime(item.scheduledStart)}
                               </p>

@@ -19,12 +19,14 @@ export default async function ActivityPage() {
     scheduled_start: string;
     scheduled_end: string | null;
     chargers: { title?: string } | null;
+    driver_id?: string;
+    lender_id?: string;
   };
 
   const [driverRes, lenderRes, notifRes] = await Promise.all([
     admin
       .from('bookings')
-      .select('id, status, scheduled_start, scheduled_end, chargers(title)')
+      .select('id, status, scheduled_start, scheduled_end, chargers(title), lender_id')
       .eq('driver_id', user.id)
       .order('scheduled_start', { ascending: false })
       .limit(50),
@@ -32,7 +34,7 @@ export default async function ActivityPage() {
     isHosting
       ? admin
           .from('bookings')
-          .select('id, status, scheduled_start, scheduled_end, chargers(title)')
+          .select('id, status, scheduled_start, scheduled_end, chargers(title), driver_id')
           .eq('lender_id', user.id)
           .order('scheduled_start', { ascending: false })
           .limit(50)
@@ -46,29 +48,51 @@ export default async function ActivityPage() {
       .limit(50),
   ]);
 
+  // Batch-fetch counterparty names (host name for driver bookings, driver name for lender bookings)
+  const counterpartyIds = new Set<string>();
+  for (const b of (driverRes.data ?? []) as BookingRow[]) {
+    if (b.lender_id) counterpartyIds.add(b.lender_id);
+  }
+  for (const b of (lenderRes.data ?? []) as BookingRow[]) {
+    if (b.driver_id) counterpartyIds.add(b.driver_id);
+  }
+
+  const nameMap = new Map<string, string>();
+  if (counterpartyIds.size > 0) {
+    const { data: userRows } = await admin
+      .from('users')
+      .select('id, name')
+      .in('id', [...counterpartyIds]);
+    for (const u of userRows ?? []) {
+      if (u.id && u.name) nameMap.set(u.id, u.name as string);
+    }
+  }
+
   const historyItems: HistoryItem[] = [];
 
   for (const b of ((driverRes.data ?? []) as BookingRow[])) {
     historyItems.push({
-      id:             `charging-${b.id}`,
-      kind:           'charging',
-      bookingId:      b.id,
-      chargerTitle:   (b.chargers as { title?: string } | null)?.title ?? 'Charger',
-      status:         b.status,
-      scheduledStart: b.scheduled_start,
-      scheduledEnd:   b.scheduled_end ?? null,
+      id:               `charging-${b.id}`,
+      kind:             'charging',
+      bookingId:        b.id,
+      chargerTitle:     (b.chargers as { title?: string } | null)?.title ?? 'Charger',
+      counterpartyName: b.lender_id ? (nameMap.get(b.lender_id) ?? null) : null,
+      status:           b.status,
+      scheduledStart:   b.scheduled_start,
+      scheduledEnd:     b.scheduled_end ?? null,
     });
   }
 
   for (const b of ((lenderRes.data ?? []) as BookingRow[])) {
     historyItems.push({
-      id:             `hosting-${b.id}`,
-      kind:           'hosting',
-      bookingId:      b.id,
-      chargerTitle:   (b.chargers as { title?: string } | null)?.title ?? 'Charger',
-      status:         b.status,
-      scheduledStart: b.scheduled_start,
-      scheduledEnd:   b.scheduled_end ?? null,
+      id:               `hosting-${b.id}`,
+      kind:             'hosting',
+      bookingId:        b.id,
+      chargerTitle:     (b.chargers as { title?: string } | null)?.title ?? 'Charger',
+      counterpartyName: b.driver_id ? (nameMap.get(b.driver_id) ?? null) : null,
+      status:           b.status,
+      scheduledStart:   b.scheduled_start,
+      scheduledEnd:     b.scheduled_end ?? null,
     });
   }
 
