@@ -141,7 +141,7 @@ export async function middleware(request: NextRequest) {
     const canAccessDriver = role === 'driver' || role === 'both';
 
     const isLenderRoute = pathname.startsWith('/lender');
-    const isDriverRoute = pathname.startsWith('/chargers') || pathname.startsWith('/bookings');
+    const isDriverRoute = pathname.startsWith('/bookings');
 
     if (isLenderRoute || isDriverRoute) {
       // No role set yet → mid-onboarding, send to role selection.
