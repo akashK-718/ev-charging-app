@@ -4,17 +4,18 @@ import { ProfileBody } from '@/components/profile/ProfileBody';
 import { ProfileMenuDrawer } from '@/components/profile/ProfileMenuDrawer';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 
+type HostingState = 'not_enabled' | 'setup_in_progress' | 'active' | 'paused';
+
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
 
-  const [userResult, submissionResult, draftResult] = await Promise.all([
+  const [userResult, submissionResult, chargersResult] = await Promise.all([
     adminSupabase
       .from('users')
-      .select('id, name, phone, role, kyc_status, created_at, avatar_url')
+      .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused')
       .eq('id', userId)
       .single(),
 
-    // Fetch the most recent submission to show accurate status + date
     adminSupabase
       .from('kyc_submissions')
       .select('id, status, submitted_at, rejection_reason')
@@ -23,25 +24,30 @@ async function getProfileData(userId: string) {
       .limit(1)
       .maybeSingle(),
 
-    // Draft charger count
     adminSupabase
       .from('chargers')
-      .select('id', { count: 'exact', head: true })
+      .select('status')
       .eq('lender_id', userId)
-      .eq('status', 'draft')
       .is('deleted_at', null),
   ]);
+
+  const chargers = (chargersResult.data ?? []) as { status: string }[];
+  const chargerStats = {
+    published: chargers.filter(c => c.status === 'active' || c.status === 'paused').length,
+    visible:   chargers.filter(c => c.status === 'active').length,
+    draft:     chargers.filter(c => c.status === 'draft').length,
+  };
 
   return {
     user: userResult.data as {
       id: string; name: string | null; phone: string;
       role: string; kyc_status: string; created_at: string;
-      avatar_url: string | null;
+      avatar_url: string | null; hosting_paused: boolean;
     } | null,
     submission: submissionResult.data as {
       id: string; status: string; submitted_at: string; rejection_reason: string | null;
     } | null,
-    draftCount: draftResult.count ?? 0,
+    chargerStats,
   };
 }
 
@@ -56,13 +62,19 @@ export default async function ProfilePage({
 
   const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
 
-  const { user: profile, submission, draftCount } = await getProfileData(user.id);
+  const { user: profile, submission, chargerStats } = await getProfileData(user.id);
   if (!profile) redirect('/login');
 
-  const isHosting = profile.role === 'lender' || profile.role === 'both';
+  // Derive hosting state from role + hosting_paused + published charger count
+  const isHostingEnabled = profile.role === 'lender' || profile.role === 'both';
+  const hostingState: HostingState = (() => {
+    if (!isHostingEnabled) return 'not_enabled';
+    if (chargerStats.published === 0) return 'setup_in_progress';
+    if (profile.hosting_paused) return 'paused';
+    return 'active';
+  })();
 
-  // Derive effective KYC status from DB (migration 009 fixes phantom-pending, but be defensive)
-  // If user has kyc_status='pending' but no submission row → treat as not_started
+  // Defend against phantom-pending: kyc_status='pending' with no submission row
   const rawKycStatus = profile.kyc_status as string;
   const kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected' = (() => {
     if (rawKycStatus === 'pending' && !submission) return 'not_started';
@@ -80,11 +92,11 @@ export default async function ProfilePage({
         <ProfileBody
           initialName={profile.name}
           phone={profile.phone}
-          isHosting={isHosting}
+          hostingState={hostingState}
+          chargerStats={chargerStats}
           createdAt={profile.created_at}
           kycStatus={kycStatus}
           submission={submission}
-          draftCount={draftCount}
           showSubmittedBanner={searchParams.verified === 'submitted'}
           initialAvatarUrl={profile.avatar_url}
         />

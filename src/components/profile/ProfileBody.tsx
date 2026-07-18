@@ -6,16 +6,25 @@ import Link from 'next/link';
 import {
   Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert,
   Camera, ImageIcon, ShieldQuestion, Trash2,
-  Smartphone, Check, Zap, Home, Car, CreditCard,
-  ChevronRight, Bell, Globe,
+  Smartphone, Check, Home, Car, CreditCard,
+  ChevronRight, Bell, Globe, ArrowRight,
 } from 'lucide-react';
 import { NameEditor } from './NameEditor';
 import { Avatar } from '@/components/ui/Avatar';
+import { Sheet } from '@/components/ui/Sheet';
 import { uploadImage } from '@/lib/cloudinary';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { clearPwaDismissal } from '@/lib/pwa';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+type HostingState = 'not_enabled' | 'setup_in_progress' | 'active' | 'paused';
+
+interface ChargerStats {
+  published: number;
+  visible: number;
+  draft: number;
+}
 
 interface Submission {
   id: string;
@@ -27,11 +36,11 @@ interface Submission {
 interface ProfileBodyProps {
   initialName: string | null;
   phone: string;
-  isHosting: boolean;
+  hostingState: HostingState;
+  chargerStats: ChargerStats;
   createdAt: string;
   kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected';
   submission: Submission | null;
-  draftCount: number;
   showSubmittedBanner: boolean;
   initialAvatarUrl: string | null;
 }
@@ -40,16 +49,39 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// ── Hosting toggle ─────────────────────────────────────────────────────────────
+
+function HostingToggle({ active, onClick }: { active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      onClick={onClick}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-pill border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+        active ? 'bg-green focus-visible:ring-green' : 'bg-gray-300 focus-visible:ring-gray-400'
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+          active ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export function ProfileBody({
   initialName,
   phone,
-  isHosting,
+  hostingState: initialHostingState,
+  chargerStats,
   createdAt,
   kycStatus,
   submission,
-  draftCount,
   showSubmittedBanner,
   initialAvatarUrl,
 }: ProfileBodyProps) {
@@ -57,7 +89,7 @@ export function ProfileBody({
 
   // ── Avatar state ─────────────────────────────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -65,12 +97,15 @@ export function ProfileBody({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Hosting state ─────────────────────────────────────────────────────────────
-  const [hostingEnabled, setHostingEnabled] = useState(isHosting);
+  const [hostingState, setHostingState] = useState<HostingState>(initialHostingState);
+  const [pauseSheetOpen, setPauseSheetOpen] = useState(false);
   const [hostingLoading, setHostingLoading] = useState(false);
   const [hostingError, setHostingError] = useState<string | null>(null);
 
   // ── Preferences state ─────────────────────────────────────────────────────────
   const [installResetDone, setInstallResetDone] = useState(false);
+
+  const hostingStarted = hostingState !== 'not_enabled';
 
   // ── Avatar handlers ───────────────────────────────────────────────────────────
 
@@ -129,18 +164,18 @@ export function ProfileBody({
   }
 
   function openCamera() {
-    setSheetOpen(false);
+    setAvatarSheetOpen(false);
     setTimeout(() => cameraInputRef.current?.click(), 50);
   }
 
   function openFilePicker() {
-    setSheetOpen(false);
+    setAvatarSheetOpen(false);
     setTimeout(() => fileInputRef.current?.click(), 50);
   }
 
-  // ── Hosting handler ───────────────────────────────────────────────────────────
+  // ── Hosting handlers ──────────────────────────────────────────────────────────
 
-  async function handleEnableHosting() {
+  async function handleStartHosting() {
     setHostingLoading(true);
     setHostingError(null);
     try {
@@ -150,7 +185,7 @@ export function ProfileBody({
         setHostingError(data.error ?? 'Could not enable hosting. Please try again.');
         return;
       }
-      setHostingEnabled(true);
+      setHostingState('setup_in_progress');
       router.refresh();
     } catch {
       setHostingError('Could not enable hosting. Please try again.');
@@ -158,6 +193,57 @@ export function ProfileBody({
       setHostingLoading(false);
     }
   }
+
+  async function handleConfirmPause() {
+    setPauseSheetOpen(false);
+    setHostingLoading(true);
+    setHostingError(null);
+    try {
+      const res = await fetch('/api/profile/pause-hosting', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        setHostingError(data.error ?? 'Could not pause hosting. Please try again.');
+        return;
+      }
+      setHostingState('paused');
+      router.refresh();
+    } catch {
+      setHostingError('Could not pause hosting. Please try again.');
+    } finally {
+      setHostingLoading(false);
+    }
+  }
+
+  async function handleResume() {
+    setHostingLoading(true);
+    setHostingError(null);
+    try {
+      const res = await fetch('/api/profile/resume-hosting', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        setHostingError(data.error ?? 'Could not resume hosting. Please try again.');
+        return;
+      }
+      setHostingState('active');
+      router.refresh();
+    } catch {
+      setHostingError('Could not resume hosting. Please try again.');
+    } finally {
+      setHostingLoading(false);
+    }
+  }
+
+  function handleToggle() {
+    if (hostingLoading) return;
+    if (hostingState === 'active') {
+      setPauseSheetOpen(true);
+    } else if (hostingState === 'paused') {
+      void handleResume();
+    }
+  }
+
+  // Setup in progress: route to verification or first charger based on KYC status
+  const setupContinueHref = kycStatus === 'approved' ? '/lender/chargers/new' : '/profile/verify';
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -198,7 +284,7 @@ export function ProfileBody({
       />
 
       {/* Verification submitted banner */}
-      {showSubmittedBanner && hostingEnabled && kycStatus === 'pending' && (
+      {showSubmittedBanner && hostingStarted && kycStatus === 'pending' && (
         <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
           <p className="font-semibold text-blue-800">Verification submitted!</p>
           <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
@@ -219,7 +305,7 @@ export function ProfileBody({
             )}
             <button
               type="button"
-              onClick={() => setSheetOpen(true)}
+              onClick={() => setAvatarSheetOpen(true)}
               aria-label="Edit profile photo"
               className="absolute bottom-0 right-0 w-6 h-6 bg-ink text-white rounded-full flex items-center justify-center shadow-md hover:bg-ink/80 transition-colors"
             >
@@ -232,7 +318,7 @@ export function ProfileBody({
         </div>
 
         <div className="space-y-3">
-          <NameEditor initialName={initialName} showKycContext={hostingEnabled} />
+          <NameEditor initialName={initialName} showKycContext={hostingStarted} />
           <div>
             <p className="text-xs text-muted mb-0.5">Phone</p>
             <p className="text-sm font-semibold text-ink">{phone}</p>
@@ -251,55 +337,92 @@ export function ProfileBody({
         </div>
       </div>
 
-      {/* ── 2. Charging — always enabled, non-interactive ─────────────────────── */}
+      {/* ── 2. Hosting — four-state lifecycle ─────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 p-5">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-token bg-green-soft flex items-center justify-center shrink-0">
-            <Zap className="w-4 h-4 text-green" aria-hidden />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-ink">Charging</p>
-              <div className="flex items-center gap-1 shrink-0">
-                <Check className="w-3.5 h-3.5 text-green" aria-hidden />
-                <span className="text-xs font-semibold text-green">Enabled</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted mt-0.5">Find and book EV chargers near you</p>
-          </div>
-        </div>
-      </div>
 
-      {/* ── 3. Hosting ─────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        {/* Header row */}
         <div className="flex items-start gap-3">
-          <div className={`w-9 h-9 rounded-token flex items-center justify-center shrink-0 ${hostingEnabled ? 'bg-green-soft' : 'bg-copper-soft'}`}>
-            <Home className={`w-4 h-4 ${hostingEnabled ? 'text-green' : 'text-copper'}`} aria-hidden />
+          <div className={`w-9 h-9 rounded-token flex items-center justify-center shrink-0 ${
+            hostingState === 'active'           ? 'bg-green-soft' :
+            hostingState === 'setup_in_progress' ? 'bg-copper-soft' :
+            hostingState === 'paused'            ? 'bg-surface-page' :
+                                                   'bg-copper-soft'
+          }`}>
+            <Home className={`w-4 h-4 ${
+              hostingState === 'active'  ? 'text-green' :
+              hostingState === 'paused'  ? 'text-muted' :
+                                           'text-copper'
+            }`} aria-hidden />
           </div>
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-ink">Hosting</p>
-              {hostingEnabled ? (
-                <div className="flex items-center gap-1 shrink-0">
-                  <Check className="w-3.5 h-3.5 text-green" aria-hidden />
-                  <span className="text-xs font-semibold text-green">Enabled</span>
-                </div>
-              ) : (
+
+              {hostingState === 'not_enabled' && (
                 <span className="text-xs text-muted shrink-0">Not enabled</span>
               )}
+
+              {hostingState === 'setup_in_progress' && (
+                <span className="text-xs font-medium text-copper shrink-0">Setup in progress</span>
+              )}
+
+              {(hostingState === 'active' || hostingState === 'paused') && (
+                <div className="flex items-center gap-2 shrink-0">
+                  {hostingState === 'active' ? (
+                    <div className="flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 text-green" aria-hidden />
+                      <span className="text-xs font-semibold text-green">Active</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-semibold text-muted">Paused</span>
+                  )}
+                  <HostingToggle
+                    active={hostingState === 'active'}
+                    onClick={handleToggle}
+                  />
+                </div>
+              )}
             </div>
+
             <p className="text-xs text-muted mt-0.5">
-              {hostingEnabled
-                ? (draftCount > 0
-                    ? `${draftCount} charger draft${draftCount > 1 ? 's' : ''} in progress`
-                    : 'Manage your chargers and earnings')
-                : "Share your home charger and earn when you're not using it"}
+              {hostingState === 'not_enabled' && 'Earn from your home charger.'}
+              {hostingState === 'setup_in_progress' && 'Verify your identity and list your first charger.'}
+              {hostingState === 'active' && (
+                `${chargerStats.published} Charger${chargerStats.published !== 1 ? 's' : ''} · ${chargerStats.visible} Visible${chargerStats.draft > 0 ? ` · ${chargerStats.draft} Draft` : ''}`
+              )}
+              {hostingState === 'paused' && 'Your listings are hidden from search.'}
             </p>
           </div>
         </div>
 
+        {/* Action row */}
         <div className="mt-3 pt-3 border-t border-border">
-          {hostingEnabled ? (
+          {hostingState === 'not_enabled' && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted">Share your charger when you&apos;re not using it.</p>
+              <button
+                type="button"
+                onClick={() => { void handleStartHosting(); }}
+                disabled={hostingLoading}
+                className="shrink-0 px-4 py-2 bg-ink text-white text-xs font-semibold rounded-token hover:bg-ink/90 transition-colors disabled:opacity-50"
+              >
+                {hostingLoading ? 'Starting…' : 'Start Hosting'}
+              </button>
+            </div>
+          )}
+
+          {hostingState === 'setup_in_progress' && (
+            <Link
+              href={setupContinueHref}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-ink hover:underline underline-offset-2 transition-colors"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4" aria-hidden />
+            </Link>
+          )}
+
+          {hostingState === 'active' && (
             <Link
               href="/lender/dashboard"
               className="inline-flex items-center gap-1 text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
@@ -307,27 +430,35 @@ export function ProfileBody({
               Manage Hosting
               <ChevronRight className="w-4 h-4" aria-hidden />
             </Link>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted">Enable hosting to list your charger and earn income.</p>
+          )}
+
+          {hostingState === 'paused' && (
+            <div className="flex items-center gap-5 flex-wrap">
               <button
                 type="button"
-                onClick={() => { void handleEnableHosting(); }}
+                onClick={() => { void handleResume(); }}
                 disabled={hostingLoading}
-                className="shrink-0 px-4 py-2 bg-ink text-white text-xs font-semibold rounded-token hover:bg-ink/90 transition-colors disabled:opacity-50"
+                className="text-sm font-semibold text-green hover:underline underline-offset-2 transition-colors disabled:opacity-50"
               >
-                {hostingLoading ? 'Enabling...' : 'Start Hosting'}
+                {hostingLoading ? 'Resuming…' : 'Resume Hosting'}
               </button>
+              <Link
+                href="/lender/dashboard"
+                className="text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
+              >
+                Manage Hosting
+              </Link>
             </div>
           )}
+
           {hostingError && (
             <p className="text-xs text-danger font-medium mt-2">{hostingError}</p>
           )}
         </div>
       </div>
 
-      {/* ── 4. Verification — only shown when hosting enabled ──────────────────── */}
-      {hostingEnabled && (
+      {/* ── 3. Verification — only when hosting has been started ───────────────── */}
+      {hostingStarted && (
         <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
           <h2 className="font-semibold text-base text-ink">Identity verification</h2>
 
@@ -338,8 +469,8 @@ export function ProfileBody({
                 <div>
                   <p className="font-semibold text-sm text-yellow-700">Not verified</p>
                   <p className="text-xs text-muted mt-1 leading-relaxed">
-                    {draftCount > 0
-                      ? `You have ${draftCount} charger${draftCount > 1 ? 's' : ''} awaiting publish. Verify your identity to make them visible to drivers.`
+                    {chargerStats.draft > 0
+                      ? `You have ${chargerStats.draft} charger${chargerStats.draft > 1 ? 's' : ''} awaiting publish. Verify your identity to make them visible to drivers.`
                       : 'Verify your identity to publish chargers and receive payouts.'}
                   </p>
                 </div>
@@ -360,7 +491,7 @@ export function ProfileBody({
                 <p className="font-semibold text-sm text-blue-700">Under review</p>
                 <p className="text-xs text-muted mt-1">
                   Submitted {formatDate(submission.submitted_at)} · Usually 24–48 hours.
-                  {draftCount > 0 && ` Your ${draftCount} charger${draftCount > 1 ? 's' : ''} will go live automatically once approved.`}
+                  {chargerStats.draft > 0 && ` Your ${chargerStats.draft} charger${chargerStats.draft > 1 ? 's' : ''} will go live automatically once approved.`}
                 </p>
               </div>
             </div>
@@ -406,7 +537,7 @@ export function ProfileBody({
         </div>
       )}
 
-      {/* ── 5. Vehicles ────────────────────────────────────────────────────────── */}
+      {/* ── 4. Vehicles ────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 opacity-50">
           <div className="flex items-center gap-3">
@@ -420,7 +551,7 @@ export function ProfileBody({
         </div>
       </div>
 
-      {/* ── 6. Payment methods ─────────────────────────────────────────────────── */}
+      {/* ── 5. Payment methods ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 opacity-50">
           <div className="flex items-center gap-3">
@@ -434,11 +565,10 @@ export function ProfileBody({
         </div>
       </div>
 
-      {/* ── 7. Preferences ─────────────────────────────────────────────────────── */}
+      {/* ── 6. Preferences ─────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
         <h2 className="font-semibold text-base text-ink">Preferences</h2>
 
-        {/* Notifications */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Bell className="w-4 h-4 text-muted shrink-0" aria-hidden />
@@ -452,7 +582,6 @@ export function ProfileBody({
 
         <div className="border-t border-border" />
 
-        {/* Language */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Globe className="w-4 h-4 text-muted shrink-0" aria-hidden />
@@ -466,7 +595,6 @@ export function ProfileBody({
 
         <div className="border-t border-border" />
 
-        {/* App install prompt reset */}
         <div className="flex items-start gap-3">
           <Smartphone className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
           <div className="flex-1 min-w-0">
@@ -489,12 +617,52 @@ export function ProfileBody({
         </div>
       </div>
 
-      {/* Avatar edit bottom sheet */}
-      {sheetOpen && (
+      {/* ── Pause confirmation sheet ────────────────────────────────────────────── */}
+      <Sheet open={pauseSheetOpen} onClose={() => setPauseSheetOpen(false)} title="Pause Hosting?">
+        <div className="space-y-4">
+          <ul className="space-y-2.5 text-sm text-ink">
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-danger shrink-0">·</span>
+              Your chargers will no longer appear in search.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-muted shrink-0">·</span>
+              Existing bookings remain active.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-muted shrink-0">·</span>
+              Future bookings cannot be made.
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-px text-muted shrink-0">·</span>
+              Your chargers and settings are preserved.
+            </li>
+          </ul>
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setPauseSheetOpen(false)}
+              className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-ink hover:bg-surface-page transition-colors"
+            >
+              Keep Hosting
+            </button>
+            <button
+              type="button"
+              onClick={() => { void handleConfirmPause(); }}
+              className="flex-1 py-3 rounded-xl bg-red-700 text-white text-sm font-semibold hover:bg-red-800 transition-colors"
+            >
+              Pause Hosting
+            </button>
+          </div>
+        </div>
+      </Sheet>
+
+      {/* ── Avatar edit sheet ───────────────────────────────────────────────────── */}
+      {avatarSheetOpen && (
         <>
           <div
             className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => setSheetOpen(false)}
+            onClick={() => setAvatarSheetOpen(false)}
           />
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl px-5 pt-4 pb-8">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
@@ -522,7 +690,7 @@ export function ProfileBody({
               {kycStatus === 'approved' && (
                 <button
                   type="button"
-                  onClick={() => { setSheetOpen(false); void handleResetAvatar(); }}
+                  onClick={() => { setAvatarSheetOpen(false); void handleResetAvatar(); }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
                 >
                   <ShieldQuestion className="w-5 h-5 text-muted shrink-0" />
@@ -533,7 +701,7 @@ export function ProfileBody({
               {avatarUrl && (
                 <button
                   type="button"
-                  onClick={() => { setSheetOpen(false); void handleRemoveAvatar(); }}
+                  onClick={() => { setAvatarSheetOpen(false); void handleRemoveAvatar(); }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-red-50 transition-colors text-left"
                 >
                   <Trash2 className="w-5 h-5 text-red-500 shrink-0" />
