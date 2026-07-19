@@ -7,7 +7,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Map, { Marker, Source, Layer, NavigationControl } from 'react-map-gl/mapbox';
 import type { MapRef, MapMouseEvent, MapTouchEvent, MarkerDragEvent, LayerProps } from 'react-map-gl/mapbox';
-import { MapPin, Crosshair } from 'lucide-react';
+import { MapPin, Crosshair, Plug } from 'lucide-react';
 import type { Coords } from '@/lib/maps/types';
 import { makeCircleGeoJSON } from '@/lib/maps/mapbox';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,10 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 // Brand colours in hex — CSS vars don't work inside Mapbox layer paint specs.
 const VOLT = '#10d96a';
 const INK = '#0c1611';
+const GP_GREEN = '#159a4c'; // GreenPath accent — used for cluster/pin colours
+
+// Individual charger GL dots appear at zoom < PIN_ZOOM; pill DOM markers at >= PIN_ZOOM.
+const PIN_ZOOM = 14;
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -33,6 +37,7 @@ export type ChargerMarkerData = {
   id: string;
   coords: Coords;
   status?: 'active' | 'paused';
+  pricePerKwh?: number;
 };
 
 export type MapViewProps = {
@@ -83,6 +88,9 @@ export type MapViewProps = {
    */
   fitBoundsTarget?: [[number, number], [number, number]];
 
+  /** Highlights this charger's pill in selected state (zinc-900 bg). */
+  selectedChargerId?: string;
+
   // ── Events ───────────────────────────────────────────────────────────────
   onChargerClick?: (id: string) => void;
   /** Fires after a 500 ms hold with no significant finger/pointer movement. */
@@ -103,7 +111,7 @@ const clusterLayer: LayerProps = {
   source: 'chargers',
   filter: ['has', 'point_count'],
   paint: {
-    'circle-color': VOLT,
+    'circle-color': GP_GREEN,
     'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 30],
     'circle-stroke-width': 2,
     'circle-stroke-color': '#fff',
@@ -123,13 +131,16 @@ const clusterCountLayer: LayerProps = {
   paint: { 'text-color': INK },
 };
 
+// At zoom >= PIN_ZOOM, clusters have split up and DOM pill markers take over.
+// This GL dot layer covers zoom < PIN_ZOOM so isolated chargers stay visible.
 const unclusteredLayer: LayerProps = {
   id: 'chargers-point',
   type: 'circle',
   source: 'chargers',
+  maxzoom: PIN_ZOOM,
   filter: ['!', ['has', 'point_count']],
   paint: {
-    'circle-color': VOLT,
+    'circle-color': GP_GREEN,
     'circle-radius': 8,
     'circle-stroke-width': 2,
     'circle-stroke-color': '#fff',
@@ -216,6 +227,7 @@ export function MapView({
   onFromPinDragEnd,
   onToPinDragEnd,
   fitBoundsTarget,
+  selectedChargerId,
   onChargerClick,
   onLongPress,
   onMapClick,
@@ -226,6 +238,8 @@ export function MapView({
   const prevCenter = useRef<Coords | null>(null);
   const prevFitIndia = useRef(false);
   const prevFitBoundsKey = useRef<string | null>(null);
+
+  const [mapZoom, setMapZoom] = useState(zoom);
 
   // Long-press state
   const lpTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -385,7 +399,7 @@ export function MapView({
       const map = mapRef.current?.getMap();
       if (!map) return;
       const feats = map.queryRenderedFeatures(e.point, {
-        layers: ['chargers-clusters', 'chargers-point'],
+        layers: ['chargers-clusters'],
       });
       setCursor(feats.length > 0 ? 'pointer' : '');
     },
@@ -438,6 +452,7 @@ export function MapView({
       onTouchStart={onLongPress ? handleTouchStart : undefined}
       onTouchMove={onLongPress ? handleTouchMove : undefined}
       onTouchEnd={onLongPress ? handleTouchEnd : undefined}
+      onMove={e => setMapZoom(e.viewState.zoom)}
     >
       <NavigationControl position="top-right" showCompass={false} />
 
@@ -492,6 +507,43 @@ export function MapView({
         <Layer {...clusterCountLayer} />
         <Layer {...unclusteredLayer} />
       </Source>
+
+      {/* GreenPath pill markers — DOM elements at zoom >= PIN_ZOOM (clusters have split by then) */}
+      {mapZoom >= PIN_ZOOM && chargerMarkers.map(c => {
+        const isSelected = c.id === selectedChargerId;
+        const isActive   = c.status !== 'paused';
+        const price      = c.pricePerKwh != null ? `₹${Math.round(c.pricePerKwh)}` : null;
+        return (
+          <Marker
+            key={c.id}
+            latitude={c.coords.lat}
+            longitude={c.coords.lng}
+            anchor="bottom"
+            onClick={e => {
+              e.originalEvent.stopPropagation();
+              onChargerClick?.(c.id);
+            }}
+          >
+            <div className="flex flex-col items-center pin-pop cursor-pointer">
+              <div className={cn(
+                'px-2 h-6 rounded-full flex items-center gap-1 shadow-md border-2 text-[10px] font-bold whitespace-nowrap select-none',
+                isSelected
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : isActive
+                    ? 'bg-white border-white text-green-700'
+                    : 'bg-zinc-200 border-zinc-200 text-zinc-500',
+              )}>
+                <Plug className="size-3" />
+                {price ?? '–'}
+              </div>
+              <div className={cn(
+                'w-1.5 h-1.5 rotate-45 -mt-1',
+                isSelected ? 'bg-zinc-900' : isActive ? 'bg-white' : 'bg-zinc-200',
+              )} />
+            </div>
+          </Marker>
+        );
+      })}
 
       {/* Route From (A) endpoint — draggable when onFromPinDragEnd is provided */}
       {fromCoords && (

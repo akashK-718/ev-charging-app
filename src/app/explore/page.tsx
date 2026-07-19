@@ -15,6 +15,7 @@ import { RouteCompactSummary } from '@/components/chargers/RouteCompactSummary';
 import { ChargerBottomSheet } from '@/components/chargers/ChargerBottomSheet';
 import { ChargerListView } from '@/components/chargers/ChargerListView';
 import { FilterSheet } from '@/components/chargers/FilterSheet';
+import type { Availability, PowerFilter } from '@/components/chargers/FilterSheet';
 import type { ChargerRow } from '@/components/chargers/ChargerCard';
 import type { Coords, RouteResult } from '@/lib/maps/types';
 import type { ChargerMarkerData } from '@/components/maps/MapView';
@@ -163,6 +164,8 @@ export default function ExplorePage() {
   // ── Shared filters ────────────────────────────────────────────────────────
   const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
   const [maxPrice, setMaxPrice] = useState(MAX_PRICE);
+  const [availability, setAvailability] = useState<Availability>('any');
+  const [powerFilter, setPowerFilter] = useState<PowerFilter>('any');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // ── UI ────────────────────────────────────────────────────────────────────
@@ -610,14 +613,28 @@ export default function ExplorePage() {
     }, 120);
   }
 
-  function handleApplyFilters({ connectors, maxPrice: mp }: { connectors: Set<string>; maxPrice: number }) {
+  function handleApplyFilters({
+    connectors,
+    maxPrice: mp,
+    availability: av,
+    powerFilter: pf,
+  }: {
+    connectors: Set<string>;
+    maxPrice: number;
+    availability: Availability;
+    powerFilter: PowerFilter;
+  }) {
     setSelectedConnectors(connectors);
     setMaxPrice(mp);
+    setAvailability(av);
+    setPowerFilter(pf);
   }
 
   function clearFilters() {
     setSelectedConnectors(new Set());
     setMaxPrice(MAX_PRICE);
+    setAvailability('any');
+    setPowerFilter('any');
   }
 
   function toggleConnector(ct: string) {
@@ -643,6 +660,8 @@ export default function ExplorePage() {
       if (!(c.connector_types as string[]).some(ct => selectedConnectors.has(ct))) return false;
     }
     if (maxPrice < MAX_PRICE && Number(c.price_per_kwh) > maxPrice) return false;
+    if (availability !== 'any' && c.status !== 'active') return false;
+    if (powerFilter !== 'any' && c.charger_type !== powerFilter) return false;
     return true;
   });
 
@@ -651,6 +670,8 @@ export default function ExplorePage() {
       if (!(c.connector_types as string[]).some(ct => selectedConnectors.has(ct))) return false;
     }
     if (maxPrice < MAX_PRICE && Number(c.price_per_kwh) > maxPrice) return false;
+    if (availability !== 'any' && c.status !== 'active') return false;
+    if (powerFilter !== 'any' && c.charger_type !== powerFilter) return false;
     return true;
   });
 
@@ -658,7 +679,10 @@ export default function ExplorePage() {
     ? routeChargers.length - visibleRouteChargers.length
     : chargers.length - visibleChargers.length;
 
-  const activeFilterCount = selectedConnectors.size + (maxPrice < MAX_PRICE ? 1 : 0);
+  const activeFilterCount = selectedConnectors.size
+    + (maxPrice < MAX_PRICE ? 1 : 0)
+    + (availability !== 'any' ? 1 : 0)
+    + (powerFilter !== 'any' ? 1 : 0);
   const activeFetchLoading = isRouteMode ? routeFetchLoading : fetchLoading;
 
   const radiusKm = isFinite(radius) ? radius / 1000 : 0;
@@ -677,6 +701,7 @@ export default function ExplorePage() {
     id: c.id,
     coords: { lat: Number(c.latitude), lng: Number(c.longitude) },
     status: c.status as 'active' | 'paused',
+    pricePerKwh: Number(c.price_per_kwh),
   }));
 
   const selectedDistanceKm = useMemo(() => {
@@ -751,6 +776,7 @@ export default function ExplorePage() {
               onFromPinDragEnd={isRouteMode && routeFrom ? c => handlePinDragEnd('from', c) : undefined}
               onToPinDragEnd={isRouteMode && routeTo ? c => handlePinDragEnd('to', c) : undefined}
               fitBoundsTarget={isRouteMode ? fitBoundsTarget : undefined}
+              selectedChargerId={selectedCharger?.id}
               onChargerClick={id => {
                 const source = isRouteMode ? routeChargers : chargers;
                 const found = source.find(c => c.id === id);
@@ -1031,6 +1057,8 @@ export default function ExplorePage() {
         isOpen={filtersOpen}
         selectedConnectors={selectedConnectors}
         maxPrice={maxPrice}
+        availability={availability}
+        powerFilter={powerFilter}
         onApply={handleApplyFilters}
         onClose={() => setFiltersOpen(false)}
       />

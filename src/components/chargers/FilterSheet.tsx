@@ -2,29 +2,57 @@
 
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { CONNECTOR_TYPES } from '@/lib/constants';
+import { CONNECTOR_TYPES, CHARGER_TYPES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+
+export type Availability = 'any' | 'now' | 'next_2h';
+export type PowerFilter  = 'any' | string;
 
 interface FilterSheetProps {
   isOpen: boolean;
   selectedConnectors: Set<string>;
   maxPrice: number;
-  onApply: (filters: { connectors: Set<string>; maxPrice: number }) => void;
+  availability: Availability;
+  powerFilter: PowerFilter;
+  onApply: (filters: {
+    connectors: Set<string>;
+    maxPrice: number;
+    availability: Availability;
+    powerFilter: PowerFilter;
+  }) => void;
   onClose: () => void;
 }
 
 const PRICE_MIN = 6;
 const PRICE_MAX = 50;
 
-export function FilterSheet({ isOpen, selectedConnectors, maxPrice, onApply, onClose }: FilterSheetProps) {
-  const [draftConnectors, setDraftConnectors] = useState(new Set(selectedConnectors));
-  const [draftMaxPrice, setDraftMaxPrice] = useState(maxPrice);
+const AVAILABILITY_OPTIONS: { value: Availability; label: string }[] = [
+  { value: 'any',    label: 'Any' },
+  { value: 'now',    label: 'Available now' },
+  { value: 'next_2h', label: 'Available in next 2 hours' },
+];
+
+export function FilterSheet({
+  isOpen,
+  selectedConnectors,
+  maxPrice,
+  availability,
+  powerFilter,
+  onApply,
+  onClose,
+}: FilterSheetProps) {
+  const [draftConnectors,  setDraftConnectors]  = useState(new Set(selectedConnectors));
+  const [draftMaxPrice,    setDraftMaxPrice]    = useState(maxPrice);
+  const [draftAvailability, setDraftAvailability] = useState<Availability>(availability);
+  const [draftPowerFilter, setDraftPowerFilter] = useState<PowerFilter>(powerFilter);
 
   // Sync draft to applied values each time the sheet opens
   useEffect(() => {
     if (!isOpen) return;
     setDraftConnectors(new Set(selectedConnectors));
     setDraftMaxPrice(maxPrice);
+    setDraftAvailability(availability);
+    setDraftPowerFilter(powerFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -46,10 +74,17 @@ export function FilterSheet({ isOpen, selectedConnectors, maxPrice, onApply, onC
   function handleClear() {
     setDraftConnectors(new Set());
     setDraftMaxPrice(PRICE_MAX);
+    setDraftAvailability('any');
+    setDraftPowerFilter('any');
   }
 
   function handleApply() {
-    onApply({ connectors: draftConnectors, maxPrice: draftMaxPrice });
+    onApply({
+      connectors: draftConnectors,
+      maxPrice: draftMaxPrice,
+      availability: draftAvailability,
+      powerFilter: draftPowerFilter,
+    });
     onClose();
   }
 
@@ -88,7 +123,31 @@ export function FilterSheet({ isOpen, selectedConnectors, maxPrice, onApply, onC
         </div>
 
         <div className="px-4 pb-8 space-y-6 max-h-[70dvh] overflow-y-auto">
-          {/* Connector type */}
+
+          {/* ── Availability ─────────────────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2.5">
+              Availability
+            </p>
+            <div className="flex flex-col gap-2.5">
+              {AVAILABILITY_OPTIONS.map(({ value, label }) => (
+                <label key={value} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="availability"
+                    value={value}
+                    checked={draftAvailability === value}
+                    onChange={() => setDraftAvailability(value)}
+                    className="accent-green w-4 h-4"
+                    style={{ accentColor: 'var(--green)' }}
+                  />
+                  <span className="text-sm font-medium text-ink">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Connector type ───────────────────────────────────────────── */}
           <div>
             <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2.5">
               Connector type
@@ -112,7 +171,42 @@ export function FilterSheet({ isOpen, selectedConnectors, maxPrice, onApply, onC
             </div>
           </div>
 
-          {/* Max price */}
+          {/* ── Power ────────────────────────────────────────────────────── */}
+          <div>
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2.5">
+              Power
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="power"
+                  value="any"
+                  checked={draftPowerFilter === 'any'}
+                  onChange={() => setDraftPowerFilter('any')}
+                  className="w-4 h-4"
+                  style={{ accentColor: 'var(--green)' }}
+                />
+                <span className="text-sm font-medium text-ink">Any</span>
+              </label>
+              {CHARGER_TYPES.map(({ value, label }) => (
+                <label key={value} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="power"
+                    value={value}
+                    checked={draftPowerFilter === value}
+                    onChange={() => setDraftPowerFilter(value)}
+                    className="w-4 h-4"
+                    style={{ accentColor: 'var(--green)' }}
+                  />
+                  <span className="text-sm font-medium text-ink">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Max price ────────────────────────────────────────────────── */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
               <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Max price</p>
