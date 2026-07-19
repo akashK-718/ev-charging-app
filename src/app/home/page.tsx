@@ -3,9 +3,12 @@ import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { formatINR } from '@/lib/currency';
 import {
-  Clock, AlertCircle, ChevronRight,
+  AlertCircle, ChevronRight,
   Zap, Calendar, Shield, MapPin,
+  Leaf, TrendingUp, ArrowRight, Map as MapIcon, Route,
+  Check, X, Inbox, CalendarClock,
 } from 'lucide-react';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 import { getActiveTip } from '@/lib/home/tips';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
@@ -82,6 +85,14 @@ type FailedPayout = {
   failed_reason: string | null;
 };
 
+type NearbyCharger = {
+  id: string;
+  title: string;
+  photos: string[];
+  charger_type: string | null;
+  price_per_kwh: number | null;
+};
+
 // ── Draft step ────────────────────────────────────────────────────────────────
 
 function getDraftStep(c: HostCharger): number {
@@ -125,6 +136,7 @@ async function getHomeData(userId: string, isHosting: boolean) {
     hostRecentRes,
     userProfileRes,
     failedPayoutRes,
+    nearbyChargersRes,
   ] = await Promise.all([
     admin.from('bookings')
       .select('id, charger_id, scheduled_start, scheduled_end, status')
@@ -197,6 +209,12 @@ async function getHomeData(userId: string, isHosting: boolean) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+
+    admin.from('chargers')
+      .select('id, title, photos, charger_type, price_per_kwh')
+      .eq('status', 'active')
+      .neq('lender_id', userId)
+      .limit(6),
   ]);
 
   const chargeActive = ((chargeActiveRes as { data: BookingRow[] | null }).data ?? []);
@@ -280,6 +298,8 @@ async function getHomeData(userId: string, isHosting: boolean) {
     // Common
     kycStatus: (userProfileRes.data?.kyc_status ?? 'not_started') as string,
     failedPayout: (failedPayoutRes as { data: FailedPayout | null }).data ?? null,
+    // Near you strip
+    nearbyChargers: ((nearbyChargersRes as { data: NearbyCharger[] | null }).data ?? []),
   };
 }
 
@@ -415,6 +435,28 @@ export default async function HomePage() {
     return null;
   })();
 
+  // ── Render helpers ────────────────────────────────────────────────────────
+
+  const avatarInitials = name
+    .split(' ')
+    .filter(Boolean)
+    .map((w: string) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || firstName[0]?.toUpperCase() || '?';
+
+  const minPrice =
+    d.nearbyChargers.length > 0
+      ? d.nearbyChargers.reduce<number>(
+          (min, c) => (c.price_per_kwh != null && c.price_per_kwh < min ? c.price_per_kwh : min),
+          Infinity,
+        )
+      : null;
+  const findSubtitle =
+    d.nearbyChargers.length > 0
+      ? `${d.nearbyChargers.length} nearby · from ₹${minPrice != null && minPrice < Infinity ? Math.round(minPrice) : '—'}/kWh`
+      : 'Explore chargers near you';
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -423,287 +465,363 @@ export default async function HomePage() {
       className="min-h-screen bg-surface-page"
       style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-2xl mx-auto px-4 pt-6 pb-4 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 pt-5 pb-4 space-y-3">
 
-        {/* Greeting */}
-        <h1 className="text-2xl font-medium text-ink">
-          {timeGreeting()}, {firstName}
-        </h1>
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 pb-1">
+          <div className="size-10 rounded-2xl bg-green grid place-items-center shadow-md shadow-green-900/20 shrink-0">
+            <Leaf className="size-5 text-white" aria-hidden />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-green">EV Charging</p>
+            <h1 className="text-lg font-bold leading-tight text-ink">{timeGreeting()}, {firstName}</h1>
+          </div>
+          <Link href="/profile" aria-label="Go to profile" className="shrink-0 active:scale-95 transition">
+            <div className="size-10 rounded-full bg-green-700 grid place-items-center text-white text-sm font-semibold">
+              {avatarInitials}
+            </div>
+          </Link>
+        </div>
 
-        {/* Attention */}
-        {hasAttention && (
-          <section aria-label="Needs attention">
-            <div className="flex items-center gap-1.5 mb-3">
-              <AlertCircle className="w-3 h-3 text-copper" aria-hidden />
-              <p className="text-xs font-semibold text-copper tracking-wider uppercase">
-                Needs attention
+        {/* ── Account alerts: KYC / payout / suspended ────────────────────── */}
+        {(attnKycBlocked || attnKycRejected || !!attnPayoutFailed || attnSuspended.length > 0) && (
+          <div className="rise-in bg-white border border-border rounded-3xl overflow-hidden divide-y divide-border shadow-sm">
+            {attnKycBlocked && (
+              <Link href="/profile" className="flex items-center gap-3 px-4 py-3.5 active:bg-surface-page transition-colors">
+                <div className="size-9 rounded-xl bg-amber-50 grid place-items-center shrink-0">
+                  <Shield className="size-4 text-amber-600" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-ink">Complete verification</p>
+                  <p className="text-xs text-muted">Required before hosting</p>
+                </div>
+                <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+              </Link>
+            )}
+            {attnKycRejected && (
+              <Link href="/profile" className="flex items-center gap-3 px-4 py-3.5 active:bg-surface-page transition-colors">
+                <div className="size-9 rounded-xl bg-danger-soft grid place-items-center shrink-0">
+                  <Shield className="size-4 text-danger" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-ink">Verification rejected</p>
+                  <p className="text-xs text-muted">Update your details in Profile</p>
+                </div>
+                <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+              </Link>
+            )}
+            {attnPayoutFailed && (
+              <Link href="/lender/chargers" className="flex items-center gap-3 px-4 py-3.5 active:bg-surface-page transition-colors">
+                <div className="size-9 rounded-xl bg-danger-soft grid place-items-center shrink-0">
+                  <AlertCircle className="size-4 text-danger" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-ink">Payout failed</p>
+                  <p className="text-xs text-muted truncate">
+                    {formatINR(attnPayoutFailed.amount_paise)} could not be transferred
+                    {attnPayoutFailed.failed_reason ? ` · ${attnPayoutFailed.failed_reason}` : ''}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+              </Link>
+            )}
+            {attnSuspended.map(c => (
+              <Link key={`susp-${c.id}`} href={`/lender/chargers/${c.id}`} className="flex items-center gap-3 px-4 py-3.5 active:bg-surface-page transition-colors">
+                <div className="size-9 rounded-xl bg-danger-soft grid place-items-center shrink-0">
+                  <AlertCircle className="size-4 text-danger" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-ink">Charger offline</p>
+                  <p className="text-xs text-muted truncate">{c.title}</p>
+                </div>
+                <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* ── Charging in progress ─────────────────────────────────────────── */}
+        {attnInProgress && (
+          <Link
+            href={`/bookings/${attnInProgress.id}`}
+            className="rise-in block bg-green text-white rounded-3xl p-4 shadow-lg shadow-green-900/20 active:scale-[0.98] transition-transform"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-green-200 flex items-center gap-1.5">
+                <Zap className="size-3.5" aria-hidden /> Charging now
+              </p>
+              <span className="flex items-center gap-1.5">
+                <span className="size-1.5 rounded-full bg-green-300 animate-pulse" aria-hidden />
+                <span className="text-[10px] font-semibold text-green-200">Live</span>
+              </span>
+            </div>
+            <p className="mt-2 text-xl font-bold">{attnInProgress.charger?.title ?? 'Charger'}</p>
+            {attnInProgress.charger?.address && (
+              <p className="text-sm text-green-100 truncate">{attnInProgress.charger.address}</p>
+            )}
+            <div className="mt-3.5">
+              <div className="h-10 rounded-xl bg-white text-green text-sm font-bold grid place-items-center">
+                View session
+              </div>
+            </div>
+          </Link>
+        )}
+
+        {/* ── Starting soon ────────────────────────────────────────────────── */}
+        {attnStartingSoon.map(b => (
+          <div key={`soon-${b.id}`} className="rise-in bg-green text-white rounded-3xl p-4 shadow-lg shadow-green-900/20">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-green-200 flex items-center gap-1.5">
+                <CalendarClock className="size-3.5" aria-hidden /> Your next charge
+              </p>
+              <span className="text-[10px] bg-white/15 rounded-full px-2 py-0.5 font-semibold">
+                {timeFromNow(b.scheduled_start)}
+              </span>
+            </div>
+            <p className="mt-2 text-xl font-bold">{fmtTime(b.scheduled_start)}</p>
+            <p className="text-sm text-green-100 truncate">
+              {b.charger?.title ?? 'Charger'}{b.charger?.address ? ` · ${b.charger.address}` : ''}
+            </p>
+            <div className="mt-3.5 flex gap-2">
+              <Link
+                href={`/bookings/${b.id}`}
+                className="flex-1 h-10 grid place-items-center rounded-xl bg-white text-green text-sm font-bold active:scale-95 transition-transform"
+              >
+                Start charging
+              </Link>
+              <Link
+                href={`/chargers/${b.charger_id}`}
+                className="h-10 px-4 grid place-items-center rounded-xl bg-white/15 text-sm font-semibold active:scale-95 transition-transform"
+              >
+                Details
+              </Link>
+            </div>
+          </div>
+        ))}
+
+        {/* ── Awaiting driver confirmation ──────────────────────────────────── */}
+        {attnAwaitingConf.map(b => (
+          <Link
+            key={`adc-${b.id}`}
+            href={`/bookings/${b.id}`}
+            className="rise-in flex items-center gap-3 bg-white border-2 border-green/20 rounded-3xl px-4 py-3.5 shadow-sm active:scale-[0.98] transition-transform"
+          >
+            <div className="size-9 rounded-xl bg-green-soft grid place-items-center shrink-0">
+              <Calendar className="size-4 text-green" aria-hidden />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-ink">Booking confirmed by host</p>
+              <p className="text-xs text-muted truncate">
+                {b.charger?.title ?? 'Charger'} · {fmtDate(b.scheduled_start)} at {fmtTime(b.scheduled_start)}
               </p>
             </div>
-            <div className="bg-surface-card border border-border rounded-token-lg overflow-hidden divide-y divide-border">
+            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+          </Link>
+        ))}
 
-              {/* 1. Time-sensitive: starting soon */}
-              {attnStartingSoon.map(b => (
-                <Link
-                  key={`soon-${b.id}`}
-                  href={`/bookings/${b.id}`}
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <Clock className="w-4 h-4 text-copper mt-0.5 shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">
-                      Booking starts {timeFromNow(b.scheduled_start)}
-                    </p>
-                    <p className="text-xs text-muted truncate">
-                      {b.charger?.title ?? 'Charger'} · {fmtTime(b.scheduled_start)}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                </Link>
-              ))}
-
-              {/* 2a. Session-related: charging in progress */}
-              {attnInProgress && (
-                <Link
-                  href={`/bookings/${attnInProgress.id}`}
-                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <Zap className="w-4 h-4 text-green shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">Charging now</p>
-                    <p className="text-xs text-muted truncate">
-                      {attnInProgress.charger?.title ?? 'Charger'} · started {fmtTime(attnInProgress.scheduled_start)}
-                    </p>
-                  </div>
-                  <span className="flex items-center gap-1.5 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" aria-hidden />
-                    <span className="text-xs text-green font-medium">Live</span>
+        {/* ── Snapshot cards ───────────────────────────────────────────────── */}
+        {snapshotCards.map((card, i) => {
+          if (card.type === 'upcoming-booking') {
+            const b = card.booking;
+            const isToday = new Date(b.scheduled_start).toDateString() === new Date().toDateString();
+            return (
+              <div key={`snap-up-${i}`} className="rise-in bg-green text-white rounded-3xl p-4 shadow-lg shadow-green-900/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-green-200 flex items-center gap-1.5">
+                    <CalendarClock className="size-3.5" aria-hidden /> Your next charge
+                  </p>
+                  <span className="text-[10px] bg-white/15 rounded-full px-2 py-0.5 font-semibold">
+                    {isToday ? 'Today' : fmtDate(b.scheduled_start)}
                   </span>
-                </Link>
-              )}
-
-              {/* 2b. Session-related: host confirmed, driver to acknowledge */}
-              {attnAwaitingConf.map(b => (
-                <Link
-                  key={`adc-${b.id}`}
-                  href={`/bookings/${b.id}`}
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <AlertCircle className="w-4 h-4 text-green mt-0.5 shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">Booking confirmed by host</p>
-                    <p className="text-xs text-muted truncate">
-                      {b.charger?.title ?? 'Charger'} · {fmtDate(b.scheduled_start)} at {fmtTime(b.scheduled_start)}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                </Link>
-              ))}
-
-              {/* 2c. Session-related: incoming booking requests (hosting) */}
-              {attnPendingRequests.map(b => (
-                <Link
-                  key={`req-${b.id}`}
-                  href={`/lender/bookings/${b.id}`}
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <AlertCircle className="w-4 h-4 text-copper mt-0.5 shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">Booking request</p>
-                    <p className="text-xs text-muted truncate">
-                      {b.chargerTitle ?? 'Charger'}
-                      {b.driverName ? ` · ${b.driverName}` : ''}
-                      {' · '}{fmtDate(b.scheduled_start)}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                </Link>
-              ))}
-
-              {/* 3a. Account-blocking: KYC not started (hosting only) */}
-              {attnKycBlocked && (
-                <Link
-                  href="/profile"
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <Shield className="w-4 h-4 text-copper mt-0.5 shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">Complete verification</p>
-                    <p className="text-xs text-muted">Required before hosting</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                </Link>
-              )}
-
-              {/* 3b. Account-blocking: KYC rejected */}
-              {attnKycRejected && (
-                <Link
-                  href="/profile"
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <Shield className="w-4 h-4 text-danger mt-0.5 shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">Verification rejected</p>
-                    <p className="text-xs text-muted">Update your details and resubmit in Profile</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                </Link>
-              )}
-
-              {/* 4. Financial: payout failed */}
-              {attnPayoutFailed && (
-                <Link
-                  href="/lender/chargers"
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">Payout failed</p>
-                    <p className="text-xs text-muted">
-                      {formatINR(attnPayoutFailed.amount_paise)} could not be transferred
-                      {attnPayoutFailed.failed_reason ? ` · ${attnPayoutFailed.failed_reason}` : ''}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                </Link>
-              )}
-
-              {/* 5. Informational: suspended chargers */}
-              {attnSuspended.map(c => (
-                <Link
-                  key={`susp-${c.id}`}
-                  href={`/lender/chargers/${c.id}`}
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-                >
-                  <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" aria-hidden />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink">Charger offline</p>
-                    <p className="text-xs text-muted truncate">{c.title}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-                </Link>
-              ))}
-
-            </div>
-          </section>
-        )}
-
-        {/* Snapshot */}
-        {snapshotCards.length > 0 && (
-          <section aria-label="Summary" className="space-y-2">
-            {snapshotCards.map((card, i) => {
-              if (card.type === 'upcoming-booking') {
-                const b = card.booking;
-                return (
+                </div>
+                <p className="mt-2 text-xl font-bold">{fmtTime(b.scheduled_start)}</p>
+                <p className="text-sm text-green-100 truncate">
+                  {b.charger?.title ?? 'Upcoming booking'}
+                  {b.charger?.address ? ` · ${b.charger.address}` : ''}
+                  {card.total > 1 ? ` · +${card.total - 1} more` : ''}
+                </p>
+                <div className="mt-3.5 flex gap-2">
                   <Link
-                    key={`snap-${i}`}
                     href={`/bookings/${b.id}`}
-                    className="flex items-center gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-3.5 hover:bg-surface-page transition-colors"
+                    className="flex-1 h-10 grid place-items-center rounded-xl bg-white text-green text-sm font-bold active:scale-95 transition-transform"
                   >
-                    <Calendar className="w-4 h-4 text-green shrink-0" aria-hidden />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink truncate">
-                        {b.charger?.title ?? 'Upcoming booking'}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {fmtDate(b.scheduled_start)} at {fmtTime(b.scheduled_start)}
-                        {card.total > 1 ? ` · +${card.total - 1} more` : ''}
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold text-green shrink-0 font-mono tabular-nums">
-                      {timeFromNow(b.scheduled_start)}
-                    </span>
+                    Start charging
                   </Link>
-                );
-              }
-
-              if (card.type === 'recent-sessions') {
-                return (
                   <Link
-                    key={`snap-${i}`}
-                    href="/activity"
-                    className="flex items-center gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-3.5 hover:bg-surface-page transition-colors"
+                    href={`/chargers/${b.charger_id}`}
+                    className="h-10 px-4 grid place-items-center rounded-xl bg-white/15 text-sm font-semibold active:scale-95 transition-transform"
                   >
-                    <Zap className="w-4 h-4 text-green shrink-0" aria-hidden />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink">
-                        <span className="font-mono tabular-nums">{card.count}</span>{' '}
-                        {card.count === 1 ? 'session' : 'sessions'} completed
-                      </p>
-                      <p className="text-xs text-muted">View in Activity</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted shrink-0" aria-hidden />
+                    Details
                   </Link>
-                );
-              }
+                </div>
+              </div>
+            );
+          }
 
-              if (card.type === 'hosting-workspace') {
-                return (
-                  <Link
-                    key={`snap-${i}`}
-                    href="/lender/chargers"
-                    className="flex items-center gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-3.5 hover:bg-surface-page transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink">
-                        <span className="font-mono tabular-nums">{card.liveCount}</span>{' '}
-                        {card.liveCount === 1 ? 'charger' : 'chargers'} live
-                      </p>
-                      <p className="text-xs text-muted">
-                        {card.todayCount === 0
-                          ? 'No bookings today'
-                          : `${card.todayCount} ${card.todayCount === 1 ? 'booking' : 'bookings'} today`}
-                        {card.weekEarnings > 0 ? ` · ${formatINR(card.weekEarnings)} this week` : ''}
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold text-ink shrink-0">Manage Hosting</span>
-                    <ChevronRight className="w-4 h-4 text-muted shrink-0" aria-hidden />
-                  </Link>
-                );
-              }
+          if (card.type === 'hosting-workspace') {
+            return (
+              <Link
+                key={`snap-host-${i}`}
+                href="/lender/chargers"
+                className="rise-in block bg-zinc-900 text-white rounded-3xl p-4 shadow-lg shadow-green-900/10 active:scale-[0.98] transition-transform"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-green-400 flex items-center gap-1.5">
+                    <TrendingUp className="size-3.5" aria-hidden /> Hosting · Today
+                  </p>
+                  <ArrowRight className="size-4 text-white/50" aria-hidden />
+                </div>
+                <div className="mt-2 flex items-end gap-3">
+                  <p className="text-3xl font-bold tabular-nums">{formatINR(card.weekEarnings)}</p>
+                  <p className="text-xs text-white/60 pb-1.5">this week</p>
+                </div>
+                <div className="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full w-[38%] rounded-full bg-green-400" />
+                </div>
+                <p className="mt-1.5 text-[11px] text-white/50">
+                  {card.todayCount === 0
+                    ? 'No bookings today'
+                    : `${card.todayCount} booking${card.todayCount === 1 ? '' : 's'} today`}
+                  {d.pendingBookings.length > 0
+                    ? ` · ${d.pendingBookings.length} request${d.pendingBookings.length === 1 ? '' : 's'} pending`
+                    : ''}
+                </p>
+              </Link>
+            );
+          }
 
-              if (card.type === 'kyc-pending') {
-                return (
-                  <div
-                    key={`snap-${i}`}
-                    className="flex items-center gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-3.5"
-                  >
-                    <Shield className="w-4 h-4 text-muted shrink-0" aria-hidden />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-ink">Verification under review</p>
-                      <p className="text-xs text-muted">We will notify you once complete</p>
-                    </div>
-                  </div>
-                );
-              }
+          if (card.type === 'recent-sessions') {
+            return (
+              <Link
+                key={`snap-sess-${i}`}
+                href="/activity"
+                className="rise-in flex items-center gap-3 bg-white border border-border rounded-3xl px-4 py-3.5 shadow-sm active:scale-[0.98] transition-transform"
+              >
+                <div className="size-9 rounded-xl bg-green-soft grid place-items-center shrink-0">
+                  <Zap className="size-4 text-green" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-ink">
+                    {card.count} session{card.count === 1 ? '' : 's'} completed
+                  </p>
+                  <p className="text-xs text-muted">View in Activity</p>
+                </div>
+                <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+              </Link>
+            );
+          }
 
-              return null;
-            })}
-          </section>
-        )}
+          if (card.type === 'kyc-pending') {
+            return (
+              <div
+                key={`snap-kyc-${i}`}
+                className="rise-in flex items-center gap-3 bg-white border border-border rounded-3xl px-4 py-3.5 shadow-sm"
+              >
+                <div className="size-9 rounded-xl bg-surface-page grid place-items-center shrink-0">
+                  <Shield className="size-4 text-muted" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-ink">Verification under review</p>
+                  <p className="text-xs text-muted">We&apos;ll notify you once complete</p>
+                </div>
+              </div>
+            );
+          }
 
-        {/* Nudge — top-priority cards (new-user, resume-draft) rendered by server.
-            Install-pwa eligibility and rule/tip fallback handled client-side by DynamicNudge. */}
+          return null;
+        })}
+
+        {/* ── Pending booking requests ─────────────────────────────────────── */}
+        {attnPendingRequests.map(b => {
+          const initials = (b.driverName ?? '?')
+            .split(' ')
+            .filter(Boolean)
+            .map((w: string) => w[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+          return (
+            <div key={`req-${b.id}`} className="rise-in bg-white border-2 border-amber-300/70 rounded-3xl p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-full bg-amber-500 grid place-items-center text-white text-sm font-semibold shrink-0">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-ink truncate">
+                    {b.driverName ?? 'Someone'}{' '}
+                    <span className="font-normal text-muted">wants to charge</span>
+                  </p>
+                  <p className="text-xs text-muted">{fmtDate(b.scheduled_start)}</p>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-1 shrink-0">
+                  Request
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Link
+                  href={`/lender/bookings/${b.id}`}
+                  className="h-10 rounded-xl bg-green text-white text-sm font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                >
+                  <Check className="size-4" aria-hidden /> Approve
+                </Link>
+                <Link
+                  href={`/lender/bookings/${b.id}`}
+                  className="h-10 rounded-xl bg-surface-page border border-border text-ink-soft text-sm font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                >
+                  <X className="size-4" aria-hidden /> Decline
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* ── Quick actions ────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <Link
+            href="/explore"
+            className="rise-in bg-white border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.97] transition-transform"
+          >
+            <div className="size-9 rounded-xl bg-green-soft grid place-items-center text-green mb-2.5">
+              <MapIcon className="size-[18px]" aria-hidden />
+            </div>
+            <p className="text-sm font-semibold text-ink">Find a charger</p>
+            <p className="text-[11px] text-muted">{findSubtitle}</p>
+          </Link>
+          <Link
+            href="/explore"
+            className="rise-in bg-white border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.97] transition-transform"
+          >
+            <div className="size-9 rounded-xl bg-green-soft grid place-items-center text-green mb-2.5">
+              <Route className="size-[18px]" aria-hidden />
+            </div>
+            <p className="text-sm font-semibold text-ink">Plan a trip</p>
+            <p className="text-[11px] text-muted">Charging stops on your route</p>
+          </Link>
+        </div>
+
+        {/* ── Nudge ────────────────────────────────────────────────────────── */}
         {topNudge ? (
           <section aria-label="Suggestion">
             {topNudge.type === 'new-user' && (
-              <div className="bg-surface-card border border-border rounded-token-lg px-4 py-5">
-                <p className="text-base font-semibold text-ink mb-1">
-                  You&apos;re all set to start charging.
+              <div className="rise-in flex flex-col items-center text-center py-10 px-4">
+                <div className="size-16 grid place-items-center rounded-3xl bg-green-soft text-green mb-4">
+                  <Inbox className="size-7" aria-hidden />
+                </div>
+                <p className="font-bold text-ink">All clear for now</p>
+                <p className="text-sm text-muted mt-1 leading-relaxed max-w-xs">
+                  When you have an upcoming charge, a request, or anything else that needs you, it&apos;ll show up here.
                 </p>
-                <p className="text-sm text-muted mb-4">
-                  Find a home charger near you, book a slot, and plug in. Have a charger at home? Earn with it too.
-                </p>
-                <div className="flex gap-2 flex-wrap">
+                <div className="mt-5 flex gap-2 flex-wrap justify-center">
                   <Link
                     href="/explore"
-                    className="inline-flex items-center gap-2 bg-green text-white text-sm font-semibold px-4 py-2.5 rounded-token hover:bg-green-deep transition-colors"
+                    className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-green text-white text-sm font-semibold shadow-md shadow-green-900/20"
                   >
-                    <MapPin className="w-4 h-4" aria-hidden />
-                    Find chargers
+                    <MapPin className="size-4" aria-hidden />
+                    Find a charger
                   </Link>
                   <Link
                     href="/profile"
-                    className="inline-flex items-center gap-2 bg-surface-page text-ink text-sm font-semibold px-4 py-2.5 rounded-token border border-border hover:bg-border transition-colors"
+                    className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-white border border-border text-ink text-sm font-semibold"
                   >
                     Learn about hosting
                   </Link>
@@ -714,20 +832,20 @@ export default async function HomePage() {
             {topNudge.type === 'resume-draft' && (
               <Link
                 href={`/lender/chargers/${topNudge.charger.id}/edit`}
-                className="flex items-center gap-3 bg-surface-card border border-border rounded-token-lg px-4 py-4 hover:bg-surface-page transition-colors"
+                className="rise-in flex items-center gap-3 bg-white border border-border rounded-3xl px-4 py-4 shadow-sm active:scale-[0.98] transition-transform"
               >
-                <div className="w-9 h-9 rounded-token bg-copper-soft flex items-center justify-center shrink-0">
-                  <Zap className="w-4 h-4 text-copper" aria-hidden />
+                <div className="size-9 rounded-xl bg-copper-soft grid place-items-center shrink-0">
+                  <Zap className="size-4 text-copper" aria-hidden />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink">
+                  <p className="text-sm font-bold text-ink">
                     Resume charger listing{topNudge.step < 7 ? `, step ${topNudge.step} of 7` : ''}
                   </p>
                   <p className="text-xs text-muted truncate">
                     {topNudge.charger.title || 'Untitled charger'}
                   </p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted shrink-0" aria-hidden />
+                <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
               </Link>
             )}
           </section>
@@ -736,6 +854,44 @@ export default async function HomePage() {
         )}
 
       </div>
+
+      {/* ── Near you ──────────────────────────────────────────────────────────── */}
+      {d.nearbyChargers.length > 0 && (
+        <div className="mt-2 mb-4">
+          <div className="flex items-center justify-between px-4 mt-4 mb-2">
+            <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted">Near you</h2>
+            <Link href="/explore" className="text-xs font-semibold text-green">See map</Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto phone-scroll px-4 pb-2">
+            {d.nearbyChargers.map(c => (
+              <Link
+                key={c.id}
+                href={`/chargers/${c.id}`}
+                className="shrink-0 w-36 bg-white border border-border rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform"
+              >
+                <div className="h-16 relative bg-gradient-to-br from-green-700 to-green-500 overflow-hidden">
+                  {c.photos?.[0] && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={toJpegUrl(c.photos[0])}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+                <div className="p-2.5">
+                  <p className="text-xs font-semibold text-ink truncate">{c.title}</p>
+                  <p className="text-[10px] text-muted flex items-center gap-1 mt-0.5">
+                    <Zap className="size-2.5" aria-hidden />
+                    {c.charger_type ?? 'EV'} · {c.price_per_kwh != null ? `₹${c.price_per_kwh}/kWh` : '—'}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
     <HomeRealtimeSync userId={user.id} isHosting={isHosting} />
     <PullToRefresh />
