@@ -20,7 +20,7 @@ const INK = '#0c1611';
 const GP_GREEN = '#159a4c'; // GreenPath accent — used for cluster/pin colours
 
 // Individual charger GL dots appear at zoom < PIN_ZOOM; pill DOM markers at >= PIN_ZOOM.
-const PIN_ZOOM = 14;
+const PIN_ZOOM = 12;
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
