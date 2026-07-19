@@ -159,3 +159,13 @@ a, button, [role="button"] {
   .pulse-ring { animation: none; }
   .pulse-ring  { opacity: 0.25; }
 }
+
+/* ─── GreenPath motion ────────────────────────────────────────────────────── */
+@keyframes rise-in {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.rise-in { animation: rise-in 0.35s ease-out both; }
+
+.phone-scroll::-webkit-scrollbar { display: none; }
+.phone-scroll { scrollbar-width: none; }
