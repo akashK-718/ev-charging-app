@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Bell, CalendarCheck, CreditCard, Home, Info, Star, Wallet } from 'lucide-react';
+import {
+  Bell, CalendarCheck, ChevronRight, CreditCard,
+  Filter, ArrowUpDown, ChevronDown, Check, Home, Info, MapPin, Star, Wallet, X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ── Types (shared with server page) ──────────────────────────────────────────
@@ -32,21 +35,40 @@ export type UpdateItem = {
   read: boolean;
 };
 
-// ── Internal feed types ───────────────────────────────────────────────────────
+type TabType    = 'sessions' | 'updates';
+type FilterType = 'all' | 'upcoming' | 'completed' | 'cancelled';
+type SortDir    = 'newest' | 'oldest';
+
+// ── Kind taxonomy for icon tiles ──────────────────────────────────────────────
 
 type ActivityKind = 'booking' | 'session' | 'payment' | 'payout' | 'host' | 'notice';
 
-type FeedItem = {
-  id: string;
-  kind: ActivityKind;
-  title: string;
-  subtitle: string;
-  amount?: number;
-  amountSign?: '+' | '-';
-  tag?: string;
-  isoTime: string;
-  href?: string;
+const KIND_ICON: Record<ActivityKind, { icon: React.ReactNode; bg: string }> = {
+  booking: { icon: <CalendarCheck className="size-4" />, bg: 'bg-blue-50 text-blue-600' },
+  session: { icon: <Star className="size-4" />,          bg: 'bg-amber-50 text-amber-600' },
+  payment: { icon: <CreditCard className="size-4" />,    bg: 'bg-violet-50 text-violet-600' },
+  payout:  { icon: <Wallet className="size-4" />,        bg: 'bg-emerald-50 text-emerald-600' },
+  host:    { icon: <Home className="size-4" />,          bg: 'bg-green-50 text-green-700' },
+  notice:  { icon: <Info className="size-4" />,          bg: 'bg-zinc-100 text-zinc-500' },
 };
+
+function historyItemKind(item: HistoryItem): ActivityKind {
+  if (item.kind === 'charging') {
+    if (item.status === 'completed')   return 'payment';
+    if (item.status === 'in_progress') return 'session';
+    return 'booking';
+  }
+  // hosting
+  if (item.status === 'completed') return 'payout';
+  return 'host';
+}
+
+function notifItemKind(type: string): ActivityKind {
+  if (type === 'payout_processed')  return 'payout';
+  if (type.startsWith('booking_'))  return 'booking';
+  if (type.startsWith('session_'))  return 'session';
+  return 'notice';
+}
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -74,21 +96,67 @@ function timeAgo(ts: string): string {
   return new Date(ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-function fmtAmount(paise: number): string {
-  return `₹${(paise / 100).toFixed(2)}`;
+function fmtPrice(amountPaise: number | null, status: string): string | null {
+  if (status === 'cancelled') return '₹0.00';
+  if (amountPaise !== null && amountPaise >= 0) return `₹${(amountPaise / 100).toFixed(2)}`;
+  return null;
 }
 
-// ── Kind mapping ──────────────────────────────────────────────────────────────
-
-function historyKind(item: HistoryItem): ActivityKind {
-  if (item.kind === 'charging') {
-    if (item.status === 'completed')   return 'payment';
-    if (item.status === 'in_progress') return 'session';
-    return 'booking';
+// Returns signed display amount: + prefix in green for host payouts, neutral for driver payments
+function signedAmount(item: HistoryItem): { text: string; positive: boolean } | null {
+  const price = fmtPrice(item.displayAmountPaise, item.status);
+  if (!price) return null;
+  if (item.kind === 'hosting' && item.status === 'completed') {
+    return { text: `+${price}`, positive: true };
   }
-  if (item.status === 'completed') return 'payout';
-  return 'host';
+  return { text: price, positive: false };
 }
+
+// Deterministic fuzz based on booking ID — stable per booking, ~350 m offset
+function fuzzCoords(lat: number, lng: number, seed: string): { lat: number; lng: number } {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) & 0x7fffffff;
+  }
+  const dLat = (((h & 0xff) - 127) / 127) * 0.003;
+  const dLng = ((((h >> 8) & 0xff) - 127) / 127) * 0.003;
+  return { lat: lat + dLat, lng: lng + dLng };
+}
+
+function staticMapUrl(lat: number, lng: number, seed: string): string {
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  if (!token) return '';
+  const { lat: fLat, lng: fLng } = fuzzCoords(lat, lng, seed);
+  // GreenPath route green pin (#159a4c); privacy fuzz preserved
+  const marker = `pin-s+159a4c(${fLng.toFixed(5)},${fLat.toFixed(5)})`;
+  const center = `${fLng.toFixed(5)},${fLat.toFixed(5)},12`;
+  return `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${marker}/${center}/480x200@2x?access_token=${token}`;
+}
+
+// CSS filter that shifts Mapbox light-v11's warm-beige palette toward
+// GreenPath's green-tinted palette (land #eef3ea, water #cfe4f4)
+const MAP_FILTER = 'hue-rotate(55deg) saturate(0.75) brightness(1.01)';
+
+// ── Status display ────────────────────────────────────────────────────────────
+
+const STATUS_LABEL: Record<string, string> = {
+  confirmed:                    'Confirmed',
+  awaiting_driver_confirmation: 'Awaiting confirmation',
+  pending:                      'Pending',
+  in_progress:                  'In progress',
+  completed:                    'Completed',
+  cancelled:                    'Cancelled',
+};
+
+// GreenPath pill colors: amber for action-needed, green-soft for neutral, danger for cancelled
+const STATUS_COLOR: Record<string, string> = {
+  confirmed:                    'bg-green-soft text-green',
+  awaiting_driver_confirmation: 'bg-amber-100 text-amber-700',
+  pending:                      'bg-amber-100 text-amber-700',
+  in_progress:                  'bg-green-soft text-green',
+  completed:                    'bg-surface-page text-muted',
+  cancelled:                    'bg-danger-soft text-danger',
+};
 
 // ── Notification display ──────────────────────────────────────────────────────
 
@@ -148,153 +216,417 @@ function notifBody(type: string, data: Record<string, unknown>): string {
   }
 }
 
-// ── Feed builder ──────────────────────────────────────────────────────────────
+// ── Filter helpers ────────────────────────────────────────────────────────────
 
-function buildFeed(historyItems: HistoryItem[], updates: UpdateItem[]): FeedItem[] {
-  const items: FeedItem[] = [];
-
-  for (const h of historyItems) {
-    const kind = historyKind(h);
-    const href = h.kind === 'charging'
-      ? `/bookings/${h.bookingId}`
-      : `/lender/bookings/${h.bookingId}`;
-
-    const counterRole = h.kind === 'charging' ? 'Host' : 'Driver';
-    const subtitle = h.counterpartyName
-      ? `${counterRole}: ${h.counterpartyName}`
-      : `${fmtDate(h.scheduledStart)} · ${fmtTime(h.scheduledStart)}`;
-
-    let amount: number | undefined;
-    let amountSign: '+' | '-' | undefined;
-    let tag: string | undefined;
-
-    switch (kind) {
-      case 'payment':
-        if (h.displayAmountPaise !== null) { amount = h.displayAmountPaise; amountSign = '-'; }
-        break;
-      case 'payout':
-        if (h.displayAmountPaise !== null) { amount = h.displayAmountPaise; amountSign = '+'; }
-        break;
-      case 'session':
-        tag = 'In progress';
-        break;
-      case 'booking':
-        if (h.status === 'pending' || h.status === 'awaiting_driver_confirmation') tag = 'Action needed';
-        else if (h.status === 'confirmed') tag = 'Confirmed';
-        else if (h.status === 'cancelled') tag = 'Cancelled';
-        break;
-      case 'host':
-        if (h.status === 'pending' || h.status === 'awaiting_driver_confirmation') tag = 'Action needed';
-        else if (h.status === 'confirmed') tag = 'Confirmed';
-        else if (h.status === 'in_progress') tag = 'In progress';
-        else if (h.status === 'cancelled') tag = 'Cancelled';
-        break;
-    }
-
-    items.push({ id: h.id, kind, title: h.chargerTitle, subtitle, amount, amountSign, tag, isoTime: h.scheduledStart, href });
-  }
-
-  for (const u of updates) {
-    const body = notifBody(u.type, u.data);
-    items.push({
-      id: u.id,
-      kind: 'notice',
-      title: NOTIF_LABEL[u.type] ?? u.type.replace(/_/g, ' '),
-      subtitle: body,
-      isoTime: u.createdAt,
-    });
-  }
-
-  return items.sort((a, b) => new Date(b.isoTime).getTime() - new Date(a.isoTime).getTime());
-}
-
-// ── Icon tiles ────────────────────────────────────────────────────────────────
-
-const KIND_ICON: Record<ActivityKind, { icon: React.ReactNode; bg: string }> = {
-  booking: { icon: <CalendarCheck className="size-4" />, bg: 'bg-blue-50 text-blue-600' },
-  session: { icon: <Star className="size-4" />,          bg: 'bg-amber-50 text-amber-600' },
-  payment: { icon: <CreditCard className="size-4" />,    bg: 'bg-violet-50 text-violet-600' },
-  payout:  { icon: <Wallet className="size-4" />,        bg: 'bg-emerald-50 text-emerald-600' },
-  host:    { icon: <Home className="size-4" />,          bg: 'bg-green-50 text-green-700' },
-  notice:  { icon: <Info className="size-4" />,          bg: 'bg-zinc-100 text-zinc-500' },
+const FILTER_LABELS: Record<FilterType, string> = {
+  all:       'All',
+  upcoming:  'Upcoming',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
-// ── Filter chips ──────────────────────────────────────────────────────────────
+const SORT_LABELS: Record<SortDir, string> = {
+  newest: 'Newest',
+  oldest: 'Oldest',
+};
 
-const FILTERS: { label: string; kinds: ActivityKind[] | null }[] = [
-  { label: 'All',      kinds: null },
-  { label: 'Bookings', kinds: ['booking'] },
-  { label: 'Payments', kinds: ['payment', 'payout'] },
-  { label: 'Hosting',  kinds: ['host'] },
-  { label: 'Notices',  kinds: ['notice', 'session'] },
-];
+function applyFilter(items: HistoryItem[], filter: FilterType): HistoryItem[] {
+  if (filter === 'all') return items;
+  const now = new Date().toISOString();
+  if (filter === 'upcoming') {
+    return items.filter(i =>
+      i.status === 'in_progress' ||
+      (['confirmed', 'pending', 'awaiting_driver_confirmation'].includes(i.status) &&
+        i.scheduledStart > now),
+    );
+  }
+  if (filter === 'completed') return items.filter(i => i.status === 'completed');
+  if (filter === 'cancelled') return items.filter(i => i.status === 'cancelled');
+  return items;
+}
 
-function Chip({ active, children, onClick }: { active?: boolean; children: React.ReactNode; onClick?: () => void }) {
+function applySortDir(items: HistoryItem[], dir: SortDir): HistoryItem[] {
+  return [...items].sort((a, b) => {
+    const diff = new Date(b.scheduledStart).getTime() - new Date(a.scheduledStart).getTime();
+    return dir === 'newest' ? diff : -diff;
+  });
+}
+
+// ── Grouping (applied to compact list only) ───────────────────────────────────
+
+type DateGroup = { label: string; items: HistoryItem[] };
+
+function groupByDate(items: HistoryItem[]): DateGroup[] {
+  const todayStart     = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart  = new Date(todayStart); tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const buckets: Record<'upcoming' | 'today' | 'yesterday' | 'earlier', HistoryItem[]> = {
+    upcoming: [], today: [], yesterday: [], earlier: [],
+  };
+
+  for (const item of items) {
+    const d = new Date(item.scheduledStart);
+    if      (d >= tomorrowStart)  buckets.upcoming.push(item);
+    else if (d >= todayStart)     buckets.today.push(item);
+    else if (d >= yesterdayStart) buckets.yesterday.push(item);
+    else                          buckets.earlier.push(item);
+  }
+
+  buckets.upcoming.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime());
+
+  return (
+    [
+      { label: 'Upcoming',  items: buckets.upcoming   },
+      { label: 'Today',     items: buckets.today      },
+      { label: 'Yesterday', items: buckets.yesterday  },
+      { label: 'Earlier',   items: buckets.earlier    },
+    ] satisfies DateGroup[]
+  ).filter(g => g.items.length > 0);
+}
+
+// ── Empty state (GreenPath centered pattern) ──────────────────────────────────
+
+function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+  return (
+    <div className="rise-in flex flex-col items-center text-center py-14 px-8">
+      <div className="size-16 grid place-items-center rounded-3xl bg-green-soft text-green mb-4">
+        {icon}
+      </div>
+      <p className="font-bold text-ink">{title}</p>
+      <p className="text-sm text-muted mt-1 leading-relaxed">{subtitle}</p>
+    </div>
+  );
+}
+
+// ── Filter button — GreenPath Chip style ──────────────────────────────────────
+
+function FilterButton({ filter, onClick }: { filter: FilterType; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'shrink-0 px-3.5 h-8 rounded-full text-xs font-medium border transition-colors active:scale-95',
-        active
+        'flex-1 flex items-center gap-1.5 h-8 px-3.5 rounded-full text-xs font-medium border transition-colors active:scale-95',
+        filter !== 'all'
           ? 'bg-green text-white border-green'
           : 'bg-surface-card text-ink border-border hover:bg-surface-page',
       )}
     >
-      {children}
+      <Filter className="w-3 h-3 shrink-0" />
+      <span className="flex-1 text-left">{FILTER_LABELS[filter]}</span>
+      <ChevronDown className="w-3 h-3 shrink-0" />
     </button>
   );
 }
 
-// ── Feed row ──────────────────────────────────────────────────────────────────
+// ── Filter bottom sheet ───────────────────────────────────────────────────────
 
-function FeedRow({ item }: { item: FeedItem }) {
-  const cfg  = KIND_ICON[item.kind];
-  const time = timeAgo(item.isoTime);
+function SessionFilterSheet({
+  isOpen, items, filter, onSelect, onClose,
+}: {
+  isOpen: boolean;
+  items: HistoryItem[];
+  filter: FilterType;
+  onSelect: (f: FilterType) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [isOpen, onClose]);
 
-  const inner = (
-    <div className="flex items-center gap-3 px-4 py-3.5">
-      <div className={cn('size-10 rounded-2xl grid place-items-center shrink-0', cfg.bg)}>
-        {cfg.icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-ink truncate">{item.title}</p>
-        {item.subtitle && (
-          <p className="text-xs text-muted truncate">{item.subtitle}</p>
+  const now = new Date().toISOString();
+  const counts: Record<FilterType, number> = {
+    all: items.length,
+    upcoming: items.filter(i =>
+      i.status === 'in_progress' ||
+      (['confirmed', 'pending', 'awaiting_driver_confirmation'].includes(i.status) && i.scheduledStart > now)
+    ).length,
+    completed: items.filter(i => i.status === 'completed').length,
+    cancelled: items.filter(i => i.status === 'cancelled').length,
+  };
+
+  const options: { key: FilterType; label: string }[] = [
+    { key: 'all',       label: 'All' },
+    { key: 'upcoming',  label: 'Upcoming' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'cancelled', label: 'Cancelled' },
+  ];
+
+  return (
+    <>
+      <div
+        className={cn(
+          'fixed inset-0 bg-black/40 z-40 transition-opacity duration-200',
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
         )}
-      </div>
-      <div className="text-right shrink-0">
-        {item.amount !== undefined ? (
-          <p className={cn('text-sm font-bold', item.amountSign === '+' ? 'text-green-600' : 'text-ink')}>
-            {item.amountSign}{fmtAmount(item.amount)}
-          </p>
-        ) : item.tag ? (
-          <span
-            className={cn(
-              'text-[10px] font-bold rounded-full px-2 py-0.5',
-              item.tag === 'Action needed'
-                ? 'bg-amber-100 text-amber-700'
-                : item.tag === 'Cancelled'
-                  ? 'bg-surface-page text-muted'
-                  : 'bg-green-soft text-green',
-            )}
+        aria-hidden="true"
+        onClick={onClose}
+      />
+      <div
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-50 bg-surface-card rounded-t-2xl shadow-2xl',
+          'transition-transform duration-300 ease-out',
+          isOpen ? 'translate-y-0' : 'translate-y-full',
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Filter sessions"
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-border" />
+        </div>
+        <div className="flex items-center px-4 pb-3 pt-1">
+          <h2 className="font-semibold text-ink text-base flex-1">Filter sessions</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full hover:bg-surface-page transition-colors"
+            aria-label="Close"
           >
-            {item.tag}
-          </span>
-        ) : null}
-        <p className="text-[10px] text-muted mt-0.5">{time}</p>
+            <X className="w-4 h-4 text-muted" />
+          </button>
+        </div>
+        <div className="pb-8">
+          {options.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { onSelect(key); onClose(); }}
+              className="w-full flex items-center px-4 py-3.5 text-sm font-semibold text-ink hover:bg-surface-page transition-colors"
+            >
+              <span className="flex-1 text-left">{label}</span>
+              <span className="text-muted text-xs font-normal mr-3">{counts[key]}</span>
+              <div className="w-4 h-4 shrink-0 flex items-center justify-center">
+                {filter === key && <Check className="w-4 h-4 text-ink" />}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Sort button — GreenPath Chip style ────────────────────────────────────────
+
+function SortButton({ sort, onChange }: { sort: SortDir; onChange: (s: SortDir) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'flex items-center gap-1.5 h-8 px-3.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap active:scale-95',
+          open ? 'bg-green text-white border-green' : 'bg-surface-card text-ink border-border hover:bg-surface-page',
+        )}
+      >
+        <ArrowUpDown className="w-3 h-3 shrink-0" />
+        {SORT_LABELS[sort]}
+        <ChevronDown className={cn('w-3 h-3 shrink-0 transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 bg-surface-card border border-border rounded-xl py-1 z-20 min-w-[130px] shadow-md">
+          {(['newest', 'oldest'] as SortDir[]).map(key => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { onChange(key); setOpen(false); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-ink hover:bg-surface-page transition-colors"
+            >
+              <span className="flex-1 text-left">{SORT_LABELS[key]}</span>
+              {sort === key && <Check className="w-3.5 h-3.5 text-ink shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Featured session card ─────────────────────────────────────────────────────
+
+function FeaturedSessionCard({ item }: { item: HistoryItem }) {
+  const [mapImgError, setMapImgError] = useState(false);
+
+  const detailHref  = item.kind === 'charging'
+    ? `/bookings/${item.bookingId}`
+    : `/lender/bookings/${item.bookingId}`;
+  const statusLabel = STATUS_LABEL[item.status];
+  const statusColor = STATUS_COLOR[item.status] ?? 'text-muted bg-surface-page';
+  const amt         = signedAmount(item);
+  const showRate    = item.kind === 'charging' && item.status === 'completed' && !item.hasRated;
+
+  const mapSrc = !mapImgError && item.chargerLat !== null && item.chargerLng !== null
+    ? staticMapUrl(item.chargerLat, item.chargerLng, item.bookingId)
+    : null;
+
+  return (
+    <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
+      {/* Map thumbnail — approximate location, fuzzed ~300 m; CSS filter approximates GreenPath palette */}
+      <Link href={detailHref} className="block h-36 bg-surface-page overflow-hidden">
+        {mapSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mapSrc}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{ filter: MAP_FILTER }}
+            onError={() => setMapImgError(true)}
+          />
+        ) : item.chargerPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.chargerPhoto} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <MapPin className="w-8 h-8 text-muted/40" aria-hidden />
+          </div>
+        )}
+      </Link>
+
+      {/* Details */}
+      <div className="px-4 pt-3.5 pb-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">
+            {item.kind === 'charging' ? 'Charging' : 'Hosting'}
+          </p>
+          {statusLabel && (
+            <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', statusColor)}>
+              {statusLabel}
+            </span>
+          )}
+        </div>
+
+        <Link href={detailHref} className="block">
+          <p className="text-base font-semibold text-ink leading-snug">{item.chargerTitle}</p>
+        </Link>
+
+        {item.counterpartyName && (
+          <p className="text-xs text-muted mt-0.5">
+            {item.kind === 'charging' ? 'Host' : 'Driver'}: {item.counterpartyName}
+          </p>
+        )}
+
+        <p className="text-xs text-muted mt-1">
+          {fmtDate(item.scheduledStart)} at {fmtTime(item.scheduledStart)}
+        </p>
+
+        {amt && (
+          <p className={cn('text-sm font-bold mt-1', amt.positive ? 'text-green-600' : 'text-ink')}>
+            {amt.text}
+          </p>
+        )}
+
+        {/* Actions — Book again always present; Rate when applicable; View booking always secondary */}
+        <div className="space-y-2 mt-3.5">
+          <div className="flex items-center gap-2">
+            {showRate && (
+              <Link
+                href={detailHref}
+                className="flex-1 flex items-center justify-center h-9 rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
+              >
+                Rate session
+              </Link>
+            )}
+            <Link
+              href={`/explore/${item.chargerId}`}
+              className={cn(
+                'flex items-center justify-center h-9 rounded-xl text-sm font-semibold bg-green text-white hover:bg-green-deep transition-colors',
+                showRate ? 'flex-1' : 'w-full',
+              )}
+            >
+              Book again
+            </Link>
+          </div>
+          <Link
+            href={detailHref}
+            className="flex items-center justify-center gap-1 py-0.5 w-full text-sm font-semibold text-muted hover:text-ink transition-colors"
+          >
+            View booking
+            <ChevronRight className="w-3.5 h-3.5" aria-hidden />
+          </Link>
+        </div>
       </div>
     </div>
   );
+}
 
-  if (item.href) {
-    return (
-      <Link href={item.href} className="block active:bg-surface-page transition-colors">
-        {inner}
+// ── Compact session row ───────────────────────────────────────────────────────
+
+function CompactSessionRow({ item }: { item: HistoryItem }) {
+  const detailHref    = item.kind === 'charging'
+    ? `/bookings/${item.bookingId}`
+    : `/lender/bookings/${item.bookingId}`;
+  const statusLabel   = STATUS_LABEL[item.status];
+  const statusColor   = STATUS_COLOR[item.status] ?? 'text-muted bg-surface-page';
+  const amt           = signedAmount(item);
+  const showBookAgain = item.kind === 'charging' && item.status === 'completed';
+  const kind          = historyItemKind(item);
+  const cfg           = KIND_ICON[kind];
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      {/* Kind-coded 40px icon tile */}
+      <Link href={detailHref} className="shrink-0">
+        <div className={cn('size-10 rounded-2xl grid place-items-center', cfg.bg)}>
+          {cfg.icon}
+        </div>
       </Link>
-    );
-  }
-  return <div>{inner}</div>;
+
+      {/* Text */}
+      <div className="flex-1 min-w-0">
+        <Link href={detailHref}>
+          <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
+        </Link>
+        {item.counterpartyName && (
+          <p className="text-xs text-muted truncate">
+            {item.kind === 'charging' ? 'Host' : 'Driver'}: {item.counterpartyName}
+          </p>
+        )}
+        <p className="text-xs text-muted">
+          {fmtDate(item.scheduledStart)} · {fmtTime(item.scheduledStart)}
+        </p>
+      </div>
+
+      {/* Right: signed amount or status pill + action */}
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        {amt ? (
+          <p className={cn('text-sm font-bold', amt.positive ? 'text-green-600' : 'text-ink')}>
+            {amt.text}
+          </p>
+        ) : statusLabel ? (
+          <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full', statusColor)}>
+            {statusLabel}
+          </span>
+        ) : null}
+        {showBookAgain ? (
+          <Link
+            href={`/explore/${item.chargerId}`}
+            className="text-[11px] font-semibold text-green hover:text-green-deep transition-colors whitespace-nowrap"
+          >
+            Book again
+          </Link>
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-muted mt-0.5" aria-hidden />
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -306,75 +638,168 @@ interface Props {
 }
 
 export function ActivityView({ historyItems, updates, initialUnreadCount }: Props) {
-  const [filterIdx,   setFilterIdx]   = useState(0);
-  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  const [tab,             setTab]             = useState<TabType>('sessions');
+  const [filter,          setFilter]          = useState<FilterType>('all');
+  const [sortDir,         setSortDir]         = useState<SortDir>('newest');
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [unreadCount,     setUnreadCount]     = useState(initialUnreadCount);
+  const [markedRead,      setMarkedRead]      = useState(false);
 
   useEffect(() => {
-    if (initialUnreadCount > 0) {
+    if (tab === 'updates' && !markedRead && unreadCount > 0) {
+      setMarkedRead(true);
       fetch('/api/activity/mark-updates-read', { method: 'POST' })
         .then(() => setUnreadCount(0))
         .catch(() => {});
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tab, markedRead, unreadCount]);
 
-  const allItems = useMemo(() => buildFeed(historyItems, updates), [historyItems, updates]);
-
-  const visibleItems = useMemo(() => {
-    const { kinds } = FILTERS[filterIdx];
-    return kinds ? allItems.filter(i => kinds.includes(i.kind)) : allItems;
-  }, [allItems, filterIdx]);
+  const filtered = applyFilter(historyItems, filter);
+  const sorted   = applySortDir(filtered, sortDir);
+  const featured = sorted[0] ?? null;
+  const rest     = sorted.slice(1);
+  const grouped  = groupByDate(rest);
 
   return (
     <div
       className="min-h-screen bg-surface-page"
       style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto px-4 pt-6">
 
         {/* Header */}
-        <div className="px-4 pt-5 pb-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-ink">Activity</h1>
-            <p className="text-xs text-muted mt-0.5">Bookings, payments and updates — all in one place</p>
-          </div>
-          <div className="relative size-10 grid place-items-center rounded-full bg-surface-card border border-border shadow-sm">
-            <Bell className="size-[18px] text-ink" />
-            {unreadCount > 0 && (
-              <span className="absolute top-2 right-2.5 size-2 rounded-full bg-red-500" aria-hidden />
-            )}
-          </div>
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-ink">Activity</h1>
+          <p className="text-xs text-muted mt-0.5">Your charging sessions and hosting history in one place</p>
         </div>
 
-        {/* Filter chips */}
-        <div className="flex gap-2 overflow-x-auto phone-scroll px-4 pb-3">
-          {FILTERS.map((f, i) => (
-            <Chip key={f.label} active={filterIdx === i} onClick={() => setFilterIdx(i)}>
-              {f.label}
-            </Chip>
+        {/* Sessions / Updates tabs — GreenPath pill chip style */}
+        <div className="flex gap-2 mb-6">
+          {(['sessions', 'updates'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-1.5 h-9 rounded-full text-sm font-semibold border transition-colors',
+                tab === t
+                  ? 'bg-green text-white border-green'
+                  : 'bg-surface-card text-ink border-border hover:bg-surface-page',
+              )}
+            >
+              {t === 'sessions' ? 'Sessions' : 'Updates'}
+              {t === 'updates' && unreadCount > 0 && (
+                <span className={cn(
+                  'min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full leading-[18px] text-center',
+                  tab === t ? 'bg-white/25 text-white' : 'bg-copper text-white',
+                )}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
           ))}
         </div>
 
-        {/* Feed */}
-        <div className="px-4 pb-6">
-          {visibleItems.length === 0 ? (
-            <div className="rise-in flex flex-col items-center text-center py-14 px-8">
-              <div className="size-16 grid place-items-center rounded-3xl bg-green-soft text-green mb-4">
-                <Bell className="size-7" />
+        {/* ── Sessions ── */}
+        {tab === 'sessions' && (
+          <div>
+            {/* Filter + Sort bar */}
+            <div className="flex items-center gap-2 mb-4">
+              <FilterButton filter={filter} onClick={() => setFilterSheetOpen(true)} />
+              <SortButton sort={sortDir} onChange={setSortDir} />
+            </div>
+
+            {sorted.length === 0 ? (
+              <EmptyState
+                icon={<Bell className="size-7" />}
+                title={filter === 'all' ? 'No activity yet' : 'Nothing here'}
+                subtitle={
+                  filter === 'all'
+                    ? 'Your charging sessions and hosting history will appear here'
+                    : `No ${FILTER_LABELS[filter].toLowerCase()} sessions found`
+                }
+              />
+            ) : (
+              <div className="space-y-5 pb-6">
+                {/* Featured card — most recent session in current filter */}
+                {featured && <FeaturedSessionCard item={featured} />}
+
+                {/* Compact list — single rounded-3xl card, date groups as section headers inside */}
+                {grouped.length > 0 && (
+                  <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
+                    {grouped.map(({ label, items }, gi) => (
+                      <div key={label}>
+                        <div className={cn(
+                          'px-4 py-2 bg-surface-page',
+                          gi > 0 && 'border-t border-border',
+                        )}>
+                          <p className="text-[10px] font-semibold text-muted tracking-wider uppercase">
+                            {label}
+                          </p>
+                        </div>
+                        <div className="divide-y divide-border">
+                          {items.map(item => (
+                            <CompactSessionRow key={item.id} item={item} />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <p className="font-bold text-ink">Nothing here yet</p>
-              <p className="text-sm text-muted mt-1 leading-relaxed">
-                Your bookings, receipts and hosting updates will all land in this one feed.
-              </p>
-            </div>
-          ) : (
-            <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
-              {visibleItems.map(item => (
-                <FeedRow key={item.id} item={item} />
-              ))}
-            </div>
-          )}
-        </div>
+            )}
+
+            <SessionFilterSheet
+              isOpen={filterSheetOpen}
+              items={historyItems}
+              filter={filter}
+              onSelect={setFilter}
+              onClose={() => setFilterSheetOpen(false)}
+            />
+          </div>
+        )}
+
+        {/* ── Updates ── */}
+        {tab === 'updates' && (
+          <div>
+            {updates.length === 0 ? (
+              <EmptyState
+                icon={<Bell className="size-7" />}
+                title="No updates yet"
+                subtitle="Booking confirmations, session events, and account updates will appear here"
+              />
+            ) : (
+              <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border mb-6">
+                {updates.map(u => {
+                  const kind = notifItemKind(u.type);
+                  const cfg  = KIND_ICON[kind];
+                  const body = notifBody(u.type, u.data);
+                  return (
+                    <div key={u.id} className="flex items-center gap-3 px-4 py-3.5">
+                      {/* Kind-coded icon tile with unread dot */}
+                      <div className={cn('relative size-10 rounded-2xl grid place-items-center shrink-0', cfg.bg)}>
+                        {cfg.icon}
+                        {!u.read && (
+                          <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-green" aria-hidden />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn('text-sm text-ink truncate', u.read ? 'font-medium' : 'font-semibold')}>
+                          {NOTIF_LABEL[u.type] ?? u.type.replace(/_/g, ' ')}
+                        </p>
+                        {body && (
+                          <p className="text-xs text-muted mt-0.5 leading-relaxed line-clamp-2">{body}</p>
+                        )}
+                      </div>
+                      <span className="shrink-0 text-[10px] text-muted whitespace-nowrap">
+                        {timeAgo(u.createdAt)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>
