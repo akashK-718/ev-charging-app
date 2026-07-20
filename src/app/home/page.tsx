@@ -8,11 +8,11 @@ import {
   Leaf, TrendingUp, ArrowRight, Map as MapIcon, Route,
   Check, X, Inbox, CalendarClock,
 } from 'lucide-react';
-import { toJpegUrl } from '@/lib/cloudinary-url';
 import { getActiveTip } from '@/lib/home/tips';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
+import { NearbyChargerCard } from '@/components/home/NearbyChargerCard';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
@@ -465,7 +465,7 @@ export default async function HomePage() {
       className="min-h-screen bg-surface-page"
       style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-2xl mx-auto px-4 pt-5 pb-4 space-y-3">
+      <div className="max-w-5xl mx-auto px-4 lg:px-6 pt-5 pb-4">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 pb-1">
@@ -485,7 +485,7 @@ export default async function HomePage() {
 
         {/* ── Account alerts: KYC / payout / suspended ────────────────────── */}
         {(attnKycBlocked || attnKycRejected || !!attnPayoutFailed || attnSuspended.length > 0) && (
-          <div className="rise-in bg-white border border-border rounded-3xl overflow-hidden divide-y divide-border shadow-sm">
+          <div className="mt-3 rise-in bg-white border border-border rounded-3xl overflow-hidden divide-y divide-border shadow-sm">
             {attnKycBlocked && (
               <Link href="/profile" className="flex items-center gap-3 px-4 py-3.5 active:bg-surface-page transition-colors">
                 <div className="size-9 rounded-xl bg-amber-50 grid place-items-center shrink-0">
@@ -539,6 +539,12 @@ export default async function HomePage() {
             ))}
           </div>
         )}
+
+        {/* ── Two-column layout: main feed (1fr) + sidebar (300px on desktop) ── */}
+        <div className="mt-3 flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_300px] lg:gap-6 lg:items-start">
+
+        {/* Main feed */}
+        <div className="flex flex-col gap-3">
 
         {/* ── Charging in progress ─────────────────────────────────────────── */}
         {attnInProgress && (
@@ -775,8 +781,8 @@ export default async function HomePage() {
           );
         })}
 
-        {/* ── Quick actions ────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3 pt-1">
+        {/* ── Quick actions (mobile only — duplicated in sidebar for desktop) ── */}
+        <div className="lg:hidden grid grid-cols-2 gap-3">
           <Link
             href="/explore"
             className="rise-in bg-white border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.97] transition-transform"
@@ -853,40 +859,66 @@ export default async function HomePage() {
           <DynamicNudge ruleNudge={ruleNudge} />
         )}
 
-      </div>
+        </div>{/* end main feed */}
 
-      {/* ── Near you ──────────────────────────────────────────────────────────── */}
+        {/* ── Sidebar (desktop only) ───────────────────────────────────────── */}
+        <div className="hidden lg:flex lg:flex-col lg:gap-4 lg:sticky lg:top-[4.5rem]">
+
+          {/* Quick actions */}
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href="/explore"
+              className="rise-in bg-white border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.97] transition-transform"
+            >
+              <div className="size-9 rounded-xl bg-green-soft grid place-items-center text-green mb-2.5">
+                <MapIcon className="size-[18px]" aria-hidden />
+              </div>
+              <p className="text-sm font-semibold text-ink">Find a charger</p>
+              <p className="text-[11px] text-muted">{findSubtitle}</p>
+            </Link>
+            <Link
+              href="/explore"
+              className="rise-in bg-white border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.97] transition-transform"
+            >
+              <div className="size-9 rounded-xl bg-green-soft grid place-items-center text-green mb-2.5">
+                <Route className="size-[18px]" aria-hidden />
+              </div>
+              <p className="text-sm font-semibold text-ink">Plan a trip</p>
+              <p className="text-[11px] text-muted">Charging stops on your route</p>
+            </Link>
+          </div>
+
+          {/* Near you grid */}
+          {d.nearbyChargers.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted">Near you</h2>
+                <Link href="/explore" className="text-xs font-semibold text-green">See map</Link>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {d.nearbyChargers.map(c => (
+                  <NearbyChargerCard key={c.id} charger={c} className="block" />
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>{/* end sidebar */}
+
+        </div>{/* end two-column grid */}
+
+      </div>{/* end max-w-5xl */}
+
+      {/* ── Near you (mobile only, horizontal scroll) ─────────────────────── */}
       {d.nearbyChargers.length > 0 && (
-        <div className="mt-2 mb-4">
+        <div className="lg:hidden mt-2 mb-4">
           <div className="flex items-center justify-between px-4 mt-4 mb-2">
             <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted">Near you</h2>
             <Link href="/explore" className="text-xs font-semibold text-green">See map</Link>
           </div>
           <div className="flex gap-3 overflow-x-auto phone-scroll px-4 pb-2">
             {d.nearbyChargers.map(c => (
-              <Link
-                key={c.id}
-                href={`/chargers/${c.id}`}
-                className="shrink-0 w-36 bg-white border border-border rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-transform"
-              >
-                <div className="h-16 relative bg-gradient-to-br from-green-700 to-green-500 overflow-hidden">
-                  {c.photos?.[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={toJpegUrl(c.photos[0])}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="p-2.5">
-                  <p className="text-xs font-semibold text-ink truncate">{c.title}</p>
-                  <p className="text-[10px] text-muted flex items-center gap-1 mt-0.5">
-                    <Zap className="size-2.5" aria-hidden />
-                    {c.charger_type ?? 'EV'} · {c.price_per_kwh != null ? `₹${c.price_per_kwh}/kWh` : '—'}
-                  </p>
-                </div>
-              </Link>
+              <NearbyChargerCard key={c.id} charger={c} />
             ))}
           </div>
         </div>

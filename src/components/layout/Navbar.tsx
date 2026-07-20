@@ -70,7 +70,7 @@ export function Navbar() {
         <Logo />
 
         {user && (
-          <nav className="flex items-center gap-0.5" aria-label="Main navigation">
+          <nav className="flex items-center gap-0.5 h-full" aria-label="Main navigation">
             {NAV_LINKS.map(({ href, label }) => {
               const active = isLinkActive(href, pathname);
               return (
@@ -79,13 +79,19 @@ export function Navbar() {
                   href={href}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'px-3 py-1.5 rounded-token text-sm font-semibold transition-colors',
+                    'relative flex items-center px-3 h-full text-sm font-semibold transition-colors',
                     active
-                      ? 'text-copper bg-copper-soft'
-                      : 'text-muted hover:text-ink hover:bg-surface-page',
+                      ? 'text-green'
+                      : 'text-muted hover:text-ink',
                   )}
                 >
                   {label}
+                  {active && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute bottom-0 inset-x-3 h-[2px] rounded-t-sm bg-green"
+                    />
+                  )}
                 </Link>
               );
             })}
