@@ -7,6 +7,7 @@ const SIZE_CLASS = {
   sm: 'w-8 h-8 text-xs',
   md: 'w-12 h-12 text-sm',
   lg: 'w-20 h-20 text-xl',
+  xl: 'w-[72px] h-[72px] text-2xl',
 };
 
 function getInitials(name: string | null): string {
@@ -20,7 +21,7 @@ function getInitials(name: string | null): string {
 interface AvatarProps {
   avatarUrl: string | null;
   name: string | null;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export function Avatar({ avatarUrl, name, size = 'md' }: AvatarProps) {

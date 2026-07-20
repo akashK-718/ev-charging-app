@@ -6,15 +6,18 @@ import Link from 'next/link';
 import {
   Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert,
   Camera, ImageIcon, ShieldQuestion, Trash2,
-  Smartphone, Check, Home, Car, CreditCard,
-  ChevronRight, Bell, Globe, ArrowRight,
+  Smartphone, Home, Car, CreditCard,
+  ChevronRight, Bell, LayoutDashboard, TrendingUp,
+  PauseCircle, Star, HelpCircle, LogOut, Plug,
 } from 'lucide-react';
 import { NameEditor } from './NameEditor';
+import { ProfileMenuDrawer } from './ProfileMenuDrawer';
 import { Avatar } from '@/components/ui/Avatar';
 import { Sheet } from '@/components/ui/Sheet';
 import { uploadImage } from '@/lib/cloudinary';
 import { ImageCropper } from '@/components/ui/ImageCropper';
 import { clearPwaDismissal } from '@/lib/pwa';
+import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -34,6 +37,7 @@ interface Submission {
 }
 
 interface ProfileBodyProps {
+  isAdmin: boolean;
   initialName: string | null;
   phone: string;
   hostingState: HostingState;
@@ -43,40 +47,75 @@ interface ProfileBodyProps {
   submission: Submission | null;
   showSubmittedBanner: boolean;
   initialAvatarUrl: string | null;
+  lifetimeEarningsPaise: number;
+  activePricePerKwh: number | null;
+  avgRating: number | null;
 }
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// ── Hosting toggle ─────────────────────────────────────────────────────────────
+// ── UI helpers ─────────────────────────────────────────────────────────────────
 
-function HostingToggle({ active, onClick }: { active: boolean; onClick: () => void }) {
+function SectionLabel({
+  children,
+  badge,
+}: {
+  children: React.ReactNode;
+  badge?: React.ReactNode;
+}) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={active}
-      onClick={onClick}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-pill border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-        active ? 'bg-green focus-visible:ring-green' : 'bg-gray-300 focus-visible:ring-gray-400'
-      }`}
-    >
-      <span
-        aria-hidden="true"
-        className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-          active ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
+    <div className="flex items-center justify-between mb-3">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{children}</p>
+      {badge}
+    </div>
   );
+}
+
+function ProfileRow({
+  icon,
+  label,
+  value,
+  href,
+  onClick,
+  danger,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value?: string;
+  href?: string;
+  onClick?: () => void;
+  danger?: boolean;
+}) {
+  const inner = (
+    <div className="flex items-center gap-3 px-4 py-3.5 active:bg-surface-page transition-colors">
+      <div className={cn(
+        'size-9 rounded-2xl grid place-items-center shrink-0',
+        danger ? 'bg-danger-soft text-danger' : 'bg-surface-page text-muted',
+      )}>
+        {icon}
+      </div>
+      <span className={cn('flex-1 text-sm font-medium', danger ? 'text-danger' : 'text-ink')}>
+        {label}
+      </span>
+      {value && <span className="text-xs text-muted">{value}</span>}
+      <ChevronRight className={cn('size-4 shrink-0', danger ? 'text-danger/50' : 'text-muted')} />
+    </div>
+  );
+
+  if (href) return <Link href={href} className="block">{inner}</Link>;
+  if (onClick) return <button type="button" onClick={onClick} className="w-full text-left">{inner}</button>;
+  return <div className="opacity-50">{inner}</div>;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export function ProfileBody({
+  isAdmin,
   initialName,
-  phone,
+  // phone retained for future use
+  phone: _phone,
   hostingState: initialHostingState,
   chargerStats,
   createdAt,
@@ -84,10 +123,13 @@ export function ProfileBody({
   submission,
   showSubmittedBanner,
   initialAvatarUrl,
+  lifetimeEarningsPaise,
+  activePricePerKwh,
+  avgRating,
 }: ProfileBodyProps) {
   const router = useRouter();
 
-  // ── Avatar state ─────────────────────────────────────────────────────────────
+  // ── Avatar state ──────────────────────────────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -96,22 +138,26 @@ export function ProfileBody({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Hosting state ─────────────────────────────────────────────────────────────
+  // ── Hosting state ──────────────────────────────────────────────────────────────
   const [hostingState, setHostingState] = useState<HostingState>(initialHostingState);
   const [pauseSheetOpen, setPauseSheetOpen] = useState(false);
   const [leaveSheetOpen, setLeaveSheetOpen] = useState(false);
   const [hostingLoading, setHostingLoading] = useState(false);
   const [hostingError, setHostingError] = useState<string | null>(null);
 
+  // ── Display name (reactive header) ───────────────────────────────────────────
+  const [displayName, setDisplayName] = useState<string | null>(initialName);
+
   // ── Preferences state ─────────────────────────────────────────────────────────
   const [installResetDone, setInstallResetDone] = useState(false);
 
   const hostingStarted = hostingState !== 'not_enabled';
 
-  // Setup in progress: route to verification or first charger based on KYC status.
-  // Append ?from=onboarding so those screens know to show their destructive actions.
+  const setupContinueHref = kycStatus === 'approved'
+    ? '/lender/chargers/new?from=onboarding'
+    : '/profile/verify?from=onboarding';
 
-  // ── Avatar handlers ───────────────────────────────────────────────────────────
+  // ── Avatar handlers ────────────────────────────────────────────────────────────
 
   async function handleCropConfirm(blob: Blob) {
     setCropFile(null);
@@ -177,7 +223,7 @@ export function ProfileBody({
     setTimeout(() => fileInputRef.current?.click(), 50);
   }
 
-  // ── Hosting handlers ──────────────────────────────────────────────────────────
+  // ── Hosting handlers ───────────────────────────────────────────────────────────
 
   async function handleStartHosting() {
     setHostingLoading(true);
@@ -236,19 +282,6 @@ export function ProfileBody({
       setHostingLoading(false);
     }
   }
-
-  function handleToggle() {
-    if (hostingLoading) return;
-    if (hostingState === 'active') {
-      setPauseSheetOpen(true);
-    } else if (hostingState === 'paused') {
-      void handleResume();
-    }
-  }
-
-  const setupContinueHref = kycStatus === 'approved'
-    ? '/lender/chargers/new?from=onboarding'
-    : '/profile/verify?from=onboarding';
 
   async function handleLeaveSetup() {
     setLeaveSheetOpen(false);
@@ -309,361 +342,359 @@ export function ProfileBody({
         }}
       />
 
-      {/* Verification submitted banner */}
-      {showSubmittedBanner && hostingStarted && kycStatus === 'pending' && (
-        <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
-          <p className="font-semibold text-blue-800">Verification submitted!</p>
-          <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
-        </div>
-      )}
+      <div className="pb-8">
 
-      {/* ── 1. Account ─────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-        <h2 className="font-semibold text-base text-ink">Account</h2>
-
-        {/* Avatar */}
-        <div className="flex flex-col items-center py-2">
-          <div className="relative">
+        {/* ── Header ──────────────────────────────────────────────────────────── */}
+        <div className="px-4 pt-6 pb-5 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setAvatarSheetOpen(true)}
+            aria-label="Edit profile photo"
+            className="relative shrink-0"
+          >
             {avatarLoading ? (
-              <div className="w-20 h-20 rounded-full bg-gray-100 animate-pulse" />
+              <div className="size-[72px] rounded-full bg-surface-page animate-pulse" />
             ) : (
-              <Avatar avatarUrl={avatarUrl} name={initialName} size="lg" />
+              <Avatar avatarUrl={avatarUrl} name={displayName} size="xl" />
             )}
-            <button
-              type="button"
-              onClick={() => setAvatarSheetOpen(true)}
-              aria-label="Edit profile photo"
-              className="absolute bottom-0 right-0 w-6 h-6 bg-ink text-white rounded-full flex items-center justify-center shadow-md hover:bg-ink/80 transition-colors"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
-          </div>
-          {avatarError && (
-            <p className="text-xs text-red-600 font-medium mt-2 text-center">{avatarError}</p>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          <NameEditor initialName={initialName} showKycContext={hostingStarted} />
-          <div>
-            <p className="text-xs text-muted mb-0.5">Phone</p>
-            <p className="text-sm font-semibold text-ink">{phone}</p>
-            <p className="text-xs text-muted mt-1">
-              To change your phone number,{' '}
-              <a href="mailto:support@example.com" className="underline hover:text-ink transition-colors">
-                contact support
-              </a>
-              .
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted mb-0.5">Member since</p>
-            <p className="text-sm font-semibold text-ink">{formatDate(createdAt)}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 2. Hosting — four-state lifecycle ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
-
-        {/* Header row */}
-        <div className="flex items-start gap-3">
-          <div className={`w-9 h-9 rounded-token flex items-center justify-center shrink-0 ${
-            hostingState === 'active'  ? 'bg-green-soft' :
-            hostingState === 'paused'  ? 'bg-surface-page' :
-                                         'bg-copper-soft'
-          }`}>
-            <Home className={`w-4 h-4 ${
-              hostingState === 'active' ? 'text-green' :
-              hostingState === 'paused' ? 'text-muted' :
-                                          'text-copper'
-            }`} aria-hidden />
-          </div>
+            <span className="absolute bottom-0.5 right-0.5 size-5 bg-ink text-white rounded-full grid place-items-center shadow-md">
+              <Pencil className="size-2.5" />
+            </span>
+          </button>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-ink">Hosting</p>
-
-              {hostingState === 'not_enabled' && (
-                <span className="text-xs text-muted shrink-0">Not enabled</span>
-              )}
-
-              {hostingState === 'setup_in_progress' && (
-                <span className="text-xs font-medium text-copper shrink-0">Setup in progress</span>
-              )}
-
-              {(hostingState === 'active' || hostingState === 'paused') && (
-                <div className="flex items-center gap-2 shrink-0">
-                  {hostingState === 'active' ? (
-                    <div className="flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5 text-green" aria-hidden />
-                      <span className="text-xs font-semibold text-green">Active</span>
-                    </div>
-                  ) : (
-                    <span className="text-xs font-semibold text-muted">Paused</span>
-                  )}
-                  <HostingToggle
-                    active={hostingState === 'active'}
-                    onClick={handleToggle}
-                  />
-                </div>
-              )}
-            </div>
-
-            <p className="text-xs text-muted mt-0.5">
-              {hostingState === 'not_enabled' && 'Earn from your home charger.'}
-              {hostingState === 'setup_in_progress' && 'Verify your identity and list your first charger.'}
-              {hostingState === 'setup_deferred' && 'Start earning with your home charger.'}
-              {hostingState === 'active' && (
-                `${chargerStats.published} Charger${chargerStats.published !== 1 ? 's' : ''} · ${chargerStats.visible} Visible${chargerStats.draft > 0 ? ` · ${chargerStats.draft} Draft` : ''}`
-              )}
-              {hostingState === 'paused' && 'Your listings are hidden from search.'}
+            <h1 className="text-xl font-bold text-ink truncate">{displayName ?? 'Your name'}</h1>
+            <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
+              <Car className="size-3 shrink-0" />
+              <span>No vehicle added</span>
             </p>
+            <p className="text-xs text-muted mt-0.5">Member since {formatDate(createdAt)}</p>
           </div>
+
+          <ProfileMenuDrawer isAdmin={isAdmin} />
         </div>
 
-        {/* Action row */}
-        <div className="mt-3 pt-3 border-t border-border">
+        {avatarError && (
+          <p className="mx-4 -mt-2 mb-3 text-xs text-danger font-medium">{avatarError}</p>
+        )}
+
+        {/* ── Submitted banner ─────────────────────────────────────────────────── */}
+        {showSubmittedBanner && hostingStarted && kycStatus === 'pending' && (
+          <div className="mx-4 mb-4 px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
+            <p className="font-semibold text-blue-800">Verification submitted!</p>
+            <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
+          </div>
+        )}
+
+        {/* ── Hosting ─────────────────────────────────────────────────────────── */}
+        <div className="px-4">
+
+          {/* not_enabled: promo gradient card, no section title */}
           {hostingState === 'not_enabled' && (
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted">Share your charger when you&apos;re not using it.</p>
+            <div>
               <button
                 type="button"
                 onClick={() => { void handleStartHosting(); }}
                 disabled={hostingLoading}
-                className="shrink-0 px-4 py-2 bg-ink text-white text-xs font-semibold rounded-token hover:bg-ink/90 transition-colors disabled:opacity-50"
+                className="rise-in w-full rounded-3xl p-5 text-white shadow-lg active:scale-[0.98] transition text-left disabled:opacity-75"
+                style={{ background: 'linear-gradient(135deg,#14532d,#16a34a)' }}
               >
-                {hostingLoading ? 'Starting…' : 'Start Hosting'}
+                <Home className="size-6 mb-2.5" />
+                <p className="font-bold">Have a home charger?</p>
+                <p className="text-xs text-white/80 mt-1 leading-relaxed">
+                  Turn on hosting and earn when your neighbours charge at your place.
+                </p>
+                <span className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-800 text-xs font-bold pointer-events-none">
+                  {hostingLoading ? 'Starting…' : 'Turn on hosting'}
+                </span>
               </button>
+              {hostingError && <p className="text-xs text-danger font-medium mt-2 px-1">{hostingError}</p>}
             </div>
           )}
 
+          {/* setup_in_progress: section title + gradient card + Not now link */}
           {hostingState === 'setup_in_progress' && (
-            <div className="flex flex-col gap-2">
-              <Link
-                href={setupContinueHref}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-ink hover:underline underline-offset-2 transition-colors"
+            <div>
+              <SectionLabel>Hosting</SectionLabel>
+              <div
+                className="rounded-3xl p-5 text-white shadow-lg"
+                style={{ background: 'linear-gradient(135deg,#14532d,#16a34a)' }}
               >
-                Continue
-                <ArrowRight className="w-4 h-4" aria-hidden />
-              </Link>
+                <Home className="size-6 mb-2.5" />
+                <p className="font-bold">Setup in progress</p>
+                <p className="text-xs text-white/80 mt-1 leading-relaxed">
+                  Verify your identity and list your first charger.
+                </p>
+                <Link
+                  href={setupContinueHref}
+                  className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-800 text-xs font-bold"
+                >
+                  Continue
+                </Link>
+              </div>
               <button
                 type="button"
                 onClick={() => setLeaveSheetOpen(true)}
-                className="text-xs text-muted hover:text-ink transition-colors text-left w-fit"
+                className="mt-2 text-xs text-muted hover:text-ink transition-colors px-1"
               >
                 Not now
               </button>
             </div>
           )}
 
+          {/* setup_deferred: section title + gradient card + Resume pill */}
           {hostingState === 'setup_deferred' && (
-            <button
-              type="button"
-              onClick={handleResumeSetup}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
-            >
-              Resume setup
-              <ArrowRight className="w-4 h-4" aria-hidden />
-            </button>
-          )}
-
-          {hostingState === 'active' && (
-            <Link
-              href="/lender/chargers"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
-            >
-              Manage Hosting
-              <ChevronRight className="w-4 h-4" aria-hidden />
-            </Link>
-          )}
-
-          {hostingState === 'paused' && (
-            <div className="flex items-center gap-5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => { void handleResume(); }}
-                disabled={hostingLoading}
-                className="text-sm font-semibold text-green hover:underline underline-offset-2 transition-colors disabled:opacity-50"
+            <div>
+              <SectionLabel>Hosting</SectionLabel>
+              <div
+                className="rounded-3xl p-5 text-white shadow-lg"
+                style={{ background: 'linear-gradient(135deg,#14532d,#16a34a)' }}
               >
-                {hostingLoading ? 'Resuming…' : 'Resume Hosting'}
-              </button>
-              <Link
-                href="/lender/chargers"
-                className="text-sm font-semibold text-copper hover:underline underline-offset-2 transition-colors"
-              >
-                Manage Hosting
-              </Link>
+                <Home className="size-6 mb-2.5" />
+                <p className="font-bold">Resume your setup</p>
+                <p className="text-xs text-white/80 mt-1 leading-relaxed">
+                  Finish verification and list your first charger to start earning.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResumeSetup}
+                  className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-800 text-xs font-bold"
+                >
+                  Resume
+                </button>
+              </div>
             </div>
           )}
 
-          {hostingError && (
-            <p className="text-xs text-danger font-medium mt-2">{hostingError}</p>
+          {/* active / paused: section title + HOSTING ON badge (active only) + dark dashboard card + white rows */}
+          {(hostingState === 'active' || hostingState === 'paused') && (
+            <div>
+              <SectionLabel badge={
+                hostingState === 'active' ? (
+                  <span className="text-[10px] font-bold text-green bg-green-soft rounded-full px-2 py-0.5 uppercase tracking-wide">
+                    Hosting on
+                  </span>
+                ) : undefined
+              }>
+                Hosting
+              </SectionLabel>
+
+              <Link
+                href="/lender/chargers"
+                className="block bg-zinc-900 text-white rounded-3xl p-4 shadow-lg active:scale-[0.98] transition"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-green-400 flex items-center gap-1.5">
+                    <LayoutDashboard className="size-3.5" />
+                    Host dashboard
+                  </p>
+                  <TrendingUp className="size-4 text-white/50" />
+                </div>
+                <p className="mt-2 text-2xl font-bold">
+                  ₹{Math.round(lifetimeEarningsPaise / 100).toLocaleString('en-IN')}
+                  {' '}<span className="text-xs font-normal text-white/50">earned all time</span>
+                </p>
+                <p className="text-[11px] text-white/60 mt-1">
+                  Bookings, payouts and your listing — managed in one place.
+                </p>
+              </Link>
+
+              <div className="mt-3 bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
+                <ProfileRow
+                  icon={<Plug className="size-4" />}
+                  label="My charger"
+                  value={activePricePerKwh != null ? `₹${activePricePerKwh}/kWh` : '—'}
+                  href="/lender/chargers"
+                />
+                {hostingState === 'active' ? (
+                  <ProfileRow
+                    icon={<PauseCircle className="size-4" />}
+                    label="Pause listing"
+                    value="Vacation / repairs"
+                    onClick={() => setPauseSheetOpen(true)}
+                  />
+                ) : (
+                  <ProfileRow
+                    icon={<PauseCircle className="size-4" />}
+                    label="Resume listing"
+                    value="Currently hidden"
+                    onClick={() => { void handleResume(); }}
+                  />
+                )}
+              </div>
+
+              {hostingError && <p className="text-xs text-danger font-medium mt-2 px-1">{hostingError}</p>}
+            </div>
           )}
         </div>
-      </div>
 
-      {/* ── 3. Verification — only when hosting has been started ───────────────── */}
-      {hostingStarted && (
-        <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-          <h2 className="font-semibold text-base text-ink">Identity verification</h2>
+        {/* ── Identity verification (shown when hosting is started) ────────────── */}
+        {hostingStarted && (
+          <div className="px-4 mt-6">
+            <SectionLabel>Identity verification</SectionLabel>
+            <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden p-4 space-y-3">
 
-          {kycStatus === 'not_started' && (
-            <div className="space-y-4">
-              <div className="flex gap-3 p-4 rounded-xl border bg-yellow-50 border-yellow-200">
-                <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5 text-yellow-600" />
+              {kycStatus === 'not_started' && (
+                <div className="space-y-3">
+                  <div className="flex gap-3 p-4 rounded-2xl border bg-yellow-50 border-yellow-200">
+                    <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5 text-yellow-600" />
+                    <div>
+                      <p className="font-semibold text-sm text-yellow-700">Not verified</p>
+                      <p className="text-xs text-muted mt-1 leading-relaxed">
+                        {chargerStats.draft > 0
+                          ? `You have ${chargerStats.draft} charger${chargerStats.draft > 1 ? 's' : ''} awaiting publish. Verify your identity to make them visible to drivers.`
+                          : 'Verify your identity to publish chargers and receive payouts.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/profile/verify"
+                    className="block w-full text-center px-4 py-3 bg-ink text-white text-sm font-bold rounded-2xl hover:bg-ink/90 transition-colors"
+                  >
+                    Start verification
+                  </Link>
+                </div>
+              )}
+
+              {kycStatus === 'pending' && submission && (
+                <div className="flex gap-3 p-4 rounded-2xl border bg-blue-50 border-blue-200">
+                  <Clock className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+                  <div>
+                    <p className="font-semibold text-sm text-blue-700">Under review</p>
+                    <p className="text-xs text-muted mt-1">
+                      Submitted {formatDate(submission.submitted_at)} · Usually 24–48 hours.
+                      {chargerStats.draft > 0 && ` Your ${chargerStats.draft} charger${chargerStats.draft > 1 ? 's' : ''} will go live automatically once approved.`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {kycStatus === 'approved' && (
+                <div className="flex gap-3 p-4 rounded-2xl border bg-green-50 border-green-200">
+                  <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-green-600" />
+                  <div>
+                    <p className="font-semibold text-sm text-green-700">Verified</p>
+                    {submission && (
+                      <p className="text-xs text-muted mt-1">Verified on {formatDate(submission.submitted_at)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {kycStatus === 'rejected' && (
+                <div className="space-y-3">
+                  <div className="flex gap-3 p-4 rounded-2xl border bg-red-50 border-red-200">
+                    <ShieldX className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
+                    <div>
+                      <p className="font-semibold text-sm text-red-700">Verification rejected</p>
+                      {submission?.rejection_reason && (
+                        <p className="text-xs text-muted mt-1">Reason: {submission.rejection_reason}</p>
+                      )}
+                      <p className="text-xs text-muted mt-1">Please resubmit with clearer, well-lit photos.</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/profile/verify"
+                    className="block w-full text-center px-4 py-3 bg-red-700 text-white text-sm font-bold rounded-2xl hover:bg-red-800 transition-colors"
+                  >
+                    Resubmit documents
+                  </Link>
+                </div>
+              )}
+
+              <p className="text-xs text-muted">
+                We collect Aadhaar and PAN for identity verification as required by Indian payment
+                regulations. Documents are reviewed by our team and not shared with third parties.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Account ─────────────────────────────────────────────────────────── */}
+        <div className="px-4 mt-6">
+          <SectionLabel>Account</SectionLabel>
+          <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
+
+            {/* Name editor as first row */}
+            <div className="px-4 py-3.5">
+              <NameEditor
+                initialName={initialName}
+                showKycContext={hostingStarted}
+                onNameChange={setDisplayName}
+              />
+            </div>
+
+            <ProfileRow
+              icon={<CreditCard className="size-4" />}
+              label="Payment methods"
+              value="Coming soon"
+            />
+            <ProfileRow
+              icon={<Car className="size-4" />}
+              label="My vehicle"
+              value="Coming soon"
+            />
+            <ProfileRow
+              icon={<Bell className="size-4" />}
+              label="Notifications"
+              value="Coming soon"
+            />
+            <ProfileRow
+              icon={<Star className="size-4" />}
+              label="My reviews"
+              value={avgRating != null ? `${avgRating.toFixed(1)} as a guest` : 'No reviews yet'}
+            />
+            <ProfileRow
+              icon={<HelpCircle className="size-4" />}
+              label="Help & support"
+              href="/help"
+            />
+
+            {/* App install prompt */}
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <div className="size-9 rounded-2xl bg-surface-page grid place-items-center shrink-0 text-muted">
+                  <Smartphone className="size-4" />
+                </div>
                 <div>
-                  <p className="font-semibold text-sm text-yellow-700">Not verified</p>
-                  <p className="text-xs text-muted mt-1 leading-relaxed">
-                    {chargerStats.draft > 0
-                      ? `You have ${chargerStats.draft} charger${chargerStats.draft > 1 ? 's' : ''} awaiting publish. Verify your identity to make them visible to drivers.`
-                      : 'Verify your identity to publish chargers and receive payouts.'}
+                  <p className="text-sm font-medium text-ink">App install prompt</p>
+                  <p className="text-xs text-muted">
+                    {installResetDone ? 'Will appear on next Home visit' : 'Restore if dismissed'}
                   </p>
                 </div>
               </div>
-              <Link
-                href="/profile/verify"
-                className="block w-full text-center px-4 py-3 bg-ink text-white text-sm font-bold rounded-xl hover:bg-ink/90 transition-colors"
-              >
-                Start verification
-              </Link>
+              {!installResetDone && (
+                <button
+                  type="button"
+                  onClick={() => { clearPwaDismissal(); setInstallResetDone(true); }}
+                  className="shrink-0 text-xs font-semibold text-copper hover:underline underline-offset-2 transition-colors"
+                >
+                  Reset
+                </button>
+              )}
             </div>
-          )}
 
-          {kycStatus === 'pending' && submission && (
-            <div className="flex gap-3 p-4 rounded-xl border bg-blue-50 border-blue-200">
-              <Clock className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
-              <div>
-                <p className="font-semibold text-sm text-blue-700">Under review</p>
-                <p className="text-xs text-muted mt-1">
-                  Submitted {formatDate(submission.submitted_at)} · Usually 24–48 hours.
-                  {chargerStats.draft > 0 && ` Your ${chargerStats.draft} charger${chargerStats.draft > 1 ? 's' : ''} will go live automatically once approved.`}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {kycStatus === 'approved' && (
-            <div className="flex gap-3 p-4 rounded-xl border bg-green-50 border-green-200">
-              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-green-600" />
-              <div>
-                <p className="font-semibold text-sm text-green-700">Verified</p>
-                {submission && (
-                  <p className="text-xs text-muted mt-1">Verified on {formatDate(submission.submitted_at)}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {kycStatus === 'rejected' && (
-            <div className="space-y-4">
-              <div className="flex gap-3 p-4 rounded-xl border bg-red-50 border-red-200">
-                <ShieldX className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
-                <div>
-                  <p className="font-semibold text-sm text-red-700">Verification rejected</p>
-                  {submission?.rejection_reason && (
-                    <p className="text-xs text-muted mt-1">Reason: {submission.rejection_reason}</p>
-                  )}
-                  <p className="text-xs text-muted mt-1">Please resubmit with clearer, well-lit photos.</p>
-                </div>
-              </div>
-              <Link
-                href="/profile/verify"
-                className="block w-full text-center px-4 py-3 bg-red-700 text-white text-sm font-bold rounded-xl hover:bg-red-800 transition-colors"
-              >
-                Resubmit documents
-              </Link>
-            </div>
-          )}
-
-          <p className="text-xs text-muted">
-            We collect Aadhaar and PAN for identity verification as required by Indian payment regulations.
-            Documents are reviewed by our team and not shared with third parties.
-          </p>
-        </div>
-      )}
-
-      {/* ── 4. Vehicles ────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 opacity-50">
-          <div className="flex items-center gap-3">
-            <Car className="w-4 h-4 text-muted shrink-0" aria-hidden />
-            <p className="text-sm font-semibold text-ink">Vehicles</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted">Coming soon</span>
-            <ChevronRight className="w-4 h-4 text-muted" aria-hidden />
+            {hostingState === 'active' && (
+              <ProfileRow
+                icon={<LogOut className="size-4" />}
+                label="Stop hosting"
+                value="Keeps your setup"
+                onClick={() => setPauseSheetOpen(true)}
+                danger
+              />
+            )}
           </div>
         </div>
+
+        {/* ── Footer tagline ───────────────────────────────────────────────────── */}
+        <p className="text-center text-[10px] text-muted mt-6 leading-relaxed px-8">
+          One account for everything — charging always works.<br />
+          Hosting is just a section that appears when you turn it on.
+        </p>
+
       </div>
 
-      {/* ── 5. Payment methods ─────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 opacity-50">
-          <div className="flex items-center gap-3">
-            <CreditCard className="w-4 h-4 text-muted shrink-0" aria-hidden />
-            <p className="text-sm font-semibold text-ink">Payment methods</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted">Coming soon</span>
-            <ChevronRight className="w-4 h-4 text-muted" aria-hidden />
-          </div>
-        </div>
-      </div>
-
-      {/* ── 6. Preferences ─────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-        <h2 className="font-semibold text-base text-ink">Preferences</h2>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Bell className="w-4 h-4 text-muted shrink-0" aria-hidden />
-            <div>
-              <p className="text-sm font-medium text-ink">Notifications</p>
-              <p className="text-xs text-muted mt-0.5">Booking updates and alerts</p>
-            </div>
-          </div>
-          <span className="text-xs text-muted">Coming soon</span>
-        </div>
-
-        <div className="border-t border-border" />
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Globe className="w-4 h-4 text-muted shrink-0" aria-hidden />
-            <div>
-              <p className="text-sm font-medium text-ink">Language</p>
-              <p className="text-xs text-muted mt-0.5">English</p>
-            </div>
-          </div>
-          <span className="text-xs text-muted">Coming soon</span>
-        </div>
-
-        <div className="border-t border-border" />
-
-        <div className="flex items-start gap-3">
-          <Smartphone className="w-4 h-4 text-muted shrink-0 mt-0.5" aria-hidden />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-ink">App install prompt</p>
-            <p className="text-xs text-muted mt-0.5">
-              {installResetDone
-                ? 'Done. The install prompt will appear on your next visit to Home.'
-                : 'If you dismissed the install prompt, you can restore it here.'}
-            </p>
-          </div>
-          {!installResetDone && (
-            <button
-              type="button"
-              onClick={() => { clearPwaDismissal(); setInstallResetDone(true); }}
-              className="shrink-0 text-xs font-semibold text-copper hover:underline underline-offset-2 transition-colors"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Pause confirmation sheet ────────────────────────────────────────────── */}
+      {/* ── Pause confirmation sheet ──────────────────────────────────────────── */}
       <Sheet open={pauseSheetOpen} onClose={() => setPauseSheetOpen(false)} title="Pause Hosting?">
         <div className="space-y-4">
           <ul className="space-y-2.5 text-sm text-ink">
@@ -703,7 +734,7 @@ export function ProfileBody({
         </div>
       </Sheet>
 
-      {/* ── Leave setup confirmation sheet ─────────────────────────────────────── */}
+      {/* ── Leave setup confirmation sheet ───────────────────────────────────── */}
       <Sheet open={leaveSheetOpen} onClose={() => setLeaveSheetOpen(false)} title="Leave hosting setup?">
         <div className="space-y-4">
           <ul className="space-y-2.5 text-sm text-ink">
@@ -744,7 +775,7 @@ export function ProfileBody({
         </div>
       </Sheet>
 
-      {/* ── Avatar edit sheet ───────────────────────────────────────────────────── */}
+      {/* ── Avatar edit sheet ─────────────────────────────────────────────────── */}
       {avatarSheetOpen && (
         <>
           <div

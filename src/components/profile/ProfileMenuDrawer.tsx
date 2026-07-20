@@ -27,10 +27,10 @@ export function ProfileMenuDrawer({ isAdmin }: ProfileMenuDrawerProps) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="p-2 -mr-2 rounded-token text-muted hover:text-ink hover:bg-surface-page transition-colors"
+        className="size-10 grid place-items-center rounded-full bg-white border border-border shadow-sm transition active:scale-95"
         aria-label="Open profile menu"
       >
-        <MoreVertical className="w-5 h-5" />
+        <MoreVertical className="size-5 text-ink" />
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="More">
