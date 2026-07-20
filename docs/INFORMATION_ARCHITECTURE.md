@@ -39,23 +39,23 @@ Invalid answers: "because this page exists elsewhere," "users might want to go t
 
 ### Renderer structure
 
-Home is built from priority buckets, evaluated top to bottom. These are semantic priorities, not fixed visual sections; a bucket that has nothing to show simply does not render, including its header. Never show a bucket with a zero-state (no "Today's Bookings: 0").
+Home is built from five named zones, evaluated top to bottom. A zone that has nothing to show simply does not render (no headers, no zero-states). Never show a zone with a zero-state (no "Today's Bookings: 0").
 
 ```
-Greeting                              always
-P0  Attention        0..N cards       the only bucket that stacks
-P1  Continue         0..1 card
-P2  Snapshot          0..2 cards
-P3  Workspace         0..1 card
-P4  Suggestions       0..1 card
-P5  Learn             0..1 card
+Greeting        always          time-of-day salutation + avatar
+Attention       0..N cards      the only zone that stacks; time-sensitive, session, account-blocking, financial
+Snapshot        0..2 cards      read-only glance cards — tap to open, no action buttons
+Quick Actions   always          Find Charger, Plan Trip — navigation shortcuts only
+Nudge           0..1 card       cascade: unfinished → install-pwa → rule → discovery → evergreen tip
 ```
 
-**Max one card per bucket, except P0.** If multiple candidates qualify for Continue, Snapshot, Workspace, Suggestions, or Learn, pick the single most valuable one. Never let a bucket turn into a to-do list.
+**Quick Actions is always visible** regardless of account state. It contains only navigation shortcuts (never information cards, never summaries) and must never compete with Attention or Nudge content.
 
-**P0 is the sole exception** and can show multiple cards at once (e.g. "booking starts in 12 minutes" and "charger offline" both shown together), because both are genuinely blocking and hiding one to show the other risks the user missing something.
+**Max one card in Snapshot**, except it can hold up to 2 (e.g. one charging card + one hosting card). If more candidates qualify, pick the most valuable. Never let Snapshot become a to-do list.
 
-**P0 internal ordering**, when multiple P0 cards exist, sort in this exact order:
+**Attention is the sole exception** that stacks: multiple cards can appear simultaneously (e.g. "booking starts in 12 minutes" and "charger offline"), because both are genuinely blocking and hiding one risks missing something.
+
+**Attention internal ordering**, when multiple Attention cards exist, sort in this exact order:
 
 1. Time-sensitive (booking starts in X minutes)
 2. Session-related (driver waiting at charger)
@@ -63,22 +63,24 @@ P5  Learn             0..1 card
 4. Financial (payout failed)
 5. Everything else informational
 
+> **Implementation drift (known):** Pending booking requests (host-side Attention — "someone wants to charge") currently render *after* Snapshot in `src/app/home/page.tsx` rather than before it. This is a known ordering deviation; all other Attention items correctly render before Snapshot.
+
 ### Card source classes
 
-Used for P4 Suggestions and P5 Learn specifically. This deliberately avoids building any kind of AI/ML recommendation system for v1.
+Used for Nudge (rule and tip variants) specifically. This deliberately avoids building any kind of AI/ML recommendation system for v1.
 
-- **Class A, State Cards** — generated directly from deterministic database state (booking starts soon, resume draft, KYC rejected, charger offline, payout processed). These primarily populate P0 and P1.
-- **Class B, Rule Cards** — simple boolean conditions, no ML. Example: `if charger.photos < 5` → "Listings with 5+ photos receive more bookings." `if vehicle_count == 0` → "Add your first vehicle." `if no_booking_30_days` → "Lowering your price may increase bookings." These populate P4 Suggestions.
-- **Class C, Evergreen Tips** — lowest priority, static rotating content from a simple pool (e.g. a `tips.ts` file), used only when nothing better exists. "Charging during off-peak hours can be cheaper." "You can pause your charger any time." These populate P5 Learn.
+- **Class A, State Cards** — generated directly from deterministic database state (booking starts soon, resume draft, KYC rejected, charger offline, payout processed). These primarily populate Attention and Snapshot.
+- **Class B, Rule Cards** — simple boolean conditions, no ML. Example: `if charger.photos < 5` → "Listings with 5+ photos receive more bookings." `if vehicle_count == 0` → "Add your first vehicle." `if no_booking_30_days` → "Lowering your price may increase bookings." These populate Nudge (rule variant).
+- **Class C, Evergreen Tips** — lowest priority, static rotating content from a simple pool (e.g. a `tips.ts` file), used only when nothing better exists. "Charging during off-peak hours can be cheaper." "You can pause your charger any time." These populate Nudge (tip variant).
 
 ### KYC cards
 
-KYC gets its own four-state card type rather than being a generic notification. Lives in P0 Attention when actionable.
+KYC gets its own four-state card type rather than being a generic notification. Lives in Attention when actionable.
 
-- **Not Started** — "Complete verification, required before hosting" → P0 for lenders (blocking), Continue for drivers (not blocking)
-- **Pending** — "Verification under review, submitted [date], we'll notify you soon." Informational, does not need to be P0. Lives in P2 Snapshot.
+- **Not Started** — "Complete verification, required before hosting" → Attention for lenders (blocking)
+- **Pending** — "Verification under review, submitted [date], we'll notify you soon." Informational, does not need to be Attention. Lives in Snapshot.
 - **Approved** — no card on Home at all. Just a small badge in Profile. Do not spend Home space on a success state.
-- **Rejected** — "Verification rejected, [specific reason, e.g. PAN image is blurry]" → Resubmit. This is actionable, so it stays in P0, not P2.
+- **Rejected** — "Verification rejected, [specific reason, e.g. PAN image is blurry]" → Resubmit. This is actionable, so it stays in Attention, not Snapshot.
 
 ### Visual stability
 
@@ -128,9 +130,9 @@ Manage →
 
 Ask three questions, in order:
 
-1. Which bucket does it belong to: Attention, Continue, Snapshot, Workspace, Suggestion, or Learn?
-2. Does it outrank the card(s) already in that bucket?
-3. Does the bucket already have its maximum card count?
+1. Which zone does it belong to: Attention, Snapshot, or Nudge? (Quick Actions is fixed — never add data cards there.)
+2. Does it outrank the card(s) already in that zone?
+3. Does the zone already have its maximum card count?
 
 If these three questions don't yield a clear place for it, it probably doesn't belong on Home at all.
 
@@ -206,7 +208,12 @@ A unified surface for all lender operations. Reached via "Open Hosting Workspace
 - **Overview** — weekly earnings, active chargers, draft chargers, recent bookings, quick actions
 - **Chargers** — all / live / paused / draft / suspended, plus charger detail
 - **Bookings** — active / past / cancelled, plus detail
-- **Finance** — earnings, payouts
+- **Finance**
+  - **Overview** — total earned (all time), pending payouts at a glance *(not yet built — flag as separate scope)*
+  - **Earnings** — this week/month/lifetime totals, per-session breakdown, trends (`/lender/earnings`)
+  - **Payouts** — pending/processing/paid history, bank transfer references, failed payout recovery (`/lender/payouts`)
+
+  Earnings and Payouts are distinct destinations with distinct mental models: Earnings answers "how much did I make?" (revenue tracking); Payouts answers "did the money arrive?" (bank transfer status, UTR refs, failed transfers).
 - **Add Charger** — 7-step wizard
 
 ## Authentication Flow

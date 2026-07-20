@@ -25,7 +25,7 @@ async function getProfileData(userId: string) {
 
     adminSupabase
       .from('chargers')
-      .select('status, price_per_kwh')
+      .select('status')
       .eq('lender_id', userId)
       .is('deleted_at', null),
 
@@ -36,13 +36,12 @@ async function getProfileData(userId: string) {
       .eq('status', 'completed'),
   ]);
 
-  const chargers = (chargersResult.data ?? []) as { status: string; price_per_kwh: number }[];
+  const chargers = (chargersResult.data ?? []) as { status: string }[];
   const chargerStats = {
     published: chargers.filter(c => c.status === 'active' || c.status === 'paused').length,
     visible:   chargers.filter(c => c.status === 'active').length,
     draft:     chargers.filter(c => c.status === 'draft').length,
   };
-  const activePricePerKwh = chargers.find(c => c.status === 'active')?.price_per_kwh ?? null;
 
   // Lifetime earnings: sum lender_payout for all completed bookings
   let lifetimeEarningsPaise = 0;
@@ -70,7 +69,6 @@ async function getProfileData(userId: string) {
       id: string; status: string; submitted_at: string; rejection_reason: string | null;
     } | null,
     chargerStats,
-    activePricePerKwh,
     lifetimeEarningsPaise,
   };
 }
@@ -88,7 +86,7 @@ export default async function ProfilePage({
 
   const {
     user: profile, userError, submission,
-    chargerStats, activePricePerKwh, lifetimeEarningsPaise,
+    chargerStats, lifetimeEarningsPaise,
   } = await getProfileData(user.id);
 
   // DB query error — don't redirect to /login since the user IS authenticated
@@ -131,7 +129,6 @@ export default async function ProfilePage({
           showSubmittedBanner={searchParams.verified === 'submitted'}
           initialAvatarUrl={profile.avatar_url}
           lifetimeEarningsPaise={lifetimeEarningsPaise}
-          activePricePerKwh={activePricePerKwh}
           avgRating={profile.avg_rating}
         />
       </main>
