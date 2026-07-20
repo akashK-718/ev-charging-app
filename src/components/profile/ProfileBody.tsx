@@ -8,7 +8,7 @@ import {
   Camera, ImageIcon, ShieldQuestion, Trash2,
   Smartphone, Home, Car, CreditCard,
   ChevronRight, Bell, LayoutDashboard, TrendingUp,
-  PauseCircle, Star, HelpCircle, LogOut, Plug,
+  PauseCircle, Star, HelpCircle, LogOut,
 } from 'lucide-react';
 import { NameEditor } from './NameEditor';
 import { ProfileMenuDrawer } from './ProfileMenuDrawer';
@@ -48,7 +48,6 @@ interface ProfileBodyProps {
   showSubmittedBanner: boolean;
   initialAvatarUrl: string | null;
   lifetimeEarningsPaise: number;
-  activePricePerKwh: number | null;
   avgRating: number | null;
 }
 
@@ -131,7 +130,6 @@ export function ProfileBody({
   showSubmittedBanner,
   initialAvatarUrl,
   lifetimeEarningsPaise,
-  activePricePerKwh,
   avgRating,
 }: ProfileBodyProps) {
   const router = useRouter();
@@ -507,12 +505,6 @@ export function ProfileBody({
               </Link>
 
               <div className="mt-3 bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
-                <ProfileRow
-                  icon={<Plug className="size-4" />}
-                  label="My charger"
-                  value={activePricePerKwh != null ? `₹${activePricePerKwh}/kWh` : '—'}
-                  href="/lender/chargers"
-                />
                 {hostingState === 'active' ? (
                   <ProfileRow
                     icon={<PauseCircle className="size-4" />}
