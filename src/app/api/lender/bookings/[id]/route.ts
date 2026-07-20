@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
-import { runAutoCompleteEndSweep } from '@/lib/bookings/auto-complete-end';
+import { runFlagForReviewSweep } from '@/lib/bookings/flag-for-review';
 
 export async function GET(
   _request: NextRequest,
@@ -16,7 +16,7 @@ export async function GET(
 
   const adminSupabase = createAdminClient();
   await runAutoRejectSweep(adminSupabase);
-  await runAutoCompleteEndSweep(adminSupabase);
+  await runFlagForReviewSweep(adminSupabase);
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')

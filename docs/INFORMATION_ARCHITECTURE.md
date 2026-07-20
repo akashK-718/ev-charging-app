@@ -226,9 +226,55 @@ There is no role selection step. A `/welcome/role` step (Driver / Lender / Both)
 
 **Lender side:** Booking Detail → Accept/Reject → Session → Complete → Rating
 
+## Booking Lifecycle
+
+### State machine
+
+```
+pending → confirmed → awaiting_driver_confirmation → in_progress → awaiting_end_confirmation → completed
+       ↘ auto_rejected (30-min timeout)
+          confirmed/awaiting_driver_confirmation → no_show
+          any active state → cancelled (driver or admin)
+```
+
+### Terminal states
+
+`auto_rejected` and `no_show` are irreversible by design. A database trigger (`booking_terminal_state_guard`, migration 027) enforces this at the DB layer and raises an exception on any attempted status transition away from these states.
+
+### No-show lifecycle (awaiting_driver_confirmation)
+
+When the host taps Start and the driver hasn't confirmed, a 30-minute timer begins (tracked via `bookings.started_at`):
+
+- **T+25 min**: Push notification to host — "Driver hasn't arrived. Auto-cancel in 5 minutes." with two action buttons: **Keep Waiting** (extends by 30 min, one-time only) and **Mark No-show** (immediate).
+- **T+30 min**: Auto-transition to `no_show` if Keep Waiting was not used.
+- **T+55 min** (if Keep Waiting used): Second and final warning to host — no further extension.
+- **T+60 min**: Hard cutoff — `no_show` regardless of extension.
+
+Implemented in `src/lib/bookings/no-show-sweep.ts`, called by the pg_cron lifecycle sweep every minute.
+
+### awaiting_end_confirmation — manual review, never auto-complete
+
+MVP Rule: BrandName has no hardware-backed charger telemetry. Session energy and cost are derived from application events rather than physical meter readings. Therefore, any session stuck in awaiting_end_confirmation cannot be safely auto-completed and is placed into a manual review queue for resolution. This rule should be revisited if/when OCPP or smart-meter telemetry is added in a future version.
+
+Sessions stuck in `awaiting_end_confirmation` for more than `SESSION_END_REVIEW_GRACE_MINUTES` (default 30 min) are inserted into `session_review_queue` and flagged for admin resolution at `/admin/review-queue`. The previous auto-complete behaviour (`src/lib/bookings/auto-complete-end.ts`) has been removed.
+
+### Scheduling infrastructure
+
+The `booking-lifecycle-sweep` pg_cron job (migration 026) calls `POST /api/internal/lifecycle-sweep` every minute. This endpoint runs all time-sensitive sweeps:
+1. Auto-reject pending requests not accepted within 30 min.
+2. No-show warning at T+25 min.
+3. No-show auto-transition at T+30/60 min.
+4. Flag stuck `awaiting_end_confirmation` sessions for review.
+
+Lazy sweeps in individual API routes remain as a belt-and-suspenders fallback. Setup steps are in `docs/SETUP.md § Lifecycle sweep`.
+
+### Charger slot availability
+
+Slot availability is derived from active booking status. When a booking reaches any terminal state (`auto_rejected`, `no_show`, `cancelled`, `completed`), it is no longer "active" and the slot is immediately available for new bookings. No explicit slot-release step is needed — the status-based filtering in `chargers_within_radius` and `chargers_along_route` handles this automatically.
+
 ## Admin
 
-Dashboard → KYC → Payouts → Users → Disputes
+Dashboard → KYC → Payouts → Users → Disputes → Session review queue
 
 ## Help
 

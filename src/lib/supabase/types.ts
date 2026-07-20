@@ -173,6 +173,10 @@ export type Database = {
           cancelled_at: string | null;
           rejection_reason: string | null;
           notification_sent_at: string | null;
+          noshow_warning_sent_at: string | null;
+          noshow_extension_warning_sent_at: string | null;
+          keep_waiting_until: string | null;
+          lifecycle_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -198,6 +202,10 @@ export type Database = {
           cancelled_at?: string | null;
           rejection_reason?: string | null;
           notification_sent_at?: string | null;
+          noshow_warning_sent_at?: string | null;
+          noshow_extension_warning_sent_at?: string | null;
+          keep_waiting_until?: string | null;
+          lifecycle_reason?: string | null;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
         Relationships: [];
@@ -346,6 +354,30 @@ export type Database = {
           read?: boolean;
         };
         Update: Partial<Database['public']['Tables']['notifications']['Insert']>;
+        Relationships: [];
+      };
+      session_review_queue: {
+        Row: {
+          id: string;
+          booking_id: string;
+          flagged_at: string;
+          status: 'pending' | 'resolved';
+          resolved_at: string | null;
+          resolved_by: string | null;
+          resolution: 'completed' | 'cancelled' | null;
+          admin_notes: string | null;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          flagged_at?: string;
+          status?: 'pending' | 'resolved';
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          resolution?: 'completed' | 'cancelled' | null;
+          admin_notes?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['session_review_queue']['Insert']>;
         Relationships: [];
       };
     };

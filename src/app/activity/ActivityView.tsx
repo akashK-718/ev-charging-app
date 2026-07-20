@@ -26,6 +26,7 @@ export type HistoryItem = {
   status: string;
   scheduledStart: string;
   scheduledEnd: string | null;
+  lifecycleReason: string | null;
 };
 
 export type UpdateItem = {
@@ -591,6 +592,10 @@ function DriverFeaturedCard({ item }: { item: HistoryItem }) {
           {fmtDate(item.scheduledStart)} at {fmtTime(item.scheduledStart)}
         </p>
 
+        {item.lifecycleReason && isTerminal && (
+          <p className="text-xs text-muted/70 mt-0.5">{item.lifecycleReason}</p>
+        )}
+
         {amountText && (
           <p className="text-sm font-bold mt-1 text-ink">{amountText}</p>
         )}
@@ -644,6 +649,7 @@ function HostFeaturedCard({ item }: { item: HistoryItem }) {
   const statusLabel = HOST_STATUS_LABEL[item.status] ?? item.status;
   const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
   const amountText  = hostAmountDisplay(item);
+  const isTerminal  = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
 
   return (
     <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
@@ -679,6 +685,10 @@ function HostFeaturedCard({ item }: { item: HistoryItem }) {
           {fmtDate(item.scheduledStart)} at {fmtTime(item.scheduledStart)}
         </p>
 
+        {item.lifecycleReason && isTerminal && (
+          <p className="text-xs text-muted/70 mt-0.5">{item.lifecycleReason}</p>
+        )}
+
         {amountText && (
           <p className="text-sm font-bold mt-1 text-green">{amountText}</p>
         )}
@@ -707,6 +717,7 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
   const kind        = historyItemKind(item);
   const cfg         = KIND_ICON[kind];
   const showBookAgain = item.status === 'completed';
+  const isTerminal  = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
@@ -728,6 +739,9 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
             ? `Hosted by ${item.counterpartyName} · ${fmtDate(item.scheduledStart)}`
             : fmtDate(item.scheduledStart)}
         </p>
+        {item.lifecycleReason && isTerminal && (
+          <p className="text-[10px] text-muted/60 truncate">{item.lifecycleReason}</p>
+        )}
       </div>
 
       <div className="flex flex-col items-end gap-1 shrink-0">
@@ -761,6 +775,7 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
   const amountText  = hostAmountDisplay(item);
   const kind        = historyItemKind(item);
   const cfg         = KIND_ICON[kind];
+  const isTerminal  = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
@@ -782,6 +797,9 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
             ? `Guest: ${item.counterpartyName} · ${fmtDate(item.scheduledStart)}`
             : fmtDate(item.scheduledStart)}
         </p>
+        {item.lifecycleReason && isTerminal && (
+          <p className="text-[10px] text-muted/60 truncate">{item.lifecycleReason}</p>
+        )}
       </div>
 
       <div className="flex flex-col items-end gap-1 shrink-0">

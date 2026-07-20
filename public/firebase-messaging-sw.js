@@ -12,6 +12,9 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Handles data-only FCM messages (no `notification` key in the FCM payload).
+// Messages that include a webpush.notification object (e.g. action-button
+// notifications) are displayed directly by the browser and skip this handler.
 messaging.onBackgroundMessage(payload => {
   const title = payload.data?.title ?? 'EV Charging';
   const body = payload.data?.body ?? '';
@@ -26,8 +29,56 @@ messaging.onBackgroundMessage(payload => {
 });
 
 self.addEventListener('notificationclick', event => {
+  const action = event.action;
+  const notifData = event.notification.data ?? {};
+  const url = notifData.url ?? '/';
+  const bookingId = notifData.booking_id;
+
   event.notification.close();
-  const url = event.notification.data?.url ?? '/';
+
+  if (action === 'keep_waiting' && bookingId) {
+    event.waitUntil(
+      fetch(`/api/bookings/${bookingId}/no-show-action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'keep_waiting' }),
+      })
+        .then(() =>
+          self.registration.showNotification('Waiting extended', {
+            body: 'Booking kept active for 30 more minutes.',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            tag: `noshow-extended-${bookingId}`,
+          })
+        )
+        .catch(() => clients.openWindow(url))
+    );
+    return;
+  }
+
+  if (action === 'mark_no_show' && bookingId) {
+    event.waitUntil(
+      fetch(`/api/bookings/${bookingId}/no-show-action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'mark_no_show' }),
+      })
+        .then(() =>
+          self.registration.showNotification('Booking closed', {
+            body: 'No-show recorded. Booking has been closed.',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            tag: `noshow-confirmed-${bookingId}`,
+          })
+        )
+        .catch(() => clients.openWindow(url))
+    );
+    return;
+  }
+
+  // Default: open the booking URL
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {

@@ -3,10 +3,11 @@ import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 const ADMIN_NAV = [
-  { href: '/admin',          label: 'Overview' },
-  { href: '/admin/kyc',      label: 'KYC' },
-  { href: '/admin/payouts',  label: 'Payouts' },
-  { href: '/admin/users',    label: 'Users' },
+  { href: '/admin',               label: 'Overview' },
+  { href: '/admin/kyc',           label: 'KYC' },
+  { href: '/admin/payouts',       label: 'Payouts' },
+  { href: '/admin/users',         label: 'Users' },
+  { href: '/admin/review-queue',  label: 'Review queue' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
