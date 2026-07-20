@@ -239,24 +239,31 @@ export default function ExplorePage() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const deeplinkedId = searchParams.get('charger_id');
-    if (!deeplinkedId) return;
+    const modeParam = searchParams.get('mode');
+    if (!deeplinkedId && !modeParam) return;
 
-    // Strip the param immediately so back navigation returns cleanly to /explore
+    // Strip params immediately so back navigation returns cleanly to /explore
     window.history.replaceState(null, '', '/explore');
 
-    void (async () => {
-      try {
-        const res = await fetch(`/api/chargers/${deeplinkedId}`);
-        if (!res.ok) return;
-        const body = await res.json() as { data: ChargerRow & { latitude: number; longitude: number } };
-        const charger = body.data;
-        setSelectedCharger(charger);
-        setSearchCenter({ lat: Number(charger.latitude), lng: Number(charger.longitude) });
-        setCenterType('manual');
-      } catch {
-        // Deeplink failure must never break the map
-      }
-    })();
+    if (modeParam === 'near_me' || modeParam === 'along_route') {
+      setSearchMode(modeParam);
+    }
+
+    if (deeplinkedId) {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/chargers/${deeplinkedId}`);
+          if (!res.ok) return;
+          const body = await res.json() as { data: ChargerRow & { latitude: number; longitude: number } };
+          const charger = body.data;
+          setSelectedCharger(charger);
+          setSearchCenter({ lat: Number(charger.latitude), lng: Number(charger.longitude) });
+          setCenterType('manual');
+        } catch {
+          // Deeplink failure must never break the map
+        }
+      })();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

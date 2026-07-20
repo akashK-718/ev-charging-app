@@ -106,6 +106,8 @@ Need help? Read FAQs →
 ```
 Do not show a mini-Explore charger list or "top rated chargers near you" on Home. That duplicates Explore's ownership of discovery.
 
+**Nearby charger cards must never appear on Home** — not as a carousel, grid, or any other format. Explore is the single owner of charger discovery. Use a "Find a charger" CTA to link users into Explore; the CTA may carry a `?mode=near_me` deeplink to land them in the right mode.
+
 **New lender:**
 ```
 Greeting
