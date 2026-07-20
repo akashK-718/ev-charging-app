@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 export type HistoryItem = {
   id: string;
   kind: 'charging' | 'hosting';
+  roleInSession: 'driver' | 'host';
   bookingId: string;
   chargerId: string;
   chargerTitle: string;
@@ -96,20 +97,20 @@ function timeAgo(ts: string): string {
   return new Date(ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-function fmtPrice(amountPaise: number | null, status: string): string | null {
-  if (status === 'cancelled') return '₹0.00';
-  if (amountPaise !== null && amountPaise >= 0) return `₹${(amountPaise / 100).toFixed(2)}`;
+function driverAmountDisplay(item: HistoryItem): string | null {
+  if (item.status === 'cancelled' || item.status === 'auto_reject') return null;
+  if (item.displayAmountPaise !== null && item.displayAmountPaise >= 0) {
+    return `Paid ₹${(item.displayAmountPaise / 100).toFixed(2)}`;
+  }
   return null;
 }
 
-// Returns signed display amount: + prefix in green for host payouts, neutral for driver payments
-function signedAmount(item: HistoryItem): { text: string; positive: boolean } | null {
-  const price = fmtPrice(item.displayAmountPaise, item.status);
-  if (!price) return null;
-  if (item.kind === 'hosting' && item.status === 'completed') {
-    return { text: `+${price}`, positive: true };
+function hostAmountDisplay(item: HistoryItem): string | null {
+  if (item.status !== 'completed') return null;
+  if (item.displayAmountPaise !== null && item.displayAmountPaise >= 0) {
+    return `Earned ₹${(item.displayAmountPaise / 100).toFixed(2)}`;
   }
-  return { text: price, positive: false };
+  return null;
 }
 
 // Deterministic fuzz based on booking ID — stable per booking, ~350 m offset
@@ -139,23 +140,41 @@ const MAP_FILTER = 'hue-rotate(55deg) saturate(0.75) brightness(1.01)';
 
 // ── Status display ────────────────────────────────────────────────────────────
 
-const STATUS_LABEL: Record<string, string> = {
+const DRIVER_STATUS_LABEL: Record<string, string> = {
+  pending:                      'Awaiting confirmation',
   confirmed:                    'Confirmed',
-  awaiting_driver_confirmation: 'Awaiting confirmation',
-  pending:                      'Pending',
-  in_progress:                  'In progress',
+  awaiting_driver_confirmation: 'Ready to start',
+  in_progress:                  'Charging in progress',
+  awaiting_end_confirmation:    'Ready to end',
   completed:                    'Completed',
   cancelled:                    'Cancelled',
+  no_show:                      'No show',
+  auto_reject:                  'Not accepted',
+};
+
+const HOST_STATUS_LABEL: Record<string, string> = {
+  pending:                      'Awaiting your approval',
+  confirmed:                    'Booking confirmed',
+  awaiting_driver_confirmation: 'Waiting for driver',
+  in_progress:                  'Guest charging',
+  awaiting_end_confirmation:    'Waiting to end session',
+  completed:                    'Completed',
+  cancelled:                    'Cancelled',
+  no_show:                      "Driver didn't arrive",
+  auto_reject:                  'Auto-rejected',
 };
 
 // GreenPath pill colors: amber for action-needed, green-soft for neutral, danger for cancelled
 const STATUS_COLOR: Record<string, string> = {
+  pending:                      'bg-amber-100 text-amber-700',
   confirmed:                    'bg-green-soft text-green',
   awaiting_driver_confirmation: 'bg-amber-100 text-amber-700',
-  pending:                      'bg-amber-100 text-amber-700',
   in_progress:                  'bg-green-soft text-green',
+  awaiting_end_confirmation:    'bg-amber-100 text-amber-700',
   completed:                    'bg-surface-page text-muted',
   cancelled:                    'bg-danger-soft text-danger',
+  no_show:                      'bg-danger-soft text-danger',
+  auto_reject:                  'bg-surface-page text-muted',
 };
 
 // ── Notification display ──────────────────────────────────────────────────────
@@ -459,57 +478,84 @@ function SortButton({ sort, onChange }: { sort: SortDir; onChange: (s: SortDir) 
   );
 }
 
-// ── Featured session card ─────────────────────────────────────────────────────
+// ── Shared map thumbnail ──────────────────────────────────────────────────────
 
-function FeaturedSessionCard({ item }: { item: HistoryItem }) {
-  const [mapImgError, setMapImgError] = useState(false);
-
-  const detailHref  = item.kind === 'charging'
-    ? `/bookings/${item.bookingId}`
-    : `/lender/bookings/${item.bookingId}`;
-  const statusLabel = STATUS_LABEL[item.status];
-  const statusColor = STATUS_COLOR[item.status] ?? 'text-muted bg-surface-page';
-  const amt         = signedAmount(item);
-  const showRate    = item.kind === 'charging' && item.status === 'completed' && !item.hasRated;
-
-  const mapSrc = !mapImgError && item.chargerLat !== null && item.chargerLng !== null
+function SessionMapThumbnail({
+  item, href, onError,
+}: {
+  item: HistoryItem;
+  href: string;
+  onError: () => void;
+}) {
+  const mapSrc = item.chargerLat !== null && item.chargerLng !== null
     ? staticMapUrl(item.chargerLat, item.chargerLng, item.bookingId)
     : null;
 
   return (
-    <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
-      {/* Map thumbnail — approximate location, fuzzed ~300 m; CSS filter approximates GreenPath palette */}
-      <Link href={detailHref} className="block h-36 bg-surface-page overflow-hidden">
-        {mapSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={mapSrc}
-            alt=""
-            className="w-full h-full object-cover"
-            style={{ filter: MAP_FILTER }}
-            onError={() => setMapImgError(true)}
-          />
-        ) : item.chargerPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.chargerPhoto} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <MapPin className="w-8 h-8 text-muted/40" aria-hidden />
-          </div>
-        )}
-      </Link>
+    <Link href={href} className="block h-36 bg-surface-page overflow-hidden">
+      {mapSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mapSrc}
+          alt=""
+          className="w-full h-full object-cover"
+          style={{ filter: MAP_FILTER }}
+          onError={onError}
+        />
+      ) : item.chargerPhoto ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.chargerPhoto} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <MapPin className="w-8 h-8 text-muted/40" aria-hidden />
+        </div>
+      )}
+    </Link>
+  );
+}
 
-      {/* Details */}
+// ── Driver featured card ──────────────────────────────────────────────────────
+
+function DriverFeaturedCard({ item }: { item: HistoryItem }) {
+  const [mapImgError, setMapImgError] = useState(false);
+  const detailHref  = `/bookings/${item.bookingId}`;
+  const statusLabel = DRIVER_STATUS_LABEL[item.status] ?? item.status;
+  const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
+  const amountText  = driverAmountDisplay(item);
+  const showRate    = item.status === 'completed' && !item.hasRated;
+
+  const isUpcoming  = ['pending', 'confirmed'].includes(item.status);
+  const isReadyToStart = item.status === 'awaiting_driver_confirmation';
+  const isInProgress   = item.status === 'in_progress' || item.status === 'awaiting_end_confirmation';
+  const isCompleted    = item.status === 'completed';
+  const isTerminal     = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
+
+  const primaryCtaLabel =
+    isUpcoming       ? 'Get directions'   :
+    isReadyToStart   ? 'Start session'    :
+    isInProgress     ? 'View session'     :
+    isTerminal       ? 'View details'     : null;
+
+  return (
+    <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
+      {!mapImgError && (
+        <SessionMapThumbnail item={item} href={detailHref} onError={() => setMapImgError(true)} />
+      )}
+      {mapImgError && (
+        <Link href={detailHref} className="block h-36 bg-surface-page overflow-hidden">
+          {item.chargerPhoto
+            ? <img src={item.chargerPhoto} alt="" className="w-full h-full object-cover" /> // eslint-disable-line @next/next/no-img-element
+            : <div className="w-full h-full flex items-center justify-center"><MapPin className="w-8 h-8 text-muted/40" aria-hidden /></div>
+          }
+        </Link>
+      )}
+
       <div className="px-4 pt-3.5 pb-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">
-            {item.kind === 'charging' ? 'Charging' : 'Hosting'}
-          </p>
-          {statusLabel && (
-            <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', statusColor)}>
-              {statusLabel}
-            </span>
-          )}
+          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">YOU CHARGED</p>
+          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', statusColor)}>
+            {statusLabel}
+          </span>
         </div>
 
         <Link href={detailHref} className="block">
@@ -517,45 +563,112 @@ function FeaturedSessionCard({ item }: { item: HistoryItem }) {
         </Link>
 
         {item.counterpartyName && (
-          <p className="text-xs text-muted mt-0.5">
-            {item.kind === 'charging' ? 'Host' : 'Driver'}: {item.counterpartyName}
-          </p>
+          <p className="text-xs text-muted mt-0.5">Hosted by {item.counterpartyName}</p>
         )}
 
         <p className="text-xs text-muted mt-1">
           {fmtDate(item.scheduledStart)} at {fmtTime(item.scheduledStart)}
         </p>
 
-        {amt && (
-          <p className={cn('text-sm font-bold mt-1', amt.positive ? 'text-green-600' : 'text-ink')}>
-            {amt.text}
-          </p>
+        {amountText && (
+          <p className="text-sm font-bold mt-1 text-ink">{amountText}</p>
         )}
 
-        {/* Actions — Book again always present; Rate when applicable; View booking always secondary */}
         <div className="space-y-2 mt-3.5">
-          <div className="flex items-center gap-2">
-            {showRate && (
-              <Link
-                href={detailHref}
-                className="flex-1 flex items-center justify-center h-9 rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
-              >
-                Rate session
-              </Link>
-            )}
-            <Link
-              href={`/explore/${item.chargerId}`}
-              className={cn(
-                'flex items-center justify-center h-9 rounded-xl text-sm font-semibold bg-green text-white hover:bg-green-deep transition-colors',
-                showRate ? 'flex-1' : 'w-full',
+          {isCompleted ? (
+            <div className="flex items-center gap-2">
+              {showRate && (
+                <Link
+                  href={detailHref}
+                  className="flex-1 flex items-center justify-center h-9 rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
+                >
+                  Rate session
+                </Link>
               )}
+              <Link
+                href={`/explore/${item.chargerId}`}
+                className={cn(
+                  'flex items-center justify-center h-9 rounded-xl text-sm font-semibold bg-green text-white hover:bg-green-deep transition-colors',
+                  showRate ? 'flex-1' : 'w-full',
+                )}
+              >
+                Book again
+              </Link>
+            </div>
+          ) : primaryCtaLabel && (
+            <Link
+              href={detailHref}
+              className="flex items-center justify-center h-9 w-full rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
             >
-              Book again
+              {primaryCtaLabel}
             </Link>
-          </div>
+          )}
+          {!isTerminal && (
+            <Link
+              href={detailHref}
+              className="flex items-center justify-center gap-1 py-0.5 w-full text-sm font-semibold text-muted hover:text-ink transition-colors"
+            >
+              View booking
+              <ChevronRight className="w-3.5 h-3.5" aria-hidden />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Host featured card ────────────────────────────────────────────────────────
+
+function HostFeaturedCard({ item }: { item: HistoryItem }) {
+  const [mapImgError, setMapImgError] = useState(false);
+  const detailHref  = `/lender/bookings/${item.bookingId}`;
+  const statusLabel = HOST_STATUS_LABEL[item.status] ?? item.status;
+  const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
+  const amountText  = hostAmountDisplay(item);
+
+  return (
+    <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
+      {!mapImgError && (
+        <SessionMapThumbnail item={item} href={detailHref} onError={() => setMapImgError(true)} />
+      )}
+      {mapImgError && (
+        <Link href={detailHref} className="block h-36 bg-surface-page overflow-hidden">
+          {item.chargerPhoto
+            ? <img src={item.chargerPhoto} alt="" className="w-full h-full object-cover" /> // eslint-disable-line @next/next/no-img-element
+            : <div className="w-full h-full flex items-center justify-center"><MapPin className="w-8 h-8 text-muted/40" aria-hidden /></div>
+          }
+        </Link>
+      )}
+
+      <div className="px-4 pt-3.5 pb-4">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">YOU HOSTED</p>
+          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', statusColor)}>
+            {statusLabel}
+          </span>
+        </div>
+
+        <Link href={detailHref} className="block">
+          <p className="text-base font-semibold text-ink leading-snug">{item.chargerTitle}</p>
+        </Link>
+
+        {item.counterpartyName && (
+          <p className="text-xs text-muted mt-0.5">Guest: {item.counterpartyName}</p>
+        )}
+
+        <p className="text-xs text-muted mt-1">
+          {fmtDate(item.scheduledStart)} at {fmtTime(item.scheduledStart)}
+        </p>
+
+        {amountText && (
+          <p className="text-sm font-bold mt-1 text-green">{amountText}</p>
+        )}
+
+        <div className="mt-3.5">
           <Link
             href={detailHref}
-            className="flex items-center justify-center gap-1 py-0.5 w-full text-sm font-semibold text-muted hover:text-ink transition-colors"
+            className="flex items-center justify-center gap-1 h-9 w-full rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
           >
             View booking
             <ChevronRight className="w-3.5 h-3.5" aria-hidden />
@@ -566,54 +679,47 @@ function FeaturedSessionCard({ item }: { item: HistoryItem }) {
   );
 }
 
-// ── Compact session row ───────────────────────────────────────────────────────
+// ── Compact session rows ──────────────────────────────────────────────────────
 
-function CompactSessionRow({ item }: { item: HistoryItem }) {
-  const detailHref    = item.kind === 'charging'
-    ? `/bookings/${item.bookingId}`
-    : `/lender/bookings/${item.bookingId}`;
-  const statusLabel   = STATUS_LABEL[item.status];
-  const statusColor   = STATUS_COLOR[item.status] ?? 'text-muted bg-surface-page';
-  const amt           = signedAmount(item);
-  const showBookAgain = item.kind === 'charging' && item.status === 'completed';
-  const kind          = historyItemKind(item);
-  const cfg           = KIND_ICON[kind];
+function DriverCompactRow({ item }: { item: HistoryItem }) {
+  const detailHref  = `/bookings/${item.bookingId}`;
+  const statusLabel = DRIVER_STATUS_LABEL[item.status] ?? item.status;
+  const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
+  const amountText  = driverAmountDisplay(item);
+  const kind        = historyItemKind(item);
+  const cfg         = KIND_ICON[kind];
+  const showBookAgain = item.status === 'completed';
 
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
-      {/* Kind-coded 40px icon tile */}
       <Link href={detailHref} className="shrink-0">
         <div className={cn('size-10 rounded-2xl grid place-items-center', cfg.bg)}>
           {cfg.icon}
         </div>
       </Link>
 
-      {/* Text */}
       <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold tracking-wider uppercase text-muted leading-none mb-0.5">
+          YOU CHARGED
+        </p>
         <Link href={detailHref}>
           <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
         </Link>
-        {item.counterpartyName && (
-          <p className="text-xs text-muted truncate">
-            {item.kind === 'charging' ? 'Host' : 'Driver'}: {item.counterpartyName}
-          </p>
-        )}
-        <p className="text-xs text-muted">
-          {fmtDate(item.scheduledStart)} · {fmtTime(item.scheduledStart)}
+        <p className="text-xs text-muted truncate">
+          {item.counterpartyName
+            ? `Hosted by ${item.counterpartyName} · ${fmtDate(item.scheduledStart)}`
+            : fmtDate(item.scheduledStart)}
         </p>
       </div>
 
-      {/* Right: signed amount or status pill + action */}
       <div className="flex flex-col items-end gap-1 shrink-0">
-        {amt ? (
-          <p className={cn('text-sm font-bold', amt.positive ? 'text-green-600' : 'text-ink')}>
-            {amt.text}
-          </p>
-        ) : statusLabel ? (
+        {amountText ? (
+          <p className="text-xs font-semibold text-ink">{amountText}</p>
+        ) : (
           <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full', statusColor)}>
             {statusLabel}
           </span>
-        ) : null}
+        )}
         {showBookAgain ? (
           <Link
             href={`/explore/${item.chargerId}`}
@@ -624,6 +730,50 @@ function CompactSessionRow({ item }: { item: HistoryItem }) {
         ) : (
           <ChevronRight className="w-3.5 h-3.5 text-muted mt-0.5" aria-hidden />
         )}
+      </div>
+    </div>
+  );
+}
+
+function HostCompactRow({ item }: { item: HistoryItem }) {
+  const detailHref  = `/lender/bookings/${item.bookingId}`;
+  const statusLabel = HOST_STATUS_LABEL[item.status] ?? item.status;
+  const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
+  const amountText  = hostAmountDisplay(item);
+  const kind        = historyItemKind(item);
+  const cfg         = KIND_ICON[kind];
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <Link href={detailHref} className="shrink-0">
+        <div className={cn('size-10 rounded-2xl grid place-items-center', cfg.bg)}>
+          {cfg.icon}
+        </div>
+      </Link>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-semibold tracking-wider uppercase text-muted leading-none mb-0.5">
+          YOU HOSTED
+        </p>
+        <Link href={detailHref}>
+          <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
+        </Link>
+        <p className="text-xs text-muted truncate">
+          {item.counterpartyName
+            ? `Guest: ${item.counterpartyName} · ${fmtDate(item.scheduledStart)}`
+            : fmtDate(item.scheduledStart)}
+        </p>
+      </div>
+
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        {amountText ? (
+          <p className="text-xs font-semibold text-green">{amountText}</p>
+        ) : (
+          <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full', statusColor)}>
+            {statusLabel}
+          </span>
+        )}
+        <ChevronRight className="w-3.5 h-3.5 text-muted mt-0.5" aria-hidden />
       </div>
     </div>
   );
@@ -721,7 +871,11 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
             ) : (
               <div className="space-y-5 pb-6">
                 {/* Featured card — most recent session in current filter */}
-                {featured && <FeaturedSessionCard item={featured} />}
+                {featured && (
+                  featured.roleInSession === 'driver'
+                    ? <DriverFeaturedCard item={featured} />
+                    : <HostFeaturedCard item={featured} />
+                )}
 
                 {/* Compact list — single rounded-3xl card, date groups as section headers inside */}
                 {grouped.length > 0 && (
@@ -738,7 +892,9 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
                         </div>
                         <div className="divide-y divide-border">
                           {items.map(item => (
-                            <CompactSessionRow key={item.id} item={item} />
+                            item.roleInSession === 'driver'
+                              ? <DriverCompactRow key={item.id} item={item} />
+                              : <HostCompactRow key={item.id} item={item} />
                           ))}
                         </div>
                       </div>
