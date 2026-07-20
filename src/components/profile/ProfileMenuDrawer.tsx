@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { MoreVertical, LogOut, Shield, HelpCircle, FileText } from 'lucide-react';
+import { MoreVertical, LogOut, Shield, FileText } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -42,11 +42,6 @@ export function ProfileMenuDrawer({ isAdmin }: ProfileMenuDrawerProps) {
               Admin panel
             </Link>
           )}
-
-          <Link href="/help" onClick={() => setOpen(false)} className={itemClass}>
-            <HelpCircle className="w-4 h-4 text-muted shrink-0" />
-            Help and support
-          </Link>
 
           <Link href="/terms" onClick={() => setOpen(false)} className={itemClass}>
             <FileText className="w-4 h-4 text-muted shrink-0" />
