@@ -56,6 +56,14 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 4) return phone;
+  const last4 = digits.slice(-4);
+  const prefix = digits.length > 10 ? `+${digits.slice(0, digits.length - 10)} ` : '';
+  return `${prefix}••••••${last4}`;
+}
+
 // ── UI helpers ─────────────────────────────────────────────────────────────────
 
 function SectionLabel({
@@ -114,8 +122,7 @@ function ProfileRow({
 export function ProfileBody({
   isAdmin,
   initialName,
-  // phone retained for future use
-  phone: _phone,
+  phone,
   hostingState: initialHostingState,
   chargerStats,
   createdAt,
@@ -495,7 +502,7 @@ export function ProfileBody({
                   {' '}<span className="text-xs font-normal text-white/50">earned all time</span>
                 </p>
                 <p className="text-[11px] text-white/60 mt-1">
-                  Bookings, payouts and your listing — managed in one place.
+                  Bookings, payouts and your listing, managed in one place.
                 </p>
               </Link>
 
@@ -570,12 +577,14 @@ export function ProfileBody({
               )}
 
               {kycStatus === 'approved' && (
-                <div className="flex gap-3 p-4 rounded-2xl border bg-green-50 border-green-200">
-                  <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-green-600" />
+                <div className="flex items-center gap-3 p-4 rounded-2xl border bg-green-soft border-green">
+                  <div className="size-9 rounded-2xl bg-green grid place-items-center shrink-0">
+                    <ShieldCheck className="size-5 text-white" />
+                  </div>
                   <div>
-                    <p className="font-semibold text-sm text-green-700">Verified</p>
+                    <p className="font-semibold text-sm text-green">Verified</p>
                     {submission && (
-                      <p className="text-xs text-muted mt-1">Verified on {formatDate(submission.submitted_at)}</p>
+                      <p className="text-xs text-green-deep mt-1">Verified on {formatDate(submission.submitted_at)}</p>
                     )}
                   </div>
                 </div>
@@ -622,6 +631,16 @@ export function ProfileBody({
                 showKycContext={hostingStarted}
                 onNameChange={setDisplayName}
               />
+            </div>
+
+            {/* Phone (read-only) */}
+            <div className="px-4 py-3.5">
+              <p className="text-xs text-muted mb-0.5">Phone</p>
+              <p className="text-sm font-semibold text-ink">{maskPhone(phone)}</p>
+              {/* TODO: Implement phone change flow in future PR */}
+              <Link href="/help" className="text-xs text-muted mt-0.5 block hover:text-ink transition-colors">
+                To change your phone number, contact support
+              </Link>
             </div>
 
             <ProfileRow
@@ -688,7 +707,7 @@ export function ProfileBody({
 
         {/* ── Footer tagline ───────────────────────────────────────────────────── */}
         <p className="text-center text-[10px] text-muted mt-6 leading-relaxed px-8">
-          One account for everything — charging always works.<br />
+          One account for everything. Charging always works.<br />
           Hosting is just a section that appears when you turn it on.
         </p>
 
