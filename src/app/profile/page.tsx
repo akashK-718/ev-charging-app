@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ProfileBody } from '@/components/profile/ProfileBody';
-import { ProfileMenuDrawer } from '@/components/profile/ProfileMenuDrawer';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 
 type HostingState = 'not_enabled' | 'setup_in_progress' | 'setup_deferred' | 'active' | 'paused';
@@ -9,10 +8,10 @@ type HostingState = 'not_enabled' | 'setup_in_progress' | 'setup_deferred' | 'ac
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
 
-  const [userResult, submissionResult, chargersResult] = await Promise.all([
+  const [userResult, submissionResult, chargersResult, lenderBookingsResult] = await Promise.all([
     adminSupabase
       .from('users')
-      .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused, hosting_setup_deferred')
+      .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused, hosting_setup_deferred, avg_rating')
       .eq('id', userId)
       .single(),
 
@@ -26,29 +25,53 @@ async function getProfileData(userId: string) {
 
     adminSupabase
       .from('chargers')
-      .select('status')
+      .select('status, price_per_kwh')
       .eq('lender_id', userId)
       .is('deleted_at', null),
+
+    adminSupabase
+      .from('bookings')
+      .select('id')
+      .eq('lender_id', userId)
+      .eq('status', 'completed'),
   ]);
 
-  const chargers = (chargersResult.data ?? []) as { status: string }[];
+  const chargers = (chargersResult.data ?? []) as { status: string; price_per_kwh: number }[];
   const chargerStats = {
     published: chargers.filter(c => c.status === 'active' || c.status === 'paused').length,
     visible:   chargers.filter(c => c.status === 'active').length,
     draft:     chargers.filter(c => c.status === 'draft').length,
   };
+  const activePricePerKwh = chargers.find(c => c.status === 'active')?.price_per_kwh ?? null;
+
+  // Lifetime earnings: sum lender_payout for all completed bookings
+  let lifetimeEarningsPaise = 0;
+  const bookingIds = (lenderBookingsResult.data ?? []).map(b => b.id as string);
+  if (bookingIds.length > 0) {
+    const { data: paymentsData } = await adminSupabase
+      .from('payments')
+      .select('lender_payout')
+      .in('booking_id', bookingIds);
+    lifetimeEarningsPaise = (paymentsData ?? []).reduce(
+      (s, p) => s + (Number(p.lender_payout) || 0),
+      0,
+    );
+  }
 
   return {
     user: userResult.data as {
       id: string; name: string | null; phone: string;
       role: string; kyc_status: string; created_at: string;
-      avatar_url: string | null; hosting_paused: boolean; hosting_setup_deferred: boolean;
+      avatar_url: string | null; hosting_paused: boolean;
+      hosting_setup_deferred: boolean; avg_rating: number | null;
     } | null,
     userError: userResult.error,
     submission: submissionResult.data as {
       id: string; status: string; submitted_at: string; rejection_reason: string | null;
     } | null,
     chargerStats,
+    activePricePerKwh,
+    lifetimeEarningsPaise,
   };
 }
 
@@ -63,9 +86,12 @@ export default async function ProfilePage({
 
   const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
 
-  const { user: profile, userError, submission, chargerStats } = await getProfileData(user.id);
-  // DB query error (e.g. missing migration) — don't redirect to /login since the
-  // user IS authenticated; /login bounces authenticated users to /home via middleware.
+  const {
+    user: profile, userError, submission,
+    chargerStats, activePricePerKwh, lifetimeEarningsPaise,
+  } = await getProfileData(user.id);
+
+  // DB query error — don't redirect to /login since the user IS authenticated
   if (userError) throw new Error(userError.message);
   if (!profile) redirect('/login');
 
@@ -89,13 +115,12 @@ export default async function ProfilePage({
 
   return (
     <>
-      <main className="min-h-screen px-6 py-10 space-y-6 max-w-lg mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-medium text-ink">Profile</h1>
-          <ProfileMenuDrawer isAdmin={isAdmin} />
-        </div>
-
+      <main
+        className="max-w-lg mx-auto"
+        style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+      >
         <ProfileBody
+          isAdmin={isAdmin}
           initialName={profile.name}
           phone={profile.phone}
           hostingState={hostingState}
@@ -105,6 +130,9 @@ export default async function ProfilePage({
           submission={submission}
           showSubmittedBanner={searchParams.verified === 'submitted'}
           initialAvatarUrl={profile.avatar_url}
+          lifetimeEarningsPaise={lifetimeEarningsPaise}
+          activePricePerKwh={activePricePerKwh}
+          avgRating={profile.avg_rating}
         />
       </main>
       <PullToRefresh />

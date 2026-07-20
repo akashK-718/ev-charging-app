@@ -18,9 +18,11 @@ function validateName(v: string): string | null {
 export function NameEditor({
   initialName,
   showKycContext,
+  onNameChange,
 }: {
   initialName: string | null;
   showKycContext: boolean;
+  onNameChange?: (name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialName ?? '');
@@ -57,6 +59,7 @@ export function NameEditor({
         return;
       }
       setDisplayName(data.data.name);
+      onNameChange?.(data.data.name);
       setEditing(false);
       setToast(true);
       setTimeout(() => setToast(false), 3000);
