@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   Bell, CalendarCheck, ChevronRight, CreditCard,
-  Filter, ArrowUpDown, ChevronDown, Check, Home, Info, MapPin, Star, Wallet, X,
+  Filter, ArrowUpDown, ChevronDown, Check, Home, Info, MapPin, RotateCw, Star, Wallet, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -137,6 +137,22 @@ function staticMapUrl(lat: number, lng: number, seed: string): string {
 // CSS filter that shifts Mapbox light-v11's warm-beige palette toward
 // GreenPath's green-tinted palette (land #eef3ea, water #cfe4f4)
 const MAP_FILTER = 'hue-rotate(55deg) saturate(0.75) brightness(1.01)';
+
+// ── Eyebrow label — tense + role aware ───────────────────────────────────────
+
+function sessionEyebrow(item: HistoryItem): string {
+  const { status, roleInSession } = item;
+  if (['pending', 'confirmed', 'awaiting_driver_confirmation'].includes(status)) {
+    return roleInSession === 'driver' ? 'UPCOMING CHARGE' : 'UPCOMING GUEST';
+  }
+  if (status === 'in_progress' || status === 'awaiting_end_confirmation') {
+    return roleInSession === 'driver' ? "YOU'RE CHARGING" : "YOU'RE HOSTING";
+  }
+  if (status === 'completed') {
+    return roleInSession === 'driver' ? 'YOU CHARGED' : 'YOU HOSTED';
+  }
+  return roleInSession === 'driver' ? 'CHARGE CANCELLED' : 'HOSTING CANCELLED';
+}
 
 // ── Status display ────────────────────────────────────────────────────────────
 
@@ -524,17 +540,22 @@ function DriverFeaturedCard({ item }: { item: HistoryItem }) {
   const amountText  = driverAmountDisplay(item);
   const showRate    = item.status === 'completed' && !item.hasRated;
 
-  const isUpcoming  = ['pending', 'confirmed'].includes(item.status);
+  const isUpcoming     = ['pending', 'confirmed'].includes(item.status);
   const isReadyToStart = item.status === 'awaiting_driver_confirmation';
   const isInProgress   = item.status === 'in_progress' || item.status === 'awaiting_end_confirmation';
   const isCompleted    = item.status === 'completed';
   const isTerminal     = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
 
-  const primaryCtaLabel =
-    isUpcoming       ? 'Get directions'   :
-    isReadyToStart   ? 'Start session'    :
-    isInProgress     ? 'View session'     :
-    isTerminal       ? 'View details'     : null;
+  const mapsUrl = item.chargerLat !== null && item.chargerLng !== null
+    ? `https://www.google.com/maps/dir/?api=1&destination=${item.chargerLat},${item.chargerLng}`
+    : null;
+
+  const secondaryCtaLabel =
+    isReadyToStart ? 'Start session' :
+    isInProgress   ? 'View session'  :
+    isTerminal     ? 'View details'  : null;
+
+  const ctaBtnClass = 'flex items-center justify-center h-11 w-full rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors';
 
   return (
     <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
@@ -552,7 +573,7 @@ function DriverFeaturedCard({ item }: { item: HistoryItem }) {
 
       <div className="px-4 pt-3.5 pb-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">YOU CHARGED</p>
+          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">{sessionEyebrow(item)}</p>
           <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', statusColor)}>
             {statusLabel}
           </span>
@@ -578,31 +599,28 @@ function DriverFeaturedCard({ item }: { item: HistoryItem }) {
           {isCompleted ? (
             <div className="flex items-center gap-2">
               {showRate && (
-                <Link
-                  href={detailHref}
-                  className="flex-1 flex items-center justify-center h-9 rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
-                >
+                <Link href={detailHref} className="flex-1 flex items-center justify-center h-11 rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors">
                   Rate session
                 </Link>
               )}
               <Link
                 href={`/explore/${item.chargerId}`}
                 className={cn(
-                  'flex items-center justify-center h-9 rounded-xl text-sm font-semibold bg-green text-white hover:bg-green-deep transition-colors',
+                  'flex items-center justify-center gap-1.5 h-11 rounded-xl text-sm font-semibold bg-green text-white hover:bg-green-deep transition-colors',
                   showRate ? 'flex-1' : 'w-full',
                 )}
               >
+                <RotateCw className="w-3.5 h-3.5 shrink-0" aria-hidden />
                 Book again
               </Link>
             </div>
-          ) : primaryCtaLabel && (
-            <Link
-              href={detailHref}
-              className="flex items-center justify-center h-9 w-full rounded-xl border border-border text-sm font-semibold text-ink bg-surface-card hover:bg-surface-page transition-colors"
-            >
-              {primaryCtaLabel}
-            </Link>
-          )}
+          ) : isUpcoming ? (
+            mapsUrl
+              ? <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={ctaBtnClass}>Get directions</a>
+              : <Link href={detailHref} className={ctaBtnClass}>View booking</Link>
+          ) : secondaryCtaLabel ? (
+            <Link href={detailHref} className={ctaBtnClass}>{secondaryCtaLabel}</Link>
+          ) : null}
           {!isTerminal && (
             <Link
               href={detailHref}
@@ -643,7 +661,7 @@ function HostFeaturedCard({ item }: { item: HistoryItem }) {
 
       <div className="px-4 pt-3.5 pb-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">YOU HOSTED</p>
+          <p className="text-[10px] font-semibold tracking-wider uppercase text-muted">{sessionEyebrow(item)}</p>
           <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', statusColor)}>
             {statusLabel}
           </span>
@@ -700,7 +718,7 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
 
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-semibold tracking-wider uppercase text-muted leading-none mb-0.5">
-          YOU CHARGED
+          {sessionEyebrow(item)}
         </p>
         <Link href={detailHref}>
           <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
@@ -723,8 +741,9 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
         {showBookAgain ? (
           <Link
             href={`/explore/${item.chargerId}`}
-            className="text-[11px] font-semibold text-green hover:text-green-deep transition-colors whitespace-nowrap"
+            className="flex items-center gap-1 px-2.5 min-h-[44px] rounded-lg border border-green/25 bg-green-soft text-green text-[11px] font-semibold whitespace-nowrap transition-colors hover:bg-green-soft/80"
           >
+            <RotateCw className="w-3 h-3 shrink-0" aria-hidden />
             Book again
           </Link>
         ) : (
@@ -753,7 +772,7 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
 
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-semibold tracking-wider uppercase text-muted leading-none mb-0.5">
-          YOU HOSTED
+          {sessionEyebrow(item)}
         </p>
         <Link href={detailHref}>
           <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
