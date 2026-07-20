@@ -119,6 +119,7 @@ export default async function ActivityPage() {
     historyItems.push({
       id:                 `charging-${b.id}`,
       kind:               'charging',
+      roleInSession:      'driver',
       bookingId:          b.id,
       chargerId:          b.charger_id,
       chargerTitle:       charger?.title ?? 'Charger',
@@ -140,6 +141,7 @@ export default async function ActivityPage() {
     historyItems.push({
       id:                 `hosting-${b.id}`,
       kind:               'hosting',
+      roleInSession:      'host',
       bookingId:          b.id,
       chargerId:          b.charger_id,
       chargerTitle:       charger?.title ?? 'Charger',

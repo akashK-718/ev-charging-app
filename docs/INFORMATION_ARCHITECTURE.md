@@ -156,6 +156,34 @@ History and Updates, as two sub-views within one tab, not two separate tabs.
 
 Unread count shows as a badge on the Activity tab itself. No bell icon anywhere in top nav, desktop or PWA.
 
+### Sessions — role awareness
+
+Each `HistoryItem` carries `roleInSession: 'driver' | 'host'`, derived from whether the logged-in user was the booking's driver (`kind: 'charging'`) or the charger's host (`kind: 'hosting'`). This field drives the card component dispatch — do not use a single generic card with role conditionals inside it.
+
+**Component split:**
+- `DriverFeaturedCard` / `DriverCompactRow` — eyebrow "YOU CHARGED", secondary line "Hosted by [name]", money label "Paid ₹X"
+- `HostFeaturedCard` / `HostCompactRow` — eyebrow "YOU HOSTED", secondary line "Guest: [name]", money label "Earned ₹X"
+
+Both the featured card and every compact row render the role-specific component.
+
+**Status label mapping (presentation layer only — backend enum is unchanged):**
+
+| Backend status | Driver label | Host label |
+|---|---|---|
+| `pending` | Awaiting confirmation | Awaiting your approval |
+| `confirmed` | Confirmed | Booking confirmed |
+| `awaiting_driver_confirmation` | Ready to start | Waiting for driver |
+| `in_progress` | Charging in progress | Guest charging |
+| `awaiting_end_confirmation` | Ready to end | Waiting to end session |
+| `completed` | Completed | Completed |
+| `cancelled` | Cancelled | Cancelled |
+| `no_show` | No show | Driver didn't arrive |
+| `auto_reject` | Not accepted | Auto-rejected |
+
+**CTAs — driver card:** Get directions (pending/confirmed), Start session (awaiting_driver_confirmation), View session (in_progress/awaiting_end_confirmation), Book again + Rate if unrated (completed), View details (cancelled/no_show/auto_reject).
+
+**CTAs — host card:** "View booking →" only, in every status, no exceptions. Activity is a read-only ledger — Accept/Reject and all other operational actions live in Hosting Workspace → Bookings → Booking Detail. Never add Accept/Reject, Start, or End buttons to the host card in Activity.
+
 ## Profile
 
 Answers: "What belongs to me?" Nothing here changes minute to minute. Pure identity and configuration, never operational workflows.
