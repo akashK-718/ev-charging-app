@@ -71,6 +71,19 @@ export const DECLINED_BOOKING_STATUSES: BookingStatus[] = ['rejected', 'auto_rej
 // Statuses considered "past" — lifecycle finished
 export const PAST_BOOKING_STATUSES: BookingStatus[] = ['completed', 'no_show'];
 
+// No-show timing — minutes from entering awaiting_driver_confirmation.
+// Override in test/staging via env vars to shorten the wait windows.
+export const NOSHOW_WARNING_MINUTES     = parseInt(process.env.NOSHOW_WARNING_MINUTES     ?? '') || 25;
+export const NOSHOW_TIMEOUT_MINUTES     = parseInt(process.env.NOSHOW_TIMEOUT_MINUTES     ?? '') || 30;
+export const NOSHOW_MAX_ELAPSED_MINUTES = 60; // hard cutoff even after Keep Waiting extension
+
+// Warning sent to host this many minutes before Keep Waiting extension expires
+export const NOSHOW_EXTENSION_WARN_BEFORE_MINUTES = 5;
+
+// Grace period before a stuck awaiting_end_confirmation is flagged for admin review
+export const SESSION_END_REVIEW_GRACE_MINUTES =
+  parseInt(process.env.SESSION_END_REVIEW_GRACE_MINUTES ?? '') || 30;
+
 // Proximity check — server fallback defaults (never fail open)
 export const PROXIMITY_CHECK_DEFAULTS = { enabled: true, radius_km: 0.5 } as const;
 

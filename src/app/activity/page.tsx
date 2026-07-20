@@ -26,13 +26,14 @@ export default async function ActivityPage() {
     status: string;
     scheduled_start: string;
     scheduled_end: string | null;
+    lifecycle_reason: string | null;
     chargers: ChargerFields | null;
     driver_id?: string;
     lender_id?: string;
   };
 
   const SELECT_BOOKING =
-    'id, charger_id, status, scheduled_start, scheduled_end, chargers(title, photos, latitude, longitude)';
+    'id, charger_id, status, scheduled_start, scheduled_end, lifecycle_reason, chargers(title, photos, latitude, longitude)';
 
   const [driverRes, lenderRes, notifRes] = await Promise.all([
     admin
@@ -132,6 +133,7 @@ export default async function ActivityPage() {
       status:             b.status,
       scheduledStart:     b.scheduled_start,
       scheduledEnd:       b.scheduled_end ?? null,
+      lifecycleReason:    b.lifecycle_reason ?? null,
     });
   }
 
@@ -154,6 +156,7 @@ export default async function ActivityPage() {
       status:             b.status,
       scheduledStart:     b.scheduled_start,
       scheduledEnd:       b.scheduled_end ?? null,
+      lifecycleReason:    b.lifecycle_reason ?? null,
     });
   }
 

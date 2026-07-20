@@ -82,6 +82,46 @@ This inserts 20 fake lender users and ~1,209 chargers across India. It is idempo
 
 > **Do not run the seed in production** — it creates fake accounts with deterministic UUIDs.
 
-## 6. Architecture
+## 6. Lifecycle sweep (pg_cron)
+
+The booking lifecycle sweep runs every minute via pg_cron and calls `POST /api/internal/lifecycle-sweep`. Migration 026 enables pg_cron/pg_net and schedules the job, but the job is a no-op until you complete these one-time setup steps.
+
+### Step 1: Add env var
+
+Add to your Vercel environment (and `.env.local` for local testing):
+
+| Variable | Purpose |
+|---|---|
+| `LIFECYCLE_SWEEP_SECRET` | A randomly generated secret (use `openssl rand -hex 32`) |
+
+### Step 2: Seed app_settings
+
+Run this in your Supabase SQL Editor once per environment (replace the placeholders):
+
+```sql
+INSERT INTO public.app_settings (key, value)
+VALUES (
+  'lifecycle_sweep',
+  jsonb_build_object(
+    'url',    'https://YOUR-APP.vercel.app/api/internal/lifecycle-sweep',
+    'secret', 'YOUR_LIFECYCLE_SWEEP_SECRET_HERE'
+  )
+)
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+```
+
+The secret must match `LIFECYCLE_SWEEP_SECRET`. The pg_cron job reads this row at runtime, so the job is safely dormant until the row is populated.
+
+### Test/staging fast timers
+
+Override the no-show windows via env vars (values in minutes) for testing:
+
+```bash
+NOSHOW_WARNING_MINUTES=1
+NOSHOW_TIMEOUT_MINUTES=2
+SESSION_END_REVIEW_GRACE_MINUTES=2
+```
+
+## 7. Architecture
 
 See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for the map provider abstraction, auth flow, and how to swap Mapbox for another provider.

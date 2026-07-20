@@ -77,6 +77,24 @@ export default async function AdminDashboardPage() {
     },
   ];
 
+  // Session review queue count
+  const { count: reviewQueueCount } = await admin
+    .from('session_review_queue')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending');
+
+  if ((reviewQueueCount ?? 0) > 0) {
+    stats.unshift({
+      label: 'Sessions under review',
+      value: String(reviewQueueCount ?? 0),
+      sub: (reviewQueueCount ?? 0) === 1
+        ? '1 session awaiting manual resolution'
+        : `${reviewQueueCount} sessions awaiting manual resolution`,
+      href: '/admin/review-queue',
+      urgent: true,
+    });
+  }
+
   return (
     <main className="min-h-screen px-6 py-10 space-y-6">
       <div>
