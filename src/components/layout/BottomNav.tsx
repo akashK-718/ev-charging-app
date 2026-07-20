@@ -63,13 +63,13 @@ export function BottomNav() {
               className={cn(
                 'relative flex flex-col items-center gap-[3px] flex-1 px-1 py-2.5',
                 'text-[10px] font-semibold tracking-wide transition-colors tap-target',
-                active ? 'text-copper' : 'text-muted',
+                active ? 'text-green' : 'text-muted',
               )}
             >
               {active && (
                 <span
                   aria-hidden="true"
-                  className="absolute top-0 left-1/4 right-1/4 h-[2px] rounded-b-sm bg-copper"
+                  className="absolute top-0 left-1/4 right-1/4 h-[2px] rounded-b-sm bg-green"
                 />
               )}
               <span className="relative">
@@ -81,7 +81,7 @@ export function BottomNav() {
                 {showBadge && (
                   <span
                     aria-label={`${unreadCount} unread`}
-                    className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-pill bg-copper text-white text-[9px] font-bold leading-[14px] text-center px-0.5"
+                    className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-pill bg-green text-white text-[9px] font-bold leading-[14px] text-center px-0.5"
                   >
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
