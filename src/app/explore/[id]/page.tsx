@@ -202,9 +202,13 @@ export default async function ChargerDetailPage({
                 <span className="text-sm font-medium text-muted">/kWh</span>
               </p>
               <p className="text-xs text-muted mt-0.5 mb-5">Rate per unit</p>
-              <Link href={`/bookings/new?charger=${charger.id}`} className="block">
-                <Button variant="primary" className="w-full">Book now</Button>
-              </Link>
+              {isAvailable ? (
+                <Link href={`/bookings/new?charger=${charger.id}`} className="block">
+                  <Button variant="primary" className="w-full">Book now</Button>
+                </Link>
+              ) : (
+                <Button variant="primary" className="w-full" disabled>Unavailable</Button>
+              )}
             </Card>
           </aside>
 
@@ -222,9 +226,15 @@ export default async function ChargerDetailPage({
                 <span className="text-sm font-normal text-muted">/kWh</span>
               </p>
             </div>
-            <Link href={`/bookings/new?charger=${charger.id}`} className="flex-1">
-              <Button variant="primary" className="w-full">Book now</Button>
-            </Link>
+            {isAvailable ? (
+              <Link href={`/bookings/new?charger=${charger.id}`} className="flex-1">
+                <Button variant="primary" className="w-full">Book now</Button>
+              </Link>
+            ) : (
+              <div className="flex-1">
+                <Button variant="primary" className="w-full" disabled>Unavailable</Button>
+              </div>
+            )}
           </div>
         </ActionBar>
       </div>
