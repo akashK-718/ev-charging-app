@@ -91,7 +91,7 @@ Verified → proceed to charger registration form
 - **Mask in display:** Show only last 4 digits anywhere (`XXXX XXXX 1234`). Never display the full number after verification.
 - **Use Virtual ID (VID) where possible:** Avoid storing the actual Aadhaar number long-term if VID flow is available from the KYC provider.
 - **Encryption at rest:** All KYC documents encrypted in Supabase Storage.
-- **Explicit consent:** Clear consent screen before initiating any verification — "I authorize [BrandName] to verify my identity via [provider] for the purpose of using this platform."
+- **Explicit consent:** Clear consent screen before initiating any verification — "I authorize Kirin to verify my identity via [provider] for the purpose of using this platform."
 
 ### Data retention
 

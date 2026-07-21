@@ -4,7 +4,7 @@ import { notify } from '@/lib/notifications';
 import { sendPushNotification } from '@/lib/notifications/push';
 
 /*
- * MVP Rule: BrandName has no hardware-backed charger telemetry. Session energy
+ * MVP Rule: Kirin has no hardware-backed charger telemetry. Session energy
  * and cost are derived from application events rather than physical meter
  * readings. Therefore, any session stuck in awaiting_end_confirmation cannot be
  * safely auto-completed and is placed into a manual review queue for resolution.

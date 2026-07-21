@@ -16,7 +16,7 @@ const messaging = firebase.messaging();
 // Messages that include a webpush.notification object (e.g. action-button
 // notifications) are displayed directly by the browser and skip this handler.
 messaging.onBackgroundMessage(payload => {
-  const title = payload.data?.title ?? 'EV Charging';
+  const title = payload.data?.title ?? 'Kirin';
   const body = payload.data?.body ?? '';
   const url = payload.data?.url ?? '/';
 

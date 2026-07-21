@@ -145,7 +145,7 @@ function NewBookingContent() {
         amount: order.amount,
         currency: order.currency,
         order_id: order.razorpay_order_id,
-        name: 'EV Charging Marketplace',
+        name: 'Kirin',
         description: charger.title,
         handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           void (async () => {

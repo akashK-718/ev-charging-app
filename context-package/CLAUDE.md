@@ -7,7 +7,7 @@
 
 **Tagline:** "Airbnb for home EV chargers"
 **Market:** India — Delhi NCR for initial launch
-**Brand name:** TBD (placeholder is `BrandName` throughout the codebase — search-and-replaceable in one line). Shortlist: Pravah, Ojas. Explicitly NOT VoltShare or PlugShare (both have major existing brands).
+**Brand name:** Kirin. Assets live in `public/brand/` (icon light, icon dark, wordmark).
 
 ## What this app does
 
