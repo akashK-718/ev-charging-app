@@ -193,35 +193,30 @@ a, button, [role="button"] {
 .pin-pop { animation: pin-pop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
 
 /* ─── Splash intro animations ─────────────────────────────────────────────── */
-@keyframes splashRingDraw {
-  from { stroke-dashoffset: 1; }
-  to   { stroke-dashoffset: 0; }
+
+/* Bolt: single restrained brightness pulse — reads as "alive", not a spinner */
+@keyframes boltPulse {
+  0%, 100% { filter: brightness(1);   }
+  50%       { filter: brightness(1.1); }
 }
-@keyframes splashFadeIn {
+
+/* Text: opacity-only fade — no slide, no scale */
+@keyframes splashTextIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-@keyframes splashTextIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+
+/* Single pulse fires once at 200ms, 300ms duration, returns to baseline */
+.splash-bolt-pulse {
+  animation: boltPulse 300ms ease-in-out 200ms 1 both;
 }
 
-.splash-ring {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: splashRingDraw 700ms var(--ease-out) both;
-}
-.splash-fade-in {
-  opacity: 0;
-  animation: splashFadeIn 250ms var(--ease-out) both;
-}
 .splash-text-in {
   opacity: 0;
-  animation: splashTextIn 250ms var(--ease-out) both;
+  animation: splashTextIn 180ms ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .splash-ring       { stroke-dashoffset: 0; animation: none; }
-  .splash-fade-in    { opacity: 1; animation: none; }
+  .splash-bolt-pulse { animation: none; }
   .splash-text-in    { opacity: 1; animation: none; }
 }
