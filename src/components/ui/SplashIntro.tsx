@@ -45,40 +45,23 @@ function KirinMark() {
         </mask>
       </defs>
 
-      {/* Left ring: draws in over 700ms, detail dashes fade after draw */}
+      {/* Left ring: static, fully visible from frame 0 */}
       <g mask="url(#si-mL)">
-        <path
-          d={LEFT_RING}
-          fill="none" stroke="var(--splash-ring)" strokeWidth="47"
-          pathLength="1"
-          className="splash-ring"
-        />
-        <path d={LEFT_RING} {...DASH_PROPS}
-          className="splash-fade-in"
-          style={{ animationDelay: '650ms' }}
-        />
+        <path d={LEFT_RING} fill="none" stroke="var(--splash-ring)" strokeWidth="47" />
+        <path d={LEFT_RING} {...DASH_PROPS} />
       </g>
 
-      {/* Right ring: same timing, interlocking revealed by masks */}
+      {/* Right ring: static, interlocking revealed by masks */}
       <g mask="url(#si-mR)">
-        <path
-          d={RIGHT_RING}
-          fill="none" stroke="var(--splash-ring)" strokeWidth="47"
-          pathLength="1"
-          className="splash-ring"
-        />
-        <path d={RIGHT_RING} {...DASH_PROPS}
-          className="splash-fade-in"
-          style={{ animationDelay: '650ms' }}
-        />
+        <path d={RIGHT_RING} fill="none" stroke="var(--splash-ring)" strokeWidth="47" />
+        <path d={RIGHT_RING} {...DASH_PROPS} />
       </g>
 
-      {/* Bolt accent — appears after rings finish drawing */}
+      {/* Bolt: single restrained brightness pulse at 200ms */}
       <polygon
         points="216,101 188,137 202,137 197,161 228,125 211,125"
         fill="#46B055"
-        className="splash-fade-in"
-        style={{ animationDelay: '720ms' }}
+        className="splash-bolt-pulse"
       />
     </svg>
   );
@@ -89,7 +72,7 @@ type Phase = 'playing' | 'fading' | 'gone';
 export function SplashIntro() {
   // Start as 'playing' so SSR and first paint show the intro immediately —
   // prevents a blank gap between the OS native splash and our custom one.
-  // useEffect then hides it instantly for return visits (sub-frame, imperceptible).
+  // useEffect hides it instantly for return visits (sub-frame, imperceptible).
   const [phase, setPhase] = useState<Phase>('playing');
 
   useEffect(() => {
@@ -98,11 +81,11 @@ export function SplashIntro() {
       return;
     }
 
-    const t1 = setTimeout(() => setPhase('fading'), 1350);
+    const t1 = setTimeout(() => setPhase('fading'), 1000);
     const t2 = setTimeout(() => {
       setPhase('gone');
       sessionStorage.setItem(DONE_KEY, '1');
-    }, 1700);
+    }, 1350);
 
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
@@ -135,7 +118,7 @@ export function SplashIntro() {
           fontWeight: 700,
           letterSpacing: '0.22em',
           color: 'var(--splash-text)',
-          animationDelay: '980ms',
+          animationDelay: '500ms',
         }}
       >
         KIRIN
