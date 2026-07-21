@@ -7,6 +7,22 @@
    Shape: pill reserved for status chips and circular icon buttons only.
    Shadow: only the sheet gets one — everything else uses tonal + border.
    ──────────────────────────────────────────────────────────────────────────── */
+/* ─── Splash intro theme vars ─────────────────────────────────────────────── */
+:root {
+  --splash-bg:     #faf9f5;
+  --splash-ring:   #1f4230;
+  --splash-detail: #faf9f5;
+  --splash-text:   #1a1f1c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --splash-bg:     #1a1f1c;
+    --splash-ring:   #faf9f5;
+    --splash-detail: #1a1f1c;
+    --splash-text:   #faf9f5;
+  }
+}
+
 :root {
   --ink: #1a1f1c;
   --ink-soft: #3a4139;
@@ -175,3 +191,37 @@ a, button, [role="button"] {
   to   { transform: translateY(0)    scale(1);   opacity: 1; }
 }
 .pin-pop { animation: pin-pop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+/* ─── Splash intro animations ─────────────────────────────────────────────── */
+@keyframes splashRingDraw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes splashFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes splashTextIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.splash-ring {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: splashRingDraw 700ms var(--ease-out) both;
+}
+.splash-fade-in {
+  opacity: 0;
+  animation: splashFadeIn 250ms var(--ease-out) both;
+}
+.splash-text-in {
+  opacity: 0;
+  animation: splashTextIn 250ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-ring       { stroke-dashoffset: 0; animation: none; }
+  .splash-fade-in    { opacity: 1; animation: none; }
+  .splash-text-in    { opacity: 1; animation: none; }
+}
