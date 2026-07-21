@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { LandingNav } from '@/components/LandingNav';
 
 export const metadata: Metadata = {
-  title: 'BrandName — Home EV Charging Network',
+  title: 'Kirin — Home EV Charging Network',
   description:
     'Find trusted home chargers nearby or along your journey. Book in minutes and charge with confidence.',
 };
@@ -70,14 +70,6 @@ const FAQ = [
 
 // ── SVG sub-components ─────────────────────────────────────────────────────────
 
-function LogoPin({ size = 26 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M16 2a11 11 0 0 1 11 11c0 8-11 17-11 17S5 21 5 13A11 11 0 0 1 16 2z" fill="#1c6b47" />
-      <path d="M17.6 7 11 15.5h4.2L13.8 23l7.2-9.5h-4.2L17.6 7z" fill="#ffffff" />
-    </svg>
-  );
-}
 
 function RouteIcon() {
   return (
@@ -575,8 +567,8 @@ export default function LandingPage() {
         <footer className="pb-8 md:pb-10 px-4 md:px-10 max-w-5xl mx-auto">
           <div className="bg-surface-card border border-border rounded-token flex justify-between items-center px-5 py-3 md:px-6 md:py-4 flex-wrap gap-3">
             <div className="flex items-center gap-2 text-xs md:text-sm text-muted font-semibold">
-              <LogoPin size={18} />
-              &copy; 2026 BrandName
+              <img src="/brand/kirin-icon.svg" alt="" aria-hidden="true" className="h-[18px] w-auto" />
+              &copy; 2026 Kirin
             </div>
             <div className="flex gap-4 md:gap-6 text-xs md:text-sm font-semibold text-ink-soft">
               <Link href="#" className="hover:text-green transition-colors">Terms</Link>

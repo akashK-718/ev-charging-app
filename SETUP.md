@@ -60,7 +60,7 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-You should see the homepage with the BrandName logo and two buttons.
+You should see the homepage with the Kirin logo and two buttons.
 
 Edit `src/app/page.tsx` and save — the page reloads instantly. That's
 hot module replacement, which makes development fast.

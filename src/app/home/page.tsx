@@ -444,7 +444,7 @@ export default async function HomePage() {
             <Leaf className="size-5 text-white" aria-hidden />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-green">EV Charging</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-green">Kirin</p>
             <h1 className="text-lg font-bold leading-tight text-ink">{timeGreeting()}, {firstName}</h1>
           </div>
           <Link href="/profile" aria-label="Go to profile" className="shrink-0 active:scale-95 transition">

@@ -28,7 +28,7 @@ const FAQ: { section: string; items: FaqItem[] }[] = [
       },
       {
         q: 'Which connector types are supported?',
-        a: 'BrandName supports Type 2, Bharat AC, CCS2, CHAdeMO, and Type 1. Each charger listing shows its connector type before you book.',
+        a: 'Kirin supports Type 2, Bharat AC, CCS2, CHAdeMO, and Type 1. Each charger listing shows its connector type before you book.',
       },
     ],
   },

@@ -261,7 +261,7 @@ Implemented in `src/lib/bookings/no-show-sweep.ts`, called by the pg_cron lifecy
 
 ### awaiting_end_confirmation — manual review, never auto-complete
 
-MVP Rule: BrandName has no hardware-backed charger telemetry. Session energy and cost are derived from application events rather than physical meter readings. Therefore, any session stuck in awaiting_end_confirmation cannot be safely auto-completed and is placed into a manual review queue for resolution. This rule should be revisited if/when OCPP or smart-meter telemetry is added in a future version.
+MVP Rule: Kirin has no hardware-backed charger telemetry. Session energy and cost are derived from application events rather than physical meter readings. Therefore, any session stuck in awaiting_end_confirmation cannot be safely auto-completed and is placed into a manual review queue for resolution. This rule should be revisited if/when OCPP or smart-meter telemetry is added in a future version.
 
 Sessions stuck in `awaiting_end_confirmation` for more than `SESSION_END_REVIEW_GRACE_MINUTES` (default 30 min) are inserted into `session_review_queue` and flagged for admin resolution at `/admin/review-queue`. The previous auto-complete behaviour (`src/lib/bookings/auto-complete-end.ts`) has been removed.
 

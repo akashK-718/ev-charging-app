@@ -6,13 +6,17 @@ import { PageTransition } from '@/components/ui/PageTransition';
 import { PushNotificationsProvider } from '@/components/ui/PushNotificationsProvider';
 
 export const metadata: Metadata = {
-  title: 'EV Charging Marketplace',
+  title: 'Kirin',
   description: 'Find and book home EV chargers near you',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/brand/kirin-icon.svg',
+    apple: '/brand/kirin-icon.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'EV Charging',
+    title: 'Kirin',
   },
   other: {
     'mobile-web-app-capable': 'yes',

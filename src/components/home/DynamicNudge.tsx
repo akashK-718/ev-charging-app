@@ -130,7 +130,7 @@ export function DynamicNudge({ ruleNudge }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-ink">Install the app</p>
               <p className="text-xs text-muted mt-0.5 leading-relaxed">
-                Add EV Charging to your home screen for faster access while travelling.
+                Add Kirin to your home screen for faster access while travelling.
               </p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export function DynamicNudge({ ruleNudge }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-ink">Add to home screen</p>
               <p className="text-xs text-muted mt-0.5 leading-relaxed">
-                Install EV Charging for faster access while travelling.
+                Install Kirin for faster access while travelling.
               </p>
             </div>
           </div>
