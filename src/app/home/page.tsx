@@ -5,7 +5,6 @@ import { formatINR } from '@/lib/currency';
 import {
   AlertCircle, ChevronRight,
   Zap, Calendar, Shield, MapPin,
-  Sunrise, Sun, Sunset, Moon,
   TrendingUp, ArrowRight, Map as MapIcon, Route,
   Check, X, Inbox, CalendarClock,
 } from 'lucide-react';
@@ -13,36 +12,7 @@ import { getActiveTip } from '@/lib/home/tips';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
-
-// ── Utilities ─────────────────────────────────────────────────────────────────
-
-// Server runs in UTC — always derive IST hour explicitly so the greeting
-// matches the user's local time regardless of server timezone.
-function istHour(): number {
-  return parseInt(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      hour: 'numeric',
-      hourCycle: 'h23',
-    }).format(new Date()),
-    10,
-  );
-}
-
-function timeGreeting(): string {
-  const h = istHour();
-  if (h >= 6 && h < 12) return 'Good morning';
-  if (h >= 12 && h < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function timeOfDayIcon() {
-  const h = istHour();
-  if (h >= 6 && h < 12) return <Sunrise className="size-5 text-white" aria-hidden />;
-  if (h >= 12 && h < 18) return <Sun className="size-5 text-white" aria-hidden />;
-  if (h >= 18 && h < 22) return <Sunset className="size-5 text-white" aria-hidden />;
-  return <Moon className="size-5 text-white" aria-hidden />;
-}
+import { GreetingHeader } from '@/components/home/GreetingHeader';
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-IN', {
@@ -461,19 +431,7 @@ export default async function HomePage() {
       <div className="max-w-2xl mx-auto px-4 pt-5 pb-4 space-y-3">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 pb-1">
-          <div className="size-10 rounded-2xl bg-green grid place-items-center shadow-md shadow-green-900/20 shrink-0">
-            {timeOfDayIcon()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold leading-tight text-ink">{timeGreeting()}, {firstName}</h1>
-          </div>
-          <Link href="/profile" aria-label="Go to profile" className="shrink-0 active:scale-95 transition">
-            <div className="size-10 rounded-full bg-green-700 grid place-items-center text-white text-sm font-semibold">
-              {avatarInitials}
-            </div>
-          </Link>
-        </div>
+        <GreetingHeader firstName={firstName} avatarInitials={avatarInitials} />
 
         {/* ── Account alerts: KYC / payout / suspended ────────────────────── */}
         {(attnKycBlocked || attnKycRejected || !!attnPayoutFailed || attnSuspended.length > 0) && (
