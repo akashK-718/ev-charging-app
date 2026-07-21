@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: 'Find and book home EV chargers near you',
   manifest: '/manifest.json',
   icons: {
-    icon: '/brand/kirin-icon.svg',
-    apple: '/brand/kirin-icon.svg',
+    icon: '/brand/kirin-icon-square.svg',
+    apple: '/icons/apple-touch-icon.png',
   },
   appleWebApp: {
     capable: true,
