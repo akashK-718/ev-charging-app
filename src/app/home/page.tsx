@@ -5,7 +5,8 @@ import { formatINR } from '@/lib/currency';
 import {
   AlertCircle, ChevronRight,
   Zap, Calendar, Shield, MapPin,
-  Leaf, TrendingUp, ArrowRight, Map as MapIcon, Route,
+  Sunrise, Sun, Sunset, Moon,
+  TrendingUp, ArrowRight, Map as MapIcon, Route,
   Check, X, Inbox, CalendarClock,
 } from 'lucide-react';
 import { getActiveTip } from '@/lib/home/tips';
@@ -17,9 +18,17 @@ import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
 
 function timeGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
+  if (h >= 6 && h < 12) return 'Good morning';
+  if (h >= 12 && h < 18) return 'Good afternoon';
   return 'Good evening';
+}
+
+function timeOfDayIcon() {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 12) return <Sunrise className="size-5 text-white" aria-hidden />;
+  if (h >= 12 && h < 18) return <Sun className="size-5 text-white" aria-hidden />;
+  if (h >= 18 && h < 22) return <Sunset className="size-5 text-white" aria-hidden />;
+  return <Moon className="size-5 text-white" aria-hidden />;
 }
 
 function fmtDate(iso: string): string {
@@ -441,10 +450,9 @@ export default async function HomePage() {
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 pb-1">
           <div className="size-10 rounded-2xl bg-green grid place-items-center shadow-md shadow-green-900/20 shrink-0">
-            <Leaf className="size-5 text-white" aria-hidden />
+            {timeOfDayIcon()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-green">Kirin</p>
             <h1 className="text-lg font-bold leading-tight text-ink">{timeGreeting()}, {firstName}</h1>
           </div>
           <Link href="/profile" aria-label="Go to profile" className="shrink-0 active:scale-95 transition">
