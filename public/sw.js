@@ -27,8 +27,8 @@ self.addEventListener('message', (event) => {
     const body = payload.notification?.body ?? '';
     self.registration.showNotification(title, {
       body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: '/brand/kirin-icon.svg',
+      badge: '/brand/kirin-icon.svg',
       data: payload.data,
     });
   });

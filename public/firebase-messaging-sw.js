@@ -22,8 +22,8 @@ messaging.onBackgroundMessage(payload => {
 
   self.registration.showNotification(title, {
     body,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
+    icon: '/brand/kirin-icon.svg',
+    badge: '/brand/kirin-icon.svg',
     data: { url },
   });
 });
@@ -47,8 +47,8 @@ self.addEventListener('notificationclick', event => {
         .then(() =>
           self.registration.showNotification('Waiting extended', {
             body: 'Booking kept active for 30 more minutes.',
-            icon: '/icons/icon-192x192.png',
-            badge: '/icons/icon-192x192.png',
+            icon: '/brand/kirin-icon.svg',
+            badge: '/brand/kirin-icon.svg',
             tag: `noshow-extended-${bookingId}`,
           })
         )
@@ -68,8 +68,8 @@ self.addEventListener('notificationclick', event => {
         .then(() =>
           self.registration.showNotification('Booking closed', {
             body: 'No-show recorded. Booking has been closed.',
-            icon: '/icons/icon-192x192.png',
-            badge: '/icons/icon-192x192.png',
+            icon: '/brand/kirin-icon.svg',
+            badge: '/brand/kirin-icon.svg',
             tag: `noshow-confirmed-${bookingId}`,
           })
         )
