@@ -16,15 +16,28 @@ import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
+// Server runs in UTC — always derive IST hour explicitly so the greeting
+// matches the user's local time regardless of server timezone.
+function istHour(): number {
+  return parseInt(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(new Date()),
+    10,
+  );
+}
+
 function timeGreeting(): string {
-  const h = new Date().getHours();
+  const h = istHour();
   if (h >= 6 && h < 12) return 'Good morning';
   if (h >= 12 && h < 18) return 'Good afternoon';
   return 'Good evening';
 }
 
 function timeOfDayIcon() {
-  const h = new Date().getHours();
+  const h = istHour();
   if (h >= 6 && h < 12) return <Sunrise className="size-5 text-white" aria-hidden />;
   if (h >= 12 && h < 18) return <Sun className="size-5 text-white" aria-hidden />;
   if (h >= 18 && h < 22) return <Sunset className="size-5 text-white" aria-hidden />;
