@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Filter, LocateFixed } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { purgeLegacyKey } from '@/lib/user-storage';
 import { maps } from '@/lib/maps/provider';
 import { haversineKm } from '@/lib/haversine';
 import { cn } from '@/lib/utils';
@@ -59,7 +61,8 @@ const DELHI_NCR: Coords = { lat: 28.6139, lng: 77.209 };
 const DEFAULT_RADIUS = 10000;
 const DEFAULT_BUFFER = 2500;
 const MAX_PRICE = 50;
-const STORAGE_KEY = 'chargers_map_state_v2';
+// Base key without userId suffix — used for scoping and legacy-key purge.
+const STORAGE_KEY_BASE = 'chargers_map_state_v2';
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 // ── Saved state helpers ───────────────────────────────────────────────────────
@@ -82,9 +85,9 @@ type SavedMapState = {
   fromIsGps?: boolean;
 };
 
-function loadMapState(): SavedMapState | null {
+function loadMapState(userId: string): SavedMapState | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(`${STORAGE_KEY_BASE}:${userId}`);
     if (!raw) return null;
     const state = JSON.parse(raw) as SavedMapState;
     if (Date.now() - state.timestamp > EXPIRY_MS) return null;
@@ -94,9 +97,12 @@ function loadMapState(): SavedMapState | null {
   }
 }
 
-function saveMapState(s: Omit<SavedMapState, 'timestamp'>) {
+function saveMapState(userId: string, s: Omit<SavedMapState, 'timestamp'>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...s, timestamp: Date.now() }));
+    localStorage.setItem(
+      `${STORAGE_KEY_BASE}:${userId}`,
+      JSON.stringify({ ...s, timestamp: Date.now() }),
+    );
   } catch { /* quota exceeded — silently skip */ }
 }
 
@@ -117,6 +123,9 @@ function computeRouteBounds(
 // ── Page component ────────────────────────────────────────────────────────────
 
 export default function ExplorePage() {
+  // ── Auth — stored so save effect can scope its key without re-fetching ───
+  const userIdRef = useRef<string | null>(null);
+
   // ── Search / view mode ────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [searchMode, setSearchMode] = useState<SearchMode>('along_route');
@@ -267,66 +276,88 @@ export default function ExplorePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Init: restore localStorage or request GPS ─────────────────────────────
+  // ── Init: resolve user → purge legacy key → restore saved state → GPS ──────
+  //
+  // getUser() must complete before loading saved state so we use the correct
+  // user-scoped key. The legacy unscoped key is deleted unconditionally — data
+  // written before this fix cannot be attributed to a specific user.
 
   useEffect(() => {
-    const saved = loadMapState();
+    let cancelled = false;
 
-    if (saved) {
-      const isAllIndia = saved.radius === 'all_india';
-      setSearchCenter(saved.center);
-      // Never restore centerType as 'gps' from storage — the GPS success handler
-      // below will set it to 'gps' again if permission is still granted this session.
-      // Old saved states that are missing centerType are treated as 'default'.
-      setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
-      setViewMode(saved.viewMode);
-      setSearchMode(saved.searchMode ?? 'along_route');
-      setAllIndiaMode(isAllIndia);
-      setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
-      if (saved.routeFrom) {
-        setRouteFrom(saved.routeFrom);
-        setRouteFromAddress(saved.routeFromAddress ?? saved.routeFrom.address);
-      }
-      if (saved.routeTo) {
-        setRouteTo(saved.routeTo);
-        setRouteToAddress(saved.routeToAddress ?? saved.routeTo.address);
-      }
-      if (saved.fromIsGps) setFromIsGps(true);
-    }
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
 
-    if (!navigator.geolocation) {
-      setGpsAvailable(false);
-      if (!saved) {
-        setSearchCenter(DELHI_NCR);
-        showToastMsg('Showing chargers near Delhi. Set a location or allow GPS access to personalise.');
-      }
-      setLocationLoading(false);
-      return;
-    }
+      userIdRef.current = user?.id ?? null;
 
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const gps: Coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setGpsCoords(gps);
-        setGpsAvailable(true);
-        if (!saved || saved.centerType === 'gps') {
-          setSearchCenter(gps);
-          setCenterType('gps');
+      // Remove any flat key written before user-scoping was introduced.
+      purgeLegacyKey(STORAGE_KEY_BASE);
+
+      const saved = user ? loadMapState(user.id) : null;
+
+      if (saved) {
+        const isAllIndia = saved.radius === 'all_india';
+        setSearchCenter(saved.center);
+        // Never restore centerType as 'gps' from storage — the GPS success handler
+        // below will set it to 'gps' again if permission is still granted this session.
+        // Old saved states that are missing centerType are treated as 'default'.
+        setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
+        setViewMode(saved.viewMode);
+        setSearchMode(saved.searchMode ?? 'along_route');
+        setAllIndiaMode(isAllIndia);
+        setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
+        if (saved.routeFrom) {
+          setRouteFrom(saved.routeFrom);
+          setRouteFromAddress(saved.routeFromAddress ?? saved.routeFrom.address);
         }
-        setLocationLoading(false);
-      },
-      () => {
+        if (saved.routeTo) {
+          setRouteTo(saved.routeTo);
+          setRouteToAddress(saved.routeToAddress ?? saved.routeTo.address);
+        }
+        if (saved.fromIsGps) setFromIsGps(true);
+      }
+
+      if (!navigator.geolocation) {
         setGpsAvailable(false);
         if (!saved) {
           setSearchCenter(DELHI_NCR);
           showToastMsg('Showing chargers near Delhi. Set a location or allow GPS access to personalise.');
         }
         setLocationLoading(false);
-      },
-      { timeout: 8000 },
-    );
+        return;
+      }
 
-    return () => clearTimeout(toastTimer.current);
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          if (cancelled) return;
+          const gps: Coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setGpsCoords(gps);
+          setGpsAvailable(true);
+          if (!saved || saved.centerType === 'gps') {
+            setSearchCenter(gps);
+            setCenterType('gps');
+          }
+          setLocationLoading(false);
+        },
+        () => {
+          if (cancelled) return;
+          setGpsAvailable(false);
+          if (!saved) {
+            setSearchCenter(DELHI_NCR);
+            showToastMsg('Showing chargers near Delhi. Set a location or allow GPS access to personalise.');
+          }
+          setLocationLoading(false);
+        },
+        { timeout: 8000 },
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(toastTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -386,7 +417,9 @@ export default function ExplorePage() {
 
   useEffect(() => {
     if (!searchCenter) return;
-    saveMapState({
+    const uid = userIdRef.current;
+    if (!uid) return; // userId not yet resolved — skip to avoid writing an unscoped key
+    saveMapState(uid, {
       center: searchCenter,
       zoom,
       radius: allIndiaMode ? 'all_india' : radius,
