@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Zap, Square, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { haptic } from '@/lib/haptics';
 import { SESSION_GRACE_MINUTES, SESSION_END_AUTO_COMPLETE_MINUTES } from '@/lib/constants';
 
@@ -39,7 +40,30 @@ export function SessionControls({
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState(0); // increment to re-trigger shake animation
   const [geoWarning, setGeoWarning] = useState<string | null>(null);
+  const [showEndSuccess, setShowEndSuccess] = useState(false);
+
+  // Track status transitions for lifecycle haptics — only fire on real changes,
+  // never on initial mount or when the same status is re-received via polling.
+  const prevStatusRef = useRef<string>(status);
+
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (prev === status) return; // no transition
+
+    // Charging confirmed by driver → in_progress: success haptic on both screens
+    if (status === 'in_progress' && prev === 'awaiting_driver_confirmation') {
+      haptic('success');
+    }
+
+    // Lender ended session → awaiting driver end-confirm: heavy on driver screen
+    if (status === 'awaiting_end_confirmation' && prev === 'in_progress' && userRole === 'driver') {
+      haptic('heavy');
+    }
+  }, [status, userRole]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -53,10 +77,20 @@ export function SessionControls({
     status !== 'awaiting_end_confirmation'
   ) return null;
 
+  if (showEndSuccess && userRole === 'driver') {
+    return <RoutineSuccess message="Session ended — charging complete." className="py-4" />;
+  }
+
   const graceMs = SESSION_GRACE_MINUTES * 60 * 1000;
   const windowStart = new Date(scheduledStart).getTime() - graceMs;
   const windowEnd = new Date(scheduledEnd).getTime() + graceMs;
   const canStart = now >= windowStart && now <= windowEnd;
+
+  function setActionError(msg: string) {
+    setError(msg);
+    setErrorKey(k => k + 1); // triggers shake re-animation via key change
+    haptic('error');
+  }
 
   async function handleAction(action: 'start' | 'end', body?: Record<string, unknown>) {
     if (loading) return;
@@ -71,16 +105,20 @@ export function SessionControls({
         const resBody = await res.json() as { error?: string; distance_m?: number; radius_km?: number };
         if (typeof resBody.distance_m === 'number' && typeof resBody.radius_km === 'number') {
           const distanceKm = (resBody.distance_m / 1000).toFixed(2);
-          setError(`You're ${distanceKm}km away — must be within ${resBody.radius_km}km. Move closer to start.`);
+          setActionError(`You're ${distanceKm}km away — must be within ${resBody.radius_km}km. Move closer to start.`);
         } else {
-          setError(resBody.error ?? `Failed to ${action} session`);
+          setActionError(resBody.error ?? `Failed to ${action} session`);
         }
         return;
       }
-      haptic('light');
+      // Session start/end: heavy haptic — these are significant lifecycle moments.
+      haptic('heavy');
+      if (action === 'end' && userRole === 'driver') {
+        setShowEndSuccess(true);
+      }
       await onUpdated();
     } catch {
-      setError(`Failed to ${action} session`);
+      setActionError(`Failed to ${action} session`);
     } finally {
       setLoading(false);
     }
@@ -112,13 +150,15 @@ export function SessionControls({
     if (userRole === 'lender') {
       return (
         <div className="space-y-2">
-          {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+          {error && (
+            <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
+          )}
           {canStart ? (
             <Button
               variant="secondary"
               size="lg"
               disabled={loading}
-              className="flex items-center gap-2 justify-center"
+              className="flex items-center gap-2 justify-center active:scale-[0.96]"
               onClick={() => { void handleAction('start'); }}
             >
               <Zap className="w-5 h-5" />
@@ -158,12 +198,14 @@ export function SessionControls({
               <p className="text-xs text-amber-700">{geoWarning}</p>
             </div>
           )}
-          {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+          {error && (
+            <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
+          )}
           <Button
             variant="secondary"
             size="lg"
             disabled={loading}
-            className="justify-center"
+            className="justify-center active:scale-[0.96]"
             onClick={() => { void handleDriverConfirm(); }}
           >
             {loading ? 'Confirming…' : 'Confirm start'}
@@ -201,12 +243,14 @@ export function SessionControls({
               {expectedEndMs > 0 && ` · Expected end in ${formatClock(expectedEndMs)}`}
             </p>
           </div>
-          {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+          {error && (
+            <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
+          )}
           <Button
             variant="secondary"
             size="lg"
             disabled={loading}
-            className="flex items-center gap-2 justify-center"
+            className="flex items-center gap-2 justify-center active:scale-[0.96]"
             onClick={() => { void handleAction('end'); }}
           >
             <Square className="w-5 h-5" />
@@ -234,7 +278,6 @@ export function SessionControls({
     : now + SESSION_END_AUTO_COMPLETE_MINUTES * 60 * 1000;
   const remainingMs = Math.max(0, autoCompleteMs - now);
 
-  // Format the absolute auto-complete wall-clock time as HH:MM
   const autoCompleteTime = new Date(autoCompleteMs).toLocaleTimeString('en-IN', {
     hour: '2-digit',
     minute: '2-digit',
@@ -250,12 +293,14 @@ export function SessionControls({
             {' '}Auto-completes at {autoCompleteTime} if not confirmed.
           </p>
         </div>
-        {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+        {error && (
+          <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
+        )}
         <Button
           variant="secondary"
           size="lg"
           disabled={loading}
-          className="justify-center"
+          className="justify-center active:scale-[0.96]"
           onClick={() => { void handleAction('end'); }}
         >
           {loading ? 'Confirming…' : 'Confirm end'}

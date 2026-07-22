@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { haptic } from '@/lib/haptics';
 import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
+import { MilestoneParticles } from '@/components/ui/MilestoneParticles';
+import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
+import { checkHostFirstChargerPublished, MILESTONE_LABEL, type MilestoneEvent } from '@/lib/milestones';
 import type { NewChargerDraft } from '@/types/charger-draft';
 import { StepBasics } from './steps/StepBasics';
 import { StepPricing } from './steps/StepPricing';
@@ -38,6 +41,7 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [activeMilestone, setActiveMilestone] = useState<MilestoneEvent | null>(null);
   const isInitialized = useRef(false);
 
   useEffect(() => {
@@ -122,8 +126,15 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
       }
 
       localStorage.removeItem(DRAFT_KEY);
-      haptic('light');
-      router.push('/lender/chargers');
+      haptic('heavy');
+      // Check milestone before navigating — first charger published is a one-time moment
+      const milestone = await checkHostFirstChargerPublished();
+      if (milestone) {
+        setActiveMilestone(milestone);
+        // Navigation deferred to MilestoneParticles onComplete callback
+      } else {
+        router.push('/lender/chargers');
+      }
     } catch {
       setSubmitError("Couldn't save charger, please try again.");
     } finally {
@@ -132,6 +143,22 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
   }
 
   const isLastStep = step === TOTAL_STEPS;
+
+  // Milestone overlay: brief celebration then navigate. Parent is the full page
+  // so the relative+overflow:hidden container is a centered card within it.
+  if (activeMilestone) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-6 py-10">
+        <div className="relative w-full max-w-sm rounded-2xl bg-green-soft border border-green/20 overflow-hidden">
+          <RoutineSuccess
+            message={MILESTONE_LABEL[activeMilestone]}
+            className="py-12"
+          />
+          <MilestoneParticles onComplete={() => router.push('/lender/chargers')} />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex flex-col px-6 py-10">
