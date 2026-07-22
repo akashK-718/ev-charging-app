@@ -6,6 +6,7 @@ import { ExternalLink, CheckCircle2, XCircle, RefreshCw, X } from 'lucide-react'
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { haptic } from '@/lib/haptics';
 
 type KycDetail = {
   id: string;
@@ -66,11 +67,14 @@ export default function AdminKycDetailPage() {
       if (!res.ok) {
         const b = await res.json() as { error?: string };
         setActionError(b.error ?? 'Failed to approve');
+        haptic('error');
         return;
       }
+      haptic('heavy');
       router.push('/admin/kyc');
     } catch {
       setActionError('Failed to approve');
+      haptic('error');
     } finally {
       setActionLoading(false);
     }
@@ -94,11 +98,14 @@ export default function AdminKycDetailPage() {
       if (!res.ok) {
         const b = await res.json() as { error?: string };
         setActionError(b.error ?? 'Failed to reject');
+        haptic('error');
         return;
       }
+      haptic('heavy');
       router.push('/admin/kyc?status=rejected');
     } catch {
       setActionError('Failed to reject');
+      haptic('error');
     } finally {
       setActionLoading(false);
     }
@@ -122,11 +129,14 @@ export default function AdminKycDetailPage() {
       if (!res.ok) {
         const b = await res.json() as { error?: string };
         setActionError(b.error ?? 'Failed to request resubmission');
+        haptic('error');
         return;
       }
+      haptic('heavy');
       router.push('/admin/kyc?status=resubmission_required');
     } catch {
       setActionError('Failed to request resubmission');
+      haptic('error');
     } finally {
       setActionLoading(false);
     }

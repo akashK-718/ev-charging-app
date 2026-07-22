@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Phone, MapPin, Clock, ShieldCheck } from 'lucide-react';
@@ -8,7 +8,11 @@ import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
 import { DriverRatingSection } from '@/components/bookings/DriverRatingSection';
+import { MilestoneParticles } from '@/components/ui/MilestoneParticles';
+import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { Button } from '@/components/ui/Button';
+import { haptic } from '@/lib/haptics';
+import { checkDriverFirstSession, MILESTONE_LABEL, type MilestoneEvent } from '@/lib/milestones';
 import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
 import { ACTIVE_BOOKING_STATUSES, FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES, type BookingStatus } from '@/lib/constants';
 
@@ -69,6 +73,8 @@ export default function BookingDetailPage() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [activeMilestone, setActiveMilestone] = useState<MilestoneEvent | null>(null);
+  const prevStatusRef = useRef<string | null>(null);
 
   const fetchBooking = useCallback(async (withSpinner = true) => {
     if (withSpinner) setLoading(true);
@@ -89,6 +95,18 @@ export default function BookingDetailPage() {
   }, [id]);
 
   useEffect(() => { void fetchBooking(); }, [fetchBooking]);
+
+  // Detect status transition to completed — fire milestone check on first session
+  useEffect(() => {
+    if (!booking) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = booking.status;
+    if (prev === null || prev === booking.status) return;
+
+    if (booking.status === 'completed' && prev !== 'completed') {
+      void checkDriverFirstSession().then(m => { if (m) setActiveMilestone(m); });
+    }
+  }, [booking?.status]);
 
   // Poll every 10s while active
   useEffect(() => {
@@ -168,6 +186,17 @@ export default function BookingDetailPage() {
           label={booking.status === 'awaiting_driver_confirmation' ? 'Awaiting your confirmation' : undefined}
         />
       </div>
+
+      {/* Milestone celebration — only fires for the fixed milestone list */}
+      {activeMilestone && (
+        <div className="relative rounded-xl bg-green-soft border border-green/20 overflow-hidden">
+          <RoutineSuccess
+            message={MILESTONE_LABEL[activeMilestone]}
+            className="py-6"
+          />
+          <MilestoneParticles onComplete={() => setActiveMilestone(null)} />
+        </div>
+      )}
 
       {/* Status messages */}
       {booking.status === 'pending' && (
@@ -290,8 +319,8 @@ export default function BookingDetailPage() {
               variant="secondary"
               size="md"
               disabled={cancelLoading}
-              className="flex-1 bg-red-50 text-red-700 hover:bg-red-100 border-red-100"
-              onClick={() => { void handleCancel(); }}
+              className="flex-1 bg-red-50 text-red-700 hover:bg-red-100 border-red-100 active:scale-[0.96]"
+              onClick={() => { haptic('heavy'); void handleCancel(); }}
             >
               {cancelLoading ? 'Cancelling…' : 'Yes, cancel'}
             </Button>

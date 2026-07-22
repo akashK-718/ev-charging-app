@@ -229,6 +229,53 @@ a, button, [role="button"] {
   .pulse-ring  { opacity: 0.25; }
 }
 
+/* ─── Strong / destructive feedback ──────────────────────────────────────── */
+
+/* Shake: horizontal jiggle for errors on inputs and cards */
+@keyframes shake-error {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-6px); }
+  30%     { transform: translateX(6px); }
+  45%     { transform: translateX(-5px); }
+  60%     { transform: translateX(5px); }
+  75%     { transform: translateX(-3px); }
+  90%     { transform: translateX(3px); }
+}
+.shake-error { animation: shake-error 400ms ease-out both; }
+
+/* Routine success: pop the checkmark into place — restrained, no bounce excess */
+@keyframes check-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.12); opacity: 1; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.animate-check-pop {
+  animation: check-pop 260ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+/* Milestone particle burst — Kirin-themed (bolt ⚡ + green dot shapes).
+   Parent MUST be position:relative + overflow:hidden to contain the burst.
+   Never fullscreen; never triggered by routine actions. */
+@keyframes milestone-particle {
+  0%   { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--mp-dx, 0px)), calc(-50% + var(--mp-dy, -50px))) scale(0.1); opacity: 0; }
+}
+.milestone-particle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  animation: milestone-particle 600ms ease-out forwards;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake-error      { animation: none; }
+  .animate-check-pop { animation: none; }
+  .milestone-particle { animation: none; opacity: 0; }
+}
+
 /* ─── GreenPath motion ────────────────────────────────────────────────────── */
 @keyframes rise-in {
   from { transform: translateY(14px); opacity: 0; }

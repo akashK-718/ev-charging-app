@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Phone, MapPin, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { MilestoneParticles } from '@/components/ui/MilestoneParticles';
+import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
 import { cn } from '@/lib/utils';
+import { haptic } from '@/lib/haptics';
+import { checkHostFirstBookingReceived, checkHostFirstCompletedSession, MILESTONE_LABEL, type MilestoneEvent } from '@/lib/milestones';
 import { BOOKING_AUTO_CANCEL_MINUTES, ACTIVE_BOOKING_STATUSES, type BookingStatus } from '@/lib/constants';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
@@ -87,6 +91,8 @@ export default function LenderBookingDetailPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [activeMilestone, setActiveMilestone] = useState<MilestoneEvent | null>(null);
+  const prevStatusRef = useRef<string | null>(null);
 
   const remaining = useCountdown(booking?.status === 'pending' ? booking.created_at : null);
 
@@ -124,6 +130,18 @@ export default function LenderBookingDetailPage() {
     if (remaining === 0) void fetchBooking(false);
   }, [remaining, fetchBooking]);
 
+  // Watch for booking status transitions to detect host milestone moments
+  useEffect(() => {
+    if (!booking) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = booking.status;
+    if (prev === null || prev === booking.status) return;
+
+    if (booking.status === 'completed' && prev !== 'completed') {
+      void checkHostFirstCompletedSession().then(m => { if (m) setActiveMilestone(m); });
+    }
+  }, [booking?.status]);
+
   async function handleAccept() {
     if (actionLoading) return;
     setActionLoading(true);
@@ -133,11 +151,17 @@ export default function LenderBookingDetailPage() {
       if (!res.ok) {
         const b = await res.json() as { error?: string };
         setActionError(b.error ?? 'Failed to accept');
+        haptic('error');
         return;
       }
+      haptic('heavy');
       await fetchBooking();
+      // Check first-booking milestone after accepting
+      const milestone = await checkHostFirstBookingReceived();
+      if (milestone) setActiveMilestone(milestone);
     } catch {
       setActionError('Failed to accept booking');
+      haptic('error');
     } finally {
       setActionLoading(false);
     }
@@ -160,11 +184,14 @@ export default function LenderBookingDetailPage() {
       if (!res.ok) {
         const b = await res.json() as { error?: string };
         setActionError(b.error ?? 'Failed to reject');
+        haptic('error');
         return;
       }
+      haptic('heavy');
       router.push('/lender/bookings');
     } catch {
       setActionError('Failed to reject booking');
+      haptic('error');
     } finally {
       setActionLoading(false);
     }
@@ -215,6 +242,17 @@ export default function LenderBookingDetailPage() {
         </div>
         <StatusBadge status={booking.status} />
       </div>
+
+      {/* Milestone celebration — only fires for the fixed milestone list, never routine actions */}
+      {activeMilestone && (
+        <div className="relative rounded-xl bg-green-soft border border-green/20 overflow-hidden">
+          <RoutineSuccess
+            message={MILESTONE_LABEL[activeMilestone]}
+            className="py-6"
+          />
+          <MilestoneParticles onComplete={() => setActiveMilestone(null)} />
+        </div>
+      )}
 
       {/* Pending countdown warning */}
       {isPending && remaining !== null && (
