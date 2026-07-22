@@ -289,6 +289,20 @@ FAQ → Payments → Hosting → Contact (Contact is folded into this page, not 
 
 ---
 
+## Client-side Storage Scoping
+
+Any feature that persists state in the browser MUST classify its storage key into one of three buckets before writing. Adding a new key without picking a bucket is a bug.
+
+| Bucket | Scope | Rule | Examples |
+|---|---|---|---|
+| **Device-level** | Device | Fine as a flat key — not tied to any user | `pwa_install_nudge_v1`, `kirin_intro_done` (sessionStorage) |
+| **User-level** | Authenticated user ID | Key MUST use `{base}:{userId}` pattern via `userKey()` in `src/lib/user-storage.ts`. NOT cleared on logout — persists for that user on next login. Legacy flat key MUST be purged on init via `purgeLegacyKey()`. | `chargers_map_state_v2:{userId}`, `kirin:milestones:{userId}`, `lender:new-charger:draft:{userId}` |
+| **Session-level** | Auth token lifetime | Must be fully cleared when `supabase.signOut()` is called. Supabase handles its own tokens; OTP and in-progress booking/payment state fall here. | Supabase access/refresh tokens, OTP flow state |
+
+**Why this matters:** a flat User-level key written by User A remains visible to User B who logs in on the same device after User A logs out. Route searches include real coordinates and are personal data — this is a privacy bug, not just a UX issue. The `{base}:{userId}` pattern ensures each user reads and writes only their own state.
+
+**On logout:** Supabase `signOut()` clears Session-level tokens. User-level scoped keys are intentionally *not* cleared — the point is that User A's saved state is still there if User A logs back in later. Device-level keys are never touched by login/logout.
+
 ## Notes for implementation
 
 - Every screen must reference the current `/design` foundation for visual tokens (colors, fonts, radius, shadows) and `DESIGN_EV.md` for content/interaction guardrails (no em dashes, no default pill-everything, no decorative animation, varied section header treatments).

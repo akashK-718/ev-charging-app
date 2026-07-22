@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { purgeLegacyKey } from '@/lib/user-storage';
 import { haptic } from '@/lib/haptics';
 import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
@@ -17,7 +19,7 @@ import { StepAvailability } from './steps/StepAvailability';
 import { StepInstructions } from './steps/StepInstructions';
 import { StepReview } from './steps/StepReview';
 
-const DRAFT_KEY = 'lender:new-charger:draft';
+const DRAFT_KEY_BASE = 'lender:new-charger:draft';
 const TOTAL_STEPS = 7;
 
 const STEP_LABELS: Record<number, string> = {
@@ -43,14 +45,26 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activeMilestone, setActiveMilestone] = useState<MilestoneEvent | null>(null);
   const isInitialized = useRef(false);
+  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) setDraft(JSON.parse(saved) as Partial<NewChargerDraft>);
-    } catch {
-      // ignore malformed saved data
-    }
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || !user) return;
+      userIdRef.current = user.id;
+      // Remove any legacy unscoped key — data that can't be attributed to a
+      // specific user must not be loaded.
+      purgeLegacyKey(DRAFT_KEY_BASE);
+      try {
+        const saved = localStorage.getItem(`${DRAFT_KEY_BASE}:${user.id}`);
+        if (saved) setDraft(JSON.parse(saved) as Partial<NewChargerDraft>);
+      } catch {
+        // ignore malformed saved data
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Skip the first render so we don't overwrite a saved draft before restoration fires
@@ -59,7 +73,9 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
       isInitialized.current = true;
       return;
     }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    const uid = userIdRef.current;
+    if (!uid) return;
+    localStorage.setItem(`${DRAFT_KEY_BASE}:${uid}`, JSON.stringify(draft));
   }, [draft]);
 
   function updateDraft(updates: Partial<NewChargerDraft>) {
@@ -81,7 +97,8 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
         setDeleteError(data.error ?? 'Could not delete draft. Please try again.');
         return;
       }
-      localStorage.removeItem(DRAFT_KEY);
+      const uid = userIdRef.current;
+      if (uid) localStorage.removeItem(`${DRAFT_KEY_BASE}:${uid}`);
       router.push('/profile');
     } catch {
       setDeleteError('Could not delete draft. Please try again.');
@@ -125,7 +142,8 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
         return;
       }
 
-      localStorage.removeItem(DRAFT_KEY);
+      const uid = userIdRef.current;
+      if (uid) localStorage.removeItem(`${DRAFT_KEY_BASE}:${uid}`);
       haptic('heavy');
       // Check milestone before navigating — first charger published is a one-time moment
       const milestone = await checkHostFirstChargerPublished();
