@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { CONNECTOR_TYPES, CHARGER_TYPES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { haptic } from '@/lib/haptics';
 
 export type Availability = 'any' | 'now' | 'next_2h';
 export type PowerFilter  = 'any' | string;
@@ -117,7 +118,7 @@ export function FilterSheet({
         {/* Header */}
         <div className="flex items-center px-4 pb-4 pt-1">
           <h2 className="font-display font-bold text-ink text-lg flex-1">Filters</h2>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors" aria-label="Close">
+          <button onClick={() => { haptic('light'); onClose(); }} className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors tap-light" aria-label="Close">
             <X className="w-4 h-4 text-muted" />
           </button>
         </div>
@@ -158,9 +159,9 @@ export function FilterSheet({
                 return (
                   <button
                     key={ct}
-                    onClick={() => toggleConnector(ct)}
+                    onClick={() => { haptic('light'); toggleConnector(ct); }}
                     className={cn(
-                      'px-3.5 py-2 rounded-full text-sm font-semibold transition-colors',
+                      'px-3.5 py-2 rounded-full text-sm font-semibold tap-light',
                       active ? 'bg-ink text-white' : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
                     )}
                   >
@@ -233,14 +234,14 @@ export function FilterSheet({
           {/* Actions */}
           <div className="flex gap-3 pt-1">
             <button
-              onClick={handleClear}
-              className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-muted hover:text-ink hover:border-gray-300 transition-colors"
+              onClick={() => { haptic('light'); handleClear(); }}
+              className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-muted hover:text-ink hover:border-gray-300 transition-colors tap-light"
             >
               Clear all
             </button>
             <button
-              onClick={handleApply}
-              className="flex-[2] py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors"
+              onClick={() => { haptic('medium'); handleApply(); }}
+              className="flex-[2] py-3 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors tap-medium"
             >
               Apply
             </button>

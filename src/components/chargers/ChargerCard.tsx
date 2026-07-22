@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import { Star, Zap } from 'lucide-react';
 import type { Database } from '@/lib/supabase/types';
 import { toJpegUrl } from '@/lib/cloudinary-url';
+import { haptic } from '@/lib/haptics';
 
 export type ChargerRow = Database['public']['Tables']['chargers']['Row'];
 
@@ -23,7 +26,11 @@ export function ChargerCard({
   const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
 
   return (
-    <Link href={`/explore/${charger.id}`} className="block group tap-target">
+    <Link
+      href={`/explore/${charger.id}`}
+      onClick={() => haptic('light')}
+      className="block group tap-light"
+    >
       <div className="rounded-xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         {/* Cover photo */}
         <div className="aspect-[16/9] bg-volt-soft relative overflow-hidden">

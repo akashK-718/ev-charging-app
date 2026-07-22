@@ -71,6 +71,10 @@
   --dur-fast: 120ms;
   --dur-normal: 200ms;
   --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+
+  /* Tap feedback timing — used by .tap-* classes and Button active states */
+  --tap-dur: 80ms;
+  --tap-ease: ease-out;
 }
 
 body {
@@ -99,9 +103,47 @@ h3 { font-size: 16px; font-weight: 700; }
 }
 
 .tappable:active {
-  transform: scale(0.97);
-  transition: transform var(--dur-fast) var(--ease-out);
+  transform: scale(0.98);
+  transition: transform var(--tap-dur) var(--tap-ease);
 }
+
+/* ─── Tap feedback tiers ──────────────────────────────────────────────────── *
+ * Visual feedback is always CSS :active — no JS, fires within ~80ms.
+ * Haptic feedback via haptic() in src/lib/haptics.ts — Android-only bonus.
+ *
+ * Light   (0.98): nav tabs, cards, list rows, chips, icon buttons, toggles
+ * Medium  (0.96): primary CTAs, FABs, dialog confirm — slight shadow drop
+ * Strong  (0.96): immediate pressed state, no ease-in animation
+ * Opacity       : back / dismiss actions — no translate, just fade
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+.tap-light {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  transition: transform var(--tap-dur) var(--tap-ease);
+}
+.tap-light:active { transform: scale(0.98); }
+
+.tap-medium {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  transition: transform var(--tap-dur) var(--tap-ease),
+              box-shadow var(--tap-dur) var(--tap-ease);
+}
+.tap-medium:active { transform: scale(0.96); box-shadow: none; }
+
+.tap-strong {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+.tap-strong:active { transform: scale(0.96); }
+
+.tap-opacity {
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  transition: opacity var(--tap-dur) var(--tap-ease);
+}
+.tap-opacity:active { opacity: 0.6; }
 
 /* ─── Scroll behaviour ────────────────────────────────────────────────────── */
 html, body {
@@ -115,15 +157,13 @@ a, button, [role="button"] {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Legacy alias — prefer .tap-light for new components */
 .tap-target {
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
+  transition: transform var(--tap-dur) var(--tap-ease);
 }
-
-.tap-target:active {
-  opacity: 0.7;
-  transition: opacity 0.08s ease;
-}
+.tap-target:active { transform: scale(0.98); }
 
 /* Hide scrollbar for filter chips */
 .scrollbar-none {
@@ -170,6 +210,19 @@ a, button, [role="button"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tap-light,
+  .tap-medium,
+  .tap-strong,
+  .tap-opacity,
+  .tap-target,
+  .tappable { transition: none; }
+  .tap-light:active,
+  .tap-medium:active,
+  .tap-strong:active,
+  .tap-target:active,
+  .tappable:active { transform: none; }
+  .tap-opacity:active { opacity: 0.85; }
+
   .animate-bob,
   .animate-bob-delayed,
   .pulse-ring { animation: none; }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Map, ActivityIcon, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { haptic } from '@/lib/haptics';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 
@@ -60,9 +61,10 @@ export function BottomNav() {
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
+              onClick={() => haptic('light')}
               className={cn(
                 'relative flex flex-col items-center gap-[3px] flex-1 px-1 py-2.5',
-                'text-[10px] font-semibold tracking-wide transition-colors tap-target',
+                'text-[10px] font-semibold tracking-wide tap-light',
                 active ? 'text-green' : 'text-muted',
               )}
             >
