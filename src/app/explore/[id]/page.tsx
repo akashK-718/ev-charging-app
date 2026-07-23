@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
 import { ActionBar } from '@/components/ui/ActionBar';
 import { Button } from '@/components/ui/Button';
+import { OwnerPreviewBanner } from '@/components/chargers/OwnerPreviewBanner';
 import type { Database } from '@/lib/supabase/types';
 
 type ChargerRow = Database['public']['Tables']['chargers']['Row'];
@@ -51,6 +52,7 @@ export default async function ChargerDetailPage({
 
   const lender = lenderResult.data;
   const currentUser = authResult.data.user;
+  const isOwner = !!currentUser && currentUser.id === charger.lender_id;
 
   let hasConfirmedBooking = false;
   if (currentUser) {
@@ -70,6 +72,9 @@ export default async function ChargerDetailPage({
 
   return (
     <div className="min-h-screen bg-surface-page">
+
+      {/* Owner preview banner — only shown when the host views their own listing */}
+      {isOwner && <OwnerPreviewBanner />}
 
       {/* Mobile hero — edge-to-edge */}
       <div className="md:hidden">
@@ -202,7 +207,11 @@ export default async function ChargerDetailPage({
                 <span className="text-sm font-medium text-muted">/kWh</span>
               </p>
               <p className="text-xs text-muted mt-0.5 mb-5">Rate per unit</p>
-              {isAvailable ? (
+              {isOwner ? (
+                <Link href={`/lender/chargers/${charger.id}/edit`} className="block">
+                  <Button variant="secondary" className="w-full">Edit listing</Button>
+                </Link>
+              ) : isAvailable ? (
                 <Link href={`/bookings/new?charger=${charger.id}`} className="block">
                   <Button variant="primary" className="w-full">Book now</Button>
                 </Link>
@@ -226,7 +235,11 @@ export default async function ChargerDetailPage({
                 <span className="text-sm font-normal text-muted">/kWh</span>
               </p>
             </div>
-            {isAvailable ? (
+            {isOwner ? (
+              <Link href={`/lender/chargers/${charger.id}/edit`} className="flex-1">
+                <Button variant="secondary" className="w-full">Edit listing</Button>
+              </Link>
+            ) : isAvailable ? (
               <Link href={`/bookings/new?charger=${charger.id}`} className="flex-1">
                 <Button variant="primary" className="w-full">Book now</Button>
               </Link>

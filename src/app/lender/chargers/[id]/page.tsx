@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChevronLeft, ChevronRight, Edit3, Pause, Play, MoreVertical,
-  Trash2, Copy, ExternalLink, Zap, MapPin, Star,
+  Trash2, Copy, Eye, Zap, MapPin, Star,
 } from 'lucide-react';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import { cn } from '@/lib/utils';
@@ -562,16 +562,14 @@ export default function LenderChargerDetailPage() {
                 <Copy className="w-4 h-4 text-muted" />
                 Share listing
               </button>
-              <a
-                href={`/explore/${chargerId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-ink hover:bg-gray-50 transition-colors"
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); router.push(`/explore/${chargerId}`); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-ink hover:bg-gray-50 transition-colors"
               >
-                <ExternalLink className="w-4 h-4 text-muted" />
+                <Eye className="w-4 h-4 text-muted" />
                 View public listing
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={() => { void handleDuplicate(); }}
