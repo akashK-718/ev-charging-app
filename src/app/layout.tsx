@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/layout/BottomNav';
 import { PageTransition } from '@/components/ui/PageTransition';
 import { PushNotificationsProvider } from '@/components/ui/PushNotificationsProvider';
 import { SplashIntro } from '@/components/ui/SplashIntro';
+import { UpdateBanner } from '@/components/ui/UpdateBanner';
 
 export const metadata: Metadata = {
   title: 'Kirin',
@@ -79,6 +80,7 @@ export default function RootLayout({
             {children}
           </PageTransition>
         </PushNotificationsProvider>
+        <UpdateBanner />
         {/* Capture beforeinstallprompt before React hydration so it's never missed */}
         <script dangerouslySetInnerHTML={{ __html: `
           window.addEventListener('beforeinstallprompt', function(e) {
@@ -99,7 +101,9 @@ export default function RootLayout({
                   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
                   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
                 })};
-                var sw = reg.installing || reg.waiting || reg.active;
+                // Always send Firebase config to the active SW — that's the one
+                // handling push messages. A waiting SW doesn't need config yet.
+                var sw = reg.active || reg.installing;
                 if (sw) sw.postMessage({ type: 'FIREBASE_CONFIG', config: firebaseConfig });
               });
             });
