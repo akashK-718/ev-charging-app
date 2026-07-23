@@ -303,6 +303,35 @@ Any feature that persists state in the browser MUST classify its storage key int
 
 **On logout:** Supabase `signOut()` clears Session-level tokens. User-level scoped keys are intentionally *not* cleared — the point is that User A's saved state is still there if User A logs back in later. Device-level keys are never touched by login/logout.
 
+## PWA Update Paths
+
+There are two distinct kinds of PWA update. They use different mechanisms and have different limitations. Conflating them produces "bug reports" that can't be fixed.
+
+### Path 1 — App code and features (service worker lifecycle)
+
+**What updates:** JavaScript bundles, API routes, page content, this service worker (`/sw.js`).
+
+**How it works:**
+1. The browser detects a byte change in `/sw.js` on the next navigation (or after ~24 h if the app is left open).
+2. The new service worker downloads and enters the `waiting` state.
+3. `UpdateBanner` (`src/components/ui/UpdateBanner.tsx`) surfaces: *"Update available — A new version of Kirin is ready."*
+4. **"Update now"** → sends `SKIP_WAITING` to the waiting SW → SW activates → page reloads to pick up new JS bundles.
+5. **"Later"** → banner is dismissed for the current session only (React state, no localStorage). The banner reappears on the next fresh app open if the update is still pending.
+
+**What never happens:** an automatic reload without the user tapping "Update now." A surprise reload mid-booking, mid-payment, or mid-charging-session-confirmation is explicitly prevented by never calling `skipWaiting()` automatically in `sw.js`.
+
+### Path 2 — Installed app metadata (OS-cached at install time)
+
+**What updates:** home-screen icon, app name, splash screen, theme colour — everything in `manifest.json`.
+
+**How it works (and doesn't):**
+- Changing `manifest.json` and deploying immediately updates the in-browser experience (browser chrome, address bar theme).
+- However, the OS caches the icon, name, and splash **at the moment the user taps "Add to Home Screen."** These assets are stored by the platform, not by the service worker.
+- Changing `manifest.json` after install does **not** reliably update the home-screen icon or splash on Android or iOS without the user uninstalling and reinstalling the PWA.
+- This is a platform limitation. It cannot be fixed from the web app. If an icon update is critical, instruct users to remove and re-add the app.
+
+**Common misread:** a user who installed the app before an icon change and reports "the icon didn't update" is experiencing Path 2, not a broken deployment. The service-worker banner (Path 1) cannot help them — they need to reinstall.
+
 ## Notes for implementation
 
 - Every screen must reference the current `/design` foundation for visual tokens (colors, fonts, radius, shadows) and `DESIGN_EV.md` for content/interaction guardrails (no em dashes, no default pill-everything, no decorative animation, varied section header treatments).
