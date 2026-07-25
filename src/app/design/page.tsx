@@ -167,8 +167,8 @@ export default function DesignPage() {
               { name: 'copper',       hex: '#b5642f', bg: '#b5642f' },
               { name: 'copper-soft',  hex: '#f9ece1', bg: '#f9ece1' },
               { name: 'danger',       hex: '#b3261e', bg: '#b3261e' },
-              { name: 'border',       hex: '#e3e0d6', bg: '#e3e0d6' },
-              { name: 'surface-page', hex: '#faf9f5', bg: '#faf9f5' },
+              { name: 'border',       hex: '#d5e0d8', bg: '#d5e0d8' },
+              { name: 'surface-page', hex: '#f5faf6', bg: '#f5faf6' },
               { name: 'surface-card', hex: '#ffffff',  bg: '#ffffff', border: true },
             ].map(s => (
               <div key={s.name} className="swatch">
@@ -180,7 +180,68 @@ export default function DesignPage() {
               </div>
             ))}
           </div>
-          <p className="palette-note">Copper is used for in-progress or waiting states specifically, a session mid-charge, a payment pending, not as a second decorative accent competing with green.</p>
+          <p className="palette-note">Copper signals in-progress states (a session mid-charge, a payment pending) and is never a second brand accent. Amber is used for action-needed states (booking requests awaiting approval). App canvas is barely-green off-white, not warm beige. Card borders are green-gray, not sandy.</p>
+        </section>
+
+        {/* ── 01b Semantic accents ────────────────────────────────────────── */}
+        <section className="block" id="semantic">
+          <div className="head-a">
+            <span className="num">01b</span>
+            <div>
+              <h2>Semantic accents</h2>
+              <p>Each accent maps to exactly one meaning. Never combine them or use them decoratively. Always pair a soft background with a saturated foreground of the same hue.</p>
+            </div>
+          </div>
+          <div className="accent-grid">
+
+            <div className="accent-cell">
+              <span className="lbl">action needed / pending request</span>
+              <div className="accent-amber-card">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="accent-avatar" style={{ background: '#fed7aa', color: '#c2410c' }}>JL</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Jordan Lee wants to charge</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Today, 5:30 to 7:30 PM</div>
+                  </div>
+                  <span className="accent-pill amber-pill">REQUEST</span>
+                </div>
+              </div>
+              <p className="accent-rule">2 px <code>amber-300/70</code> card border, white bg. Amber-700 text and badge. Used for booking requests awaiting host response.</p>
+            </div>
+
+            <div className="accent-cell">
+              <span className="lbl">available now</span>
+              <div className="accent-demo">
+                <span className="tag tag-status-live">
+                  <svg className="filled" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg>
+                  Available now
+                </span>
+              </div>
+              <p className="accent-rule">Green dot + green-700 text on white pill. Never use for non-availability states.</p>
+            </div>
+
+            <div className="accent-cell">
+              <span className="lbl">in progress / waiting</span>
+              <div className="accent-demo">
+                <span className="tag tag-status-wait">
+                  <svg className="filled" viewBox="0 0 24 24"><path d="M13 2 5 12h5l-1 8 8-10h-5l1-8z"/></svg>
+                  Session in progress
+                </span>
+              </div>
+              <p className="accent-rule">Copper background and text. Sessions mid-charge, payments pending. Not a second brand accent.</p>
+            </div>
+
+            <div className="accent-cell">
+              <span className="lbl">host dashboard surfaces</span>
+              <div className="accent-dark-card">
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: '#4ade80', marginBottom: 4 }}>HOSTING · TODAY</p>
+                <p style={{ fontSize: 26, fontWeight: 700, color: '#fff', margin: 0 }}>$9.05</p>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>$41.20 this week</p>
+              </div>
+              <p className="accent-rule">Inverted: zinc-900 card, green-400 eyebrow and accents, white type. Makes the hosting context feel distinct without a mode switch.</p>
+            </div>
+
+          </div>
         </section>
 
         {/* ── 02 Typography — treatment A ─────────────────────────────────── */}
@@ -218,6 +279,36 @@ export default function DesignPage() {
             <div className="type-row">
               <div className="type-sample"><span className="t-data">7.4 kW · ₹12/kWh</span></div>
               <span className="type-tag">system mono · 600 · 14px, for data only</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 02b Copy guardrails ─────────────────────────────────────────── */}
+        <section className="block" id="copy">
+          <div className="head-c">
+            <span className="ctag">writing</span>
+            <h2>Copy guardrails</h2>
+          </div>
+          <div className="copy-grid">
+            <div className="copy-row">
+              <span className="copy-avoid">No em dashes</span>
+              <span className="copy-rule">Use a comma, a period, or rewrite the sentence. Never use — in UI copy.</span>
+            </div>
+            <div className="copy-row">
+              <span className="copy-avoid">No ellipsis in headings or CTAs</span>
+              <span className="copy-rule">Fine for truncated strings in code. Never as a stylistic choice in labels or buttons.</span>
+            </div>
+            <div className="copy-row">
+              <span className="copy-avoid">No filler adverbs</span>
+              <span className="copy-rule">Cut "simply", "easily", "just", "seamlessly". If the thing is easy, show it, do not say it.</span>
+            </div>
+            <div className="copy-row">
+              <span className="copy-avoid">No hollow reassurance</span>
+              <span className="copy-rule">"Your data is safe" without specifics is noise. Say what is actually kept or deleted.</span>
+            </div>
+            <div className="copy-row copy-row-last">
+              <span className="copy-avoid">Case rules</span>
+              <span className="copy-rule">UPPER CASE for eyebrows only (11px tracking-widest labels). Sentence case everywhere else, including section headings, button labels, and navigation items.</span>
             </div>
           </div>
         </section>
@@ -325,6 +416,39 @@ export default function DesignPage() {
               Real-time booking
             </span>
           </div>
+        </section>
+
+        {/* ── Activity tiles ──────────────────────────────────────────────── */}
+        <section className="block" id="activity-tiles">
+          <div className="head-c">
+            <span className="ctag">activity feed</span>
+            <h2>Kind-coded icon tiles</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, maxWidth: 560, lineHeight: 1.6 }}>
+            Every activity item leads with a colored square tile. The color encodes the kind before the user reads the label. Never reuse a color for a different kind.
+          </p>
+          <div className="tile-row">
+            {([
+              { kind: 'Booking',  bg: '#eff6ff', color: '#2563eb', path: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z' },
+              { kind: 'Payment',  bg: '#f5f3ff', color: '#7c3aed', path: 'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7zM2 11h20' },
+              { kind: 'Payout',   bg: '#ecfdf5', color: '#059669', path: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
+              { kind: 'Hosting',  bg: '#f0fdf4', color: '#16a34a', path: 'M13 2 5 12h5l-1 8 8-10h-5l1-8z' },
+              { kind: 'Rating',   bg: '#fffbeb', color: '#d97706', path: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+              { kind: 'Notice',   bg: '#f9fafb', color: '#6b7280', path: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 8h.01M12 12v4' },
+            ] as Array<{ kind: string; bg: string; color: string; path: string }>).map(t => (
+              <div key={t.kind} className="tile-cell">
+                <div className="tile-icon" style={{ background: t.bg }}>
+                  <svg viewBox="0 0 24 24" width={18} height={18} stroke={t.color} fill="none" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                    <path d={t.path} />
+                  </svg>
+                </div>
+                <span className="tile-label">{t.kind}</span>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 16 }}>
+            Colors: booking blue-600, payment violet-700, payout emerald-600, hosting green-600, rating amber-600, notice gray-500.
+          </p>
         </section>
 
         {/* ── Text input — treatment C ─────────────────────────────────────── */}
@@ -666,9 +790,9 @@ export default function DesignPage() {
             Cards separate from the page through a 1px border and a tonal step (<b>surface-page</b> to <b>surface-card</b>), not a shadow. The bottom sheet is the one exception: it's genuinely floating over the page, so a shadow there is honest, not decorative.
           </p>
           <div className="sr-grid">
-            <div className="sr-cell"><div className="box r-sm" /><div className="lbl">radius-sm · 6px, inputs</div></div>
-            <div className="sr-cell"><div className="box r-base" /><div className="lbl">radius · 10px, cards &amp; buttons</div></div>
-            <div className="sr-cell"><div className="box r-lg" /><div className="lbl">radius-lg · 14px, sheet</div></div>
+            <div className="sr-cell"><div className="box r-sm" /><div className="lbl">radius-sm · 10px, inputs</div></div>
+            <div className="sr-cell"><div className="box r-base" /><div className="lbl">radius · 16px, buttons and tiles</div></div>
+            <div className="sr-cell"><div className="box r-lg" /><div className="lbl">radius-lg · 24px, cards and sheets</div></div>
             <div className="sr-cell"><div className="box r-pill" /><div className="lbl">radius-pill · status chips only</div></div>
           </div>
           <div className="compare-grid">
@@ -679,7 +803,7 @@ export default function DesignPage() {
             </div>
             <div className="compare-cell compare-use">
               <span className="ctag">what we use now</span>
-              <p>10px radius, no glow, a grounded green with a copper counterpart for a second real state.</p>
+              <p>16px radius, no glow, a grounded green. Amber for action-needed, copper for in-progress. No decorative shadows.</p>
               <span className="demo-box">Find a charger</span>
             </div>
           </div>
@@ -986,12 +1110,40 @@ export default function DesignPage() {
         .foot-links a { color: var(--muted); text-decoration: none; }
         .foot-links a:hover { color: var(--green); }
 
+        /* semantic accents */
+        .accent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+        .accent-cell { background: var(--surface-card); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+        .accent-cell .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+        .accent-rule { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 0; }
+        .accent-rule code { font-family: var(--font-mono); font-size: 11px; background: var(--surface-page); padding: 1px 4px; border-radius: 4px; }
+        .accent-amber-card { background: #fff; border: 2px solid rgba(252,211,77,0.7); border-radius: var(--radius); padding: 14px; }
+        .accent-avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex: none; }
+        .accent-pill { display: inline-flex; align-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 10px; border-radius: var(--radius-pill); padding: 3px 8px; letter-spacing: .04em; }
+        .amber-pill { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+        .accent-demo { display: flex; align-items: center; }
+        .accent-dark-card { background: #18181b; border-radius: var(--radius); padding: 16px; }
+
+        /* copy guardrails */
+        .copy-grid { border: 1px solid var(--border); }
+        .copy-row { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--border); align-items: baseline; }
+        .copy-row-last { border-bottom: none; }
+        .copy-avoid { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--danger); white-space: nowrap; }
+        .copy-rule { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+        /* activity tiles */
+        .tile-row { display: flex; flex-wrap: wrap; gap: 12px; }
+        .tile-cell { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+        .tile-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; }
+        .tile-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
         @media (max-width: 720px) {
           .wrap { padding: 0 18px; }
           .navrow { padding: 14px 18px; }
           .card-grid { grid-template-columns: 1fr; }
           .spec-grid { grid-template-columns: repeat(2, 1fr); }
           .compare-grid { grid-template-columns: 1fr; }
+          .copy-row { grid-template-columns: 1fr; gap: 4px; }
+          .accent-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
