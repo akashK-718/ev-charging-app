@@ -46,8 +46,11 @@ Greeting        always          time-of-day salutation + avatar
 Attention       0..N cards      the only zone that stacks; time-sensitive, session, account-blocking, financial
 Snapshot        0..2 cards      read-only glance cards — tap to open, no action buttons
 Quick Actions   always          Find Charger, Plan Trip — navigation shortcuts only
-Nudge           0..1 card       cascade: unfinished → install-pwa → rule → discovery → evergreen tip
+PWA Install     0..1 card       independent; shown only when install is eligible and not dismissed
+Nudge           0..1 card       cascade: unfinished → rule → discovery → evergreen tip
 ```
+
+**PWA Install card** sits between Quick Actions and Nudge. It is fully independent of the Nudge cascade — both the PWA card and the Nudge card can be visible simultaneously. The card renders client-side after checking: (a) not already in standalone/PWA mode, (b) user has not previously dismissed it as "never" or "later" (stored in `localStorage` via `readPwaDismissal`), (c) either a `beforeinstallprompt` event is available (Chromium) or the browser is iOS Safari (manual Add to Home Screen instructions). Implemented in `src/components/home/PwaInstallCard.tsx`.
 
 **Quick Actions is always visible** regardless of account state. It contains only navigation shortcuts (never information cards, never summaries) and must never compete with Attention or Nudge content.
 
@@ -70,7 +73,7 @@ Nudge           0..1 card       cascade: unfinished → install-pwa → rule →
 Used for Nudge (rule and tip variants) specifically. This deliberately avoids building any kind of AI/ML recommendation system for v1.
 
 - **Class A, State Cards** — generated directly from deterministic database state (booking starts soon, resume draft, KYC rejected, charger offline, payout processed). These primarily populate Attention and Snapshot.
-- **Class B, Rule Cards** — simple boolean conditions, no ML. Example: `if charger.photos < 5` → "Listings with 5+ photos receive more bookings." `if vehicle_count == 0` → "Add your first vehicle." `if no_booking_30_days` → "Lowering your price may increase bookings." These populate Nudge (rule variant).
+- **Class B, Rule Cards** — simple boolean conditions, no ML. Example: `if charger.photos < 3` → "Listings with 3+ photos receive more bookings." `if vehicle_count == 0` → "Add your first vehicle." `if no_booking_30_days` → "Lowering your price may increase bookings." These populate Nudge (rule variant). Note: the nudge threshold (3 photos) is distinct from the upload cap (5 photos max per charger) — do not conflate them.
 - **Class C, Evergreen Tips** — lowest priority, static rotating content from a simple pool (e.g. a `tips.ts` file), used only when nothing better exists. "Charging during off-peak hours can be cheaper." "You can pause your charger any time." These populate Nudge (tip variant).
 
 ### KYC cards
