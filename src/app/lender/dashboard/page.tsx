@@ -105,24 +105,24 @@ export default async function HostingOverviewPage() {
       <section className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Today</p>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="bg-white rounded-2xl border border-border p-4">
             <p className="text-xs text-muted">Earned today</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
               ₹{(todayEarnings / 100).toFixed(0)}
             </p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="bg-white rounded-2xl border border-border p-4">
             <p className="text-xs text-muted">Upcoming</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
               {upcomingCount} {upcomingCount === 1 ? 'booking' : 'bookings'}
             </p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="bg-white rounded-2xl border border-border p-4">
             <p className="text-xs text-muted">Live chargers</p>
             <p className="font-display font-bold text-xl text-ink mt-1">{liveCount}</p>
           </div>
           {draftCount > 0 && (
-            <div className="bg-white rounded-xl border border-gray-100 p-4">
+            <div className="bg-white rounded-2xl border border-border p-4">
               <p className="text-xs text-muted">Drafts</p>
               <p className="font-display font-bold text-xl text-ink mt-1">{draftCount}</p>
             </div>
@@ -133,7 +133,7 @@ export default async function HostingOverviewPage() {
       {hasAttention && (
         <section className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Attention</p>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2.5">
+          <div className="bg-white border-2 border-amber-300/70 rounded-2xl p-4 space-y-2.5">
             {pendingCount > 0 && (
               <Link
                 href="/lender/bookings"
@@ -164,31 +164,31 @@ export default async function HostingOverviewPage() {
 
       <section className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Quick actions</p>
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-100">
+        <div className="bg-white border border-border rounded-2xl overflow-hidden divide-y divide-border">
           <Link
             href="/lender/chargers/new"
-            className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
             <Plus className="size-4 text-green-600 shrink-0" aria-hidden />
             <span className="text-sm font-semibold text-ink">Add charger</span>
           </Link>
           <Link
             href="/lender/chargers"
-            className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
             <ListChecks className="size-4 text-ink/50 shrink-0" aria-hidden />
             <span className="text-sm font-semibold text-ink">Manage chargers</span>
           </Link>
           <Link
             href="/lender/bookings"
-            className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
             <BookOpen className="size-4 text-ink/50 shrink-0" aria-hidden />
             <span className="text-sm font-semibold text-ink">View bookings</span>
           </Link>
           <Link
             href="/lender/earnings"
-            className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors"
+            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
             <IndianRupee className="size-4 text-ink/50 shrink-0" aria-hidden />
             <span className="text-sm font-semibold text-ink">Finance</span>
@@ -204,7 +204,7 @@ export default async function HostingOverviewPage() {
               <Link
                 key={booking.id}
                 href={`/lender/bookings/${booking.id}`}
-                className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:border-gray-200 transition-colors"
+                className="tap-light bg-white rounded-2xl border border-border p-4 flex items-center justify-between"
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-ink text-sm truncate">
