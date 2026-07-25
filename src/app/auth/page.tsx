@@ -1,9 +1,10 @@
 'use client';
 
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
+import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
@@ -15,6 +16,9 @@ const RESEND_COOLDOWN = 60;
 // Indian mobile numbers start with 6–9 and are 10 digits
 const INDIAN_PHONE_RE = /^[6-9]\d{9}$/;
 const NAME_REGEX = /^[\p{L}\s]{2,50}$/u;
+
+// Subtle green glow on primary auth CTAs — matches --green at 35% opacity
+const CTA_GLOW = 'shadow-[0_4px_20px_-4px_rgba(28,107,71,0.35)]';
 
 function useCountdown() {
   const [seconds, setSeconds] = useState(0);
@@ -38,6 +42,23 @@ function useCountdown() {
   return { seconds, restart };
 }
 
+function useShake() {
+  const [shaking, setShaking] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const shake = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setShaking(true);
+    timerRef.current = setTimeout(() => setShaking(false), 450);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  return { shaking, shake };
+}
+
 function validateName(v: string): string | null {
   const t = v.trim();
   if (!t) return 'Name is required.';
@@ -49,14 +70,18 @@ function validateName(v: string): string | null {
 
 function AuthFlow() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [step, setStep] = useState<AuthStep>('phone');
+  // Tracks whether a step transition has occurred — controls animate-step-in.
+  // False on initial load (PageTransition handles the page entrance); true after
+  // any user-initiated step change so cross-fade fires on subsequent steps.
+  const [hasTransitioned, setHasTransitioned] = useState(false);
 
   // ── Phone step ──────────────────────────────────────────────────────────────
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
+  const { shaking: phoneShaking, shake: shakePhone } = useShake();
 
   // ── OTP step ────────────────────────────────────────────────────────────────
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -66,8 +91,9 @@ function AuthFlow() {
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const { seconds, restart } = useCountdown();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  // null = not yet determined; string = name (may be empty) for existing user welcome-back
+  // null = not yet determined; string = name (may be empty) for existing-user welcome-back
   const [welcomeBackName, setWelcomeBackName] = useState<string | null>(null);
+  const { shaking: otpShaking, shake: shakeOtp } = useShake();
 
   // ── Profile step ────────────────────────────────────────────────────────────
   const [name, setName] = useState('');
@@ -75,8 +101,16 @@ function AuthFlow() {
   const [nameTouched, setNameTouched] = useState(false);
   const [nameLoading, setNameLoading] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const { shaking: nameShaking, shake: shakeName } = useShake();
 
-  // If already signed in, skip to the right step
+  // User-initiated step change — marks hasTransitioned so animate-step-in fires
+  function goToStep(next: AuthStep) {
+    setHasTransitioned(true);
+    setStep(next);
+  }
+
+  // If already signed in, skip to the right step (no entrance animation —
+  // this is a programmatic redirect, not a user-initiated transition)
   useEffect(() => {
     const supabase = createClient();
     void supabase.auth.getUser().then(({ data: { user } }) => {
@@ -104,6 +138,7 @@ function AuthFlow() {
     e.preventDefault();
     if (!INDIAN_PHONE_RE.test(phone)) {
       setPhoneError('Enter a valid 10-digit Indian mobile number.');
+      shakePhone();
       return;
     }
     setPhoneError(null);
@@ -118,9 +153,10 @@ function AuthFlow() {
       if (!res.ok) throw new Error(data.error ?? 'Failed to send verification code');
       setDigits(Array(OTP_LENGTH).fill(''));
       setOtpError(null);
-      setStep('otp');
+      goToStep('otp');
     } catch (err) {
       setPhoneError(err instanceof Error ? err.message : 'Something went wrong');
+      shakePhone();
     } finally {
       setPhoneLoading(false);
     }
@@ -146,6 +182,7 @@ function AuthFlow() {
         } else {
           setOtpError('The code you entered is incorrect. Try again.');
         }
+        shakeOtp();
         setDigits(Array(OTP_LENGTH).fill(''));
         inputRefs.current[0]?.focus();
         setOtpLoading(false);
@@ -155,17 +192,18 @@ function AuthFlow() {
       if (isNewUser) {
         setDigits(Array(OTP_LENGTH).fill(''));
         setOtpLoading(false);
-        setStep('profile');
+        goToStep('profile');
       } else if (isAdmin) {
-        // Full-page navigation so the browser re-reads session cookies
+        // Full-page reload so the browser re-reads admin session cookies from scratch
         window.location.href = '/admin';
       } else {
-        // Brief welcome-back state before redirecting to home
+        setHasTransitioned(true);
         setWelcomeBackName(returnedName ?? '');
-        setTimeout(() => { window.location.href = '/home'; }, 1800);
+        setTimeout(() => { router.push('/home'); }, 1800);
       }
     } catch {
       setOtpError('Something went wrong. Please try again.');
+      shakeOtp();
       setOtpLoading(false);
     }
   }
@@ -247,7 +285,12 @@ function AuthFlow() {
 
   async function handleNameContinue() {
     const err = validateName(name);
-    if (err) { setNameTouched(true); setNameError(err); return; }
+    if (err) {
+      setNameTouched(true);
+      setNameError(err);
+      shakeName();
+      return;
+    }
     setNameLoading(true);
     setNameError(null);
     try {
@@ -259,12 +302,14 @@ function AuthFlow() {
       const data = await res.json();
       if (!res.ok) {
         setNameError(data.error ?? 'Something went wrong. Please try again.');
+        shakeName();
         setNameLoading(false);
         return;
       }
-      window.location.href = '/home';
+      router.push('/home');
     } catch {
       setNameError('Something went wrong. Please try again.');
+      shakeName();
       setNameLoading(false);
     }
   }
@@ -277,25 +322,31 @@ function AuthFlow() {
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
+  const stepKey = welcomeBackName !== null ? 'welcome' : step;
+  const baseCls = cn(
+    'min-h-screen flex flex-col px-6 py-12 max-w-sm mx-auto w-full',
+    hasTransitioned && 'animate-step-in',
+  );
 
-  // Transient welcome-back state for returning users
+  // Transient welcome-back state — Part D
   if (welcomeBackName !== null) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 animate-page-in">
-        <p className="text-2xl font-medium text-ink">&#10003; Verified</p>
-        <p className="mt-2 text-muted text-sm">
+      <main key={stepKey} className={cn(baseCls, 'items-center justify-center')}>
+        <RoutineSuccess message="Verified" />
+        <p className="mt-1 text-sm text-muted text-center">
           {welcomeBackName ? `Welcome back, ${welcomeBackName}.` : 'Welcome back.'}
         </p>
       </main>
     );
   }
 
+  // Phone step — Part A
   if (step === 'phone') {
     const isPhoneValid = INDIAN_PHONE_RE.test(phone);
     return (
-      <main className="min-h-screen flex flex-col px-6 py-12 animate-page-in">
-        <h1 className="text-2xl font-medium text-ink">Welcome</h1>
-        <p className="mt-2 text-muted text-sm">
+      <main key={stepKey} className={baseCls}>
+        <h1 className="text-2xl font-bold text-ink">Welcome</h1>
+        <p className="mt-2 text-sm text-muted">
           We&apos;ll send you a 6-digit code to verify.
         </p>
 
@@ -304,12 +355,12 @@ function AuthFlow() {
             <label className="block text-sm font-semibold text-ink mb-2">
               Phone number
             </label>
-
             <div className={cn(
-              'flex items-center h-12 border-2 rounded-xl bg-gray-50 transition-colors overflow-hidden',
-              phoneError ? 'border-red-400' : 'border-gray-200 focus-within:border-volt',
+              'flex items-center h-control border rounded-token-lg bg-surface-page transition-colors overflow-hidden',
+              phoneShaking && 'shake-error',
+              phoneError ? 'border-danger' : 'border-border focus-within:border-green',
             )}>
-              <span className="px-4 self-stretch flex items-center text-muted font-semibold text-sm shrink-0 border-r-2 border-gray-200 select-none">
+              <span className="px-4 self-stretch flex items-center text-muted font-semibold text-sm shrink-0 border-r border-border select-none">
                 +91
               </span>
               <input
@@ -326,14 +377,20 @@ function AuthFlow() {
                 className="flex-1 px-4 bg-transparent focus:outline-none text-ink font-semibold placeholder:text-muted placeholder:font-normal text-base"
               />
             </div>
+            {phoneError && (
+              <p className="mt-1.5 text-xs text-danger font-medium">{phoneError}</p>
+            )}
           </div>
 
-          {phoneError && (
-            <p className="text-red-600 text-sm font-semibold">{phoneError}</p>
-          )}
-
-          <Button type="submit" variant="primary" size="lg" loading={phoneLoading} disabled={!isPhoneValid}>
-            {phoneLoading ? 'Sending…' : 'Send OTP'}
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            loading={phoneLoading}
+            disabled={!isPhoneValid}
+            className={cn('w-full rounded-pill', CTA_GLOW)}
+          >
+            {!phoneLoading && 'Send OTP'}
           </Button>
 
           <p className="text-xs text-muted text-center pt-1">
@@ -347,31 +404,30 @@ function AuthFlow() {
     );
   }
 
+  // OTP step — Part B
   if (step === 'otp') {
     const resendDisabled = seconds > 0 || resendState === 'sending';
     return (
-      <main className="min-h-screen flex flex-col px-6 py-12 animate-page-in">
+      <main key={stepKey} className={baseCls}>
         <button
-          onClick={() => setStep('phone')}
-          className="text-muted text-sm mb-8 self-start hover:text-ink transition-colors"
+          onClick={() => goToStep('phone')}
+          className="text-muted text-sm mb-8 self-start hover:text-ink transition-colors tap-opacity"
         >
           ← Back
         </button>
 
-        <h1 className="text-2xl font-medium text-ink">Enter the code</h1>
+        <h1 className="text-2xl font-bold text-ink">Enter the code</h1>
         <p className="mt-2 text-sm text-muted">
-          Sent to{' '}
-          <span className="text-muted">+91</span>{' '}
-          <span className="font-semibold text-ink">{phone}</span>.{' '}
+          Sent to <span className="font-semibold text-ink">+91 {phone}</span>.{' '}
           <button
-            onClick={() => setStep('phone')}
-            className="text-volt-deep underline hover:no-underline transition-colors"
+            onClick={() => goToStep('phone')}
+            className="text-green-deep underline hover:no-underline transition-colors"
           >
             Edit
           </button>
         </p>
 
-        <div className="mt-10 flex gap-2.5" onPaste={handleOtpPaste}>
+        <div className={cn('mt-10 flex gap-2.5', otpShaking && 'shake-error')} onPaste={handleOtpPaste}>
           {digits.map((digit, i) => (
             <input
               key={i}
@@ -385,19 +441,19 @@ function AuthFlow() {
               onKeyDown={(e) => handleOtpKeyDown(i, e)}
               disabled={otpLoading}
               className={cn(
-                'flex-1 min-w-0 h-14 text-center text-2xl font-bold text-ink rounded-2xl border-2 focus:outline-none transition-all duration-150',
+                'flex-1 min-w-0 h-14 text-center text-2xl font-bold text-ink rounded-token-lg border-2 focus:outline-none transition-all duration-150',
                 otpError
-                  ? 'border-red-400 bg-red-50'
+                  ? 'border-danger bg-danger-soft'
                   : digit
-                    ? 'border-volt bg-white scale-[1.05]'
-                    : 'border-gray-200 bg-gray-50 focus:border-volt focus:bg-volt-soft',
+                    ? 'border-green bg-surface-card scale-[1.05]'
+                    : 'border-border bg-surface-page focus:border-green focus:bg-green-soft',
               )}
             />
           ))}
         </div>
 
         {otpError && (
-          <p className="mt-4 text-red-600 text-sm font-semibold">{otpError}</p>
+          <p className="mt-4 text-xs text-danger font-medium">{otpError}</p>
         )}
 
         <div className="mt-8">
@@ -407,8 +463,9 @@ function AuthFlow() {
             size="lg"
             loading={otpLoading}
             disabled={!isOtpComplete}
+            className={cn('w-full rounded-pill', CTA_GLOW)}
           >
-            {otpLoading ? 'Verifying…' : 'Verify'}
+            {!otpLoading && 'Verify'}
           </Button>
         </div>
 
@@ -422,7 +479,7 @@ function AuthFlow() {
             ) : (
               <button
                 onClick={() => void handleResend()}
-                className="text-volt-deep font-semibold underline hover:no-underline transition-colors"
+                className="text-green-deep font-semibold underline hover:no-underline transition-colors"
               >
                 Resend code
               </button>
@@ -431,8 +488,8 @@ function AuthFlow() {
 
           {resendMessage && (
             <p className={cn(
-              'text-sm',
-              resendState === 'sent' ? 'text-volt-deep' : 'text-red-600',
+              'text-xs font-medium',
+              resendState === 'sent' ? 'text-green-deep' : 'text-danger',
             )}>
               {resendMessage}
             </p>
@@ -442,22 +499,22 @@ function AuthFlow() {
     );
   }
 
-  // step === 'profile'
+  // Profile step — Part C
   const nameValid = validateName(name) === null;
   return (
-    <main className="min-h-screen flex flex-col px-6 py-12 max-w-sm mx-auto w-full">
+    <main key={stepKey} className={baseCls}>
       <div className="flex justify-end">
         <button
           onClick={() => { void handleSignOut(); }}
           disabled={signingOut}
-          className="text-xs font-semibold text-muted hover:text-ink transition-colors disabled:opacity-50"
+          className="text-xs font-semibold text-muted hover:text-ink transition-colors disabled:opacity-50 tap-opacity"
         >
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>
       </div>
 
       <div className="flex-1 flex flex-col justify-center">
-        <h1 className="text-2xl font-medium text-ink">Let&apos;s get started</h1>
+        <h1 className="text-2xl font-bold text-ink">Let&apos;s get started</h1>
         <p className="mt-2 text-muted">First, what should we call you?</p>
 
         <div className="mt-10 space-y-1.5">
@@ -476,13 +533,14 @@ function AuthFlow() {
             autoComplete="name"
             autoFocus
             className={cn(
-              'w-full px-4 py-3 rounded-xl border text-sm font-medium text-ink placeholder:text-muted',
-              'focus:outline-none focus:ring-2 focus:ring-volt transition-colors',
-              nameError && nameTouched ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white',
+              'w-full px-4 py-3 rounded-token-lg border text-sm font-medium text-ink placeholder:text-muted',
+              'focus:outline-none focus:ring-2 focus:ring-green transition-colors',
+              nameShaking && 'shake-error',
+              nameError && nameTouched ? 'border-danger bg-danger-soft' : 'border-border bg-surface-card',
             )}
           />
           {nameError && nameTouched ? (
-            <p className="text-xs text-red-600 font-medium">{nameError}</p>
+            <p className="text-xs text-danger font-medium">{nameError}</p>
           ) : (
             <p className="text-xs text-muted">
               This is how others on the platform will see you. You can use your nickname or first name.
@@ -494,11 +552,13 @@ function AuthFlow() {
       <div className="mt-8">
         <Button
           onClick={() => { void handleNameContinue(); }}
-          variant="secondary"
+          variant="primary"
           size="lg"
+          loading={nameLoading}
           disabled={!nameValid || nameLoading}
+          className={cn('w-full rounded-pill', CTA_GLOW)}
         >
-          {nameLoading ? 'Saving…' : 'Continue'}
+          {!nameLoading && 'Continue'}
         </Button>
       </div>
     </main>
