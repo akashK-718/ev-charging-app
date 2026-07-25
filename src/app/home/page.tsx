@@ -12,6 +12,7 @@ import { getActiveTip } from '@/lib/home/tips';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
+import { PwaInstallCard } from '@/components/home/PwaInstallCard';
 import { GreetingHeader } from '@/components/home/GreetingHeader';
 
 function fmtDate(iso: string): string {
@@ -261,7 +262,7 @@ async function getHomeData(userId: string, isHosting: boolean) {
     draftChargers: hostChargers.filter(c => c.status === 'draft'),
     suspendedChargers: hostChargers.filter(c => c.status === 'suspended'),
     activeChargersNeedingPhotos: hostChargers.filter(
-      c => c.status === 'active' && (c.photos?.length ?? 0) < 5,
+      c => c.status === 'active' && (c.photos?.length ?? 0) < 3,
     ),
     todayBookingCount: (hostTodayRes as { count: number | null }).count ?? 0,
     pendingBookings: pendingRaw.map(b => ({
@@ -363,7 +364,7 @@ export default async function HomePage() {
     snapshotCards.splice(2); // max 2
   }
 
-  // â”€â”€ Nudge (0..1, cascade: unfinished â†’ install-pwa â†’ rule â†’ discovery â†’ evergreen) â”€â”€
+  // â”€â”€ Nudge (0..1, cascade: unfinished â†’ rule â†’ discovery â†’ evergreen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // new-user and resume-draft stay server-rendered (highest priority; install card never
   // outranks unfinished work). Everything below them is handled by DynamicNudge so the
@@ -748,6 +749,9 @@ export default async function HomePage() {
             <p className="text-[11px] text-muted">Charging stops on your route</p>
           </Link>
         </div>
+
+        {/* â”€â”€ PWA install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        <PwaInstallCard />
 
         {/* â”€â”€ Nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {topNudge ? (
