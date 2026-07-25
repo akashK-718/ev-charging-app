@@ -50,7 +50,6 @@ function validateName(v: string): string | null {
 function AuthFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const intent = searchParams.get('intent') ?? '';
 
   const [step, setStep] = useState<AuthStep>('phone');
 
@@ -263,7 +262,7 @@ function AuthFlow() {
         setNameLoading(false);
         return;
       }
-      window.location.href = intent ? `/welcome/role?intent=${intent}` : '/welcome/role';
+      window.location.href = '/home';
     } catch {
       setNameError('Something went wrong. Please try again.');
       setNameLoading(false);

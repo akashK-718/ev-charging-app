@@ -61,7 +61,7 @@ export function WelcomeNameForm({ initialName, intent }: { initialName: string; 
         setLoading(false);
         return;
       }
-      router.push(intent ? `/welcome/role?intent=${intent}` : '/welcome/role');
+      window.location.href = '/home';
     } catch {
       setError('Something went wrong. Please try again.');
       setLoading(false);
