@@ -288,7 +288,7 @@ function NewBookingContent() {
         loading={submitting}
         onClick={() => { void handlePayAndBook(); }}
       >
-        {submitting ? 'Processing…' : `Pay ₹${estimate?.grossRupees ?? ''} & book`}
+        {submitting ? 'Processing…' : `Pay \u20B9${estimate?.grossRupees ?? ''} & book`}
       </Button>
     </main>
   );

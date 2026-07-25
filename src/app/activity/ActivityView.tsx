@@ -101,7 +101,7 @@ function timeAgo(ts: string): string {
 function driverAmountDisplay(item: HistoryItem): string | null {
   if (item.status === 'cancelled' || item.status === 'auto_reject') return null;
   if (item.displayAmountPaise !== null && item.displayAmountPaise >= 0) {
-    return `Paid ₹${(item.displayAmountPaise / 100).toFixed(2)}`;
+    return `Paid \u20B9${(item.displayAmountPaise / 100).toFixed(2)}`;
   }
   return null;
 }
@@ -109,7 +109,7 @@ function driverAmountDisplay(item: HistoryItem): string | null {
 function hostAmountDisplay(item: HistoryItem): string | null {
   if (item.status !== 'completed') return null;
   if (item.displayAmountPaise !== null && item.displayAmountPaise >= 0) {
-    return `Earned ₹${(item.displayAmountPaise / 100).toFixed(2)}`;
+    return `Earned \u20B9${(item.displayAmountPaise / 100).toFixed(2)}`;
   }
   return null;
 }

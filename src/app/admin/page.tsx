@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ChevronRight } from 'lucide-react';
@@ -36,7 +36,7 @@ export default async function AdminDashboardPage() {
 
   const adminName = (profileRes.data as { name: string | null } | null)?.name ?? 'Admin';
 
-  // Parse proximity settings â€” fall back to defaults if table not yet seeded
+  // Parse proximity settings — fall back to defaults if table not yet seeded
   let proximityEnabled: boolean = PROXIMITY_CHECK_DEFAULTS.enabled;
   let proximityRadiusKm: number = PROXIMITY_CHECK_DEFAULTS.radius_km;
   for (const row of (settingsRes.data ?? []) as Array<{ key: string; value: unknown }>) {
@@ -54,7 +54,7 @@ export default async function AdminDashboardPage() {
     },
     {
       label: 'Pending payouts',
-      value: pendingPayouts.length > 0 ? formatINR(pendingPayoutTotal) : 'â‚¹0',
+      value: pendingPayouts.length > 0 ? formatINR(pendingPayoutTotal) : formatINR(0),
       sub: pendingPayouts.length === 0
         ? 'No pending payouts'
         : `across ${pendingPayouts.length} lender${pendingPayouts.length !== 1 ? 's' : ''}`,

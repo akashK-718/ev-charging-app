@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
@@ -115,7 +115,7 @@ export default async function AdminKycQueuePage({
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-ink text-sm truncate">{u?.name ?? 'Unknown'}</p>
-                  <p className="text-xs text-muted">{u?.phone ?? 'â€”'}</p>
+                  <p className="text-xs text-muted">{u?.phone ?? '-'}</p>
                   {drafts > 0 && (
                     <p className="text-xs text-amber-700 mt-0.5">
                       {drafts} draft charger{drafts !== 1 ? 's' : ''} pending

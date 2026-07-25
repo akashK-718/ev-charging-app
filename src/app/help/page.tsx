@@ -66,7 +66,7 @@ const FAQ: { section: string; items: FaqItem[] }[] = [
       },
       {
         q: 'How is my rate per kWh set?',
-        a: 'You set your own rate when you create or edit a charger listing. The rate must be between ₹4 and ₹30 per kWh.',
+        a: 'You set your own rate when you create or edit a charger listing. The rate must be between \u20B94 and \u20B930 per kWh.',
       },
     ],
   },

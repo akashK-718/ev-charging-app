@@ -29,8 +29,8 @@ export const MILESTONE_LABEL: Record<MilestoneEvent, string> = {
   'host:first_booking_received':   'You got your first booking!',
   'host:first_completed_session':  'First session as a host — great start!',
   'host:first_payout':             'First payout earned!',
-  'host:earnings_10k_rupees':      '₹10,000 lifetime earned!',
-  'host:earnings_1L_rupees':       '₹1,00,000 lifetime earned!',
+  'host:earnings_10k_rupees':      '\u20B910,000 lifetime earned!',
+  'host:earnings_1L_rupees':       '\u20B91,00,000 lifetime earned!',
 };
 
 // ─── Per-user celebration guard ───────────────────────────────────────────────

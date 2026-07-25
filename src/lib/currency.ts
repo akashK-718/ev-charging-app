@@ -6,5 +6,5 @@ export function formatINR(paise: number): string {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(rupees);
-  return `₹${formatted}`;
+  return `\u20B9${formatted}`;
 }
