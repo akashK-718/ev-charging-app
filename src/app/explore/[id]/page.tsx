@@ -17,9 +17,9 @@ import type { Database } from '@/lib/supabase/types';
 type ChargerRow = Database['public']['Tables']['chargers']['Row'];
 
 const CHARGER_TYPE_LABEL: Record<string, string> = {
-  'AC_3.3kW': '3.3 kW · AC',
-  'AC_7kW':   '7 kW · AC',
-  'AC_22kW':  '22 kW · AC',
+  'AC_3.3kW': '3.3 kW \u00B7 AC',
+  'AC_7kW':   '7 kW \u00B7 AC',
+  'AC_22kW':  '22 kW \u00B7 AC',
   'DC_fast':  'DC Fast',
 };
 
@@ -67,7 +67,7 @@ export default async function ChargerDetailPage({
   }
 
   const powerLabel      = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
-  const connectorsLabel = charger.connector_types.join(' · ');
+  const connectorsLabel = charger.connector_types.join(' \u00B7 ');
   const isAvailable     = charger.status === 'active';
 
   return (

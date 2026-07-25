@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils';
 import type { ChargerRow } from './ChargerCard';
 
 const CHARGER_TYPE_LABEL: Record<string, string> = {
-  'AC_3.3kW': '3.3 kW · AC',
-  'AC_7kW': '7 kW · AC',
-  'AC_22kW': '22 kW · AC',
+  'AC_3.3kW': '3.3 kW \u00B7 AC',
+  'AC_7kW': '7 kW \u00B7 AC',
+  'AC_22kW': '22 kW \u00B7 AC',
   'DC_fast': 'DC Fast',
 };
 

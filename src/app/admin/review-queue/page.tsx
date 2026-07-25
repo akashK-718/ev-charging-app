@@ -110,7 +110,7 @@ function ReviewCard({ entry, onResolved }: { entry: ReviewEntry; onResolved: () 
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-ink text-sm truncate">{b?.charger_title ?? 'Charger'}</p>
           <p className="text-xs text-muted mt-0.5">
-            Driver: {b?.driver_name ?? '—'} · Host: {b?.lender_name ?? '—'}
+            Driver: {b?.driver_name ?? '—'} &middot; Host: {b?.lender_name ?? '—'}
           </p>
         </div>
         {entry.status === 'resolved' && (

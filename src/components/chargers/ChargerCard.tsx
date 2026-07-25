@@ -9,9 +9,9 @@ import { haptic } from '@/lib/haptics';
 export type ChargerRow = Database['public']['Tables']['chargers']['Row'];
 
 const CHARGER_TYPE_LABEL: Record<string, string> = {
-  'AC_3.3kW': '3.3 kW · AC',
-  'AC_7kW': '7 kW · AC',
-  'AC_22kW': '22 kW · AC',
+  'AC_3.3kW': '3.3 kW \u00B7 AC',
+  'AC_7kW': '7 kW \u00B7 AC',
+  'AC_22kW': '22 kW \u00B7 AC',
   'DC_fast': 'DC Fast',
 };
 
@@ -67,8 +67,8 @@ export function ChargerCard({
             {distanceKm !== undefined && (
               <span className="font-semibold text-volt-deep mr-1">
                 {distanceKm < 1
-                  ? `${Math.round(distanceKm * 1000)} m ·`
-                  : `${distanceKm.toFixed(1)} km ·`}
+                  ? `${Math.round(distanceKm * 1000)} m \u00B7`
+                  : `${distanceKm.toFixed(1)} km \u00B7`}
               </span>
             )}
             {charger.address}

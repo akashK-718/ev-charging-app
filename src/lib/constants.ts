@@ -40,9 +40,9 @@ export type ConnectorType = (typeof CONNECTOR_TYPES)[number];
 
 // Charger power categories
 export const CHARGER_TYPES = [
-  { value: 'AC_3.3kW', label: '3.3 kW · AC' },
-  { value: 'AC_7kW', label: '7 kW · AC' },
-  { value: 'AC_22kW', label: '22 kW · AC' },
+  { value: 'AC_3.3kW', label: '3.3 kW \u00B7 AC' },
+  { value: 'AC_7kW', label: '7 kW \u00B7 AC' },
+  { value: 'AC_22kW', label: '22 kW \u00B7 AC' },
   { value: 'DC_fast', label: 'DC Fast' }
 ] as const;
 

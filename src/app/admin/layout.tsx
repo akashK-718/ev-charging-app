@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="text-xs font-bold tracking-widest text-slate-400 uppercase shrink-0">
               Admin
             </span>
-            <span className="text-slate-600 shrink-0">Â·</span>
+            <span className="text-slate-600 shrink-0">&middot;</span>
             {ADMIN_NAV.map(link => (
               <Link
                 key={link.href}

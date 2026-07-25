@@ -98,7 +98,7 @@ export default function AdminPayoutsPage() {
                   </p>
                   <p className="text-xs text-muted mt-0.5">
                     {payout.booking_ids.length} booking{payout.booking_ids.length !== 1 ? 's' : ''}
-                    {' · '}
+                    {' \u00B7 '}
                     {new Date(payout.created_at).toLocaleDateString('en-IN', {
                       day: 'numeric', month: 'short',
                     })}

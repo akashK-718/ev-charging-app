@@ -331,7 +331,7 @@ export function StepPhotos({ draft, onChange, onValidChange }: StepPhotosProps) 
         <div className="mt-6">
           <p className="text-sm font-semibold text-ink mb-3">
             {photos.length} / {MAX_PHOTOS} photos
-            {photos.length > 1 && ' · drag handle to reorder'}
+            {photos.length > 1 && ' \u00B7 drag handle to reorder'}
           </p>
           <div className="grid grid-cols-2 gap-3">
             {photos.map((photo, index) => (

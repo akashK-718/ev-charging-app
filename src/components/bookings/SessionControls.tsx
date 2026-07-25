@@ -240,7 +240,7 @@ export function SessionControls({
             <p className="text-sm font-semibold text-blue-700">Session in progress</p>
             <p className="text-xs text-blue-600 mt-1">
               Elapsed {formatClock(elapsedMs)}
-              {expectedEndMs > 0 && ` · Expected end in ${formatClock(expectedEndMs)}`}
+              {expectedEndMs > 0 && ` \u00B7 Expected end in ${formatClock(expectedEndMs)}`}
             </p>
           </div>
           {error && (
@@ -266,7 +266,7 @@ export function SessionControls({
         <p className="text-sm font-semibold text-blue-700">Session in progress</p>
         <p className="text-xs text-blue-600 mt-1">
           Elapsed {formatClock(elapsedMs)}
-          {expectedEndMs > 0 && ` · Expected end in ${formatClock(expectedEndMs)}`}
+          {expectedEndMs > 0 && ` \u00B7 Expected end in ${formatClock(expectedEndMs)}`}
         </p>
       </div>
     );

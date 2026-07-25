@@ -374,7 +374,7 @@ export default function BookingDetailPage() {
               {new Date(booking.scheduled_end).toLocaleTimeString('en-IN', {
                 hour: '2-digit', minute: '2-digit', hour12: true,
               })}
-              {' · '}
+              {' \u00B7 '}
               {formatDuration(booking.scheduled_start, booking.scheduled_end)}
             </p>
           </div>
