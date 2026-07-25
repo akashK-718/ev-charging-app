@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
@@ -86,7 +86,7 @@ async function getEarningsData(userId: string) {
 export default async function LenderEarningsPage() {
   const supabase = createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) redirect('/login');
+  if (error || !user) redirect('/auth');
 
   const { totalEarned, thisMonth, pendingPayout, enrichedBookings } = await getEarningsData(user.id);
 
@@ -99,20 +99,20 @@ export default async function LenderEarningsPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs text-muted uppercase tracking-wide font-semibold">Total earned</p>
           <p className="font-display font-extrabold text-3xl text-ink mt-1">
-            ₹{(totalEarned / 100).toFixed(0)}
+            â‚¹{(totalEarned / 100).toFixed(0)}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-xl border border-gray-100 p-4">
             <p className="text-xs text-muted">This month</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
-              ₹{(thisMonth / 100).toFixed(0)}
+              â‚¹{(thisMonth / 100).toFixed(0)}
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 p-4">
             <p className="text-xs text-muted">Pending payout</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
-              ₹{(pendingPayout / 100).toFixed(0)}
+              â‚¹{(pendingPayout / 100).toFixed(0)}
             </p>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default async function LenderEarningsPage() {
         href="/lender/payouts"
         className="block px-4 py-3 bg-volt-soft rounded-xl border border-volt text-sm font-semibold text-ink hover:border-volt-deep transition-colors"
       >
-        View detailed payout history →
+        View detailed payout history â†’
       </Link>
 
       {/* Completed bookings table */}
@@ -149,14 +149,14 @@ export default async function LenderEarningsPage() {
                   {booking.payment ? (
                     <div className="text-right">
                       <p className="font-display font-bold text-ink">
-                        ₹{(booking.payment.lender_payout / 100).toFixed(0)}
+                        â‚¹{(booking.payment.lender_payout / 100).toFixed(0)}
                       </p>
                       <p className="text-xs text-muted">
                         {booking.payment.payout_released_at ? 'paid out' : 'pending'}
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted">—</p>
+                    <p className="text-xs text-muted">â€”</p>
                   )}
                 </div>
               </div>

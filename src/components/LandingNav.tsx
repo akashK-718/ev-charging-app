@@ -10,13 +10,13 @@ export function LandingNav() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/login"
+            href="/auth"
             className="font-semibold text-sm text-ink px-3 py-2 rounded-token hover:bg-surface-page transition-colors"
           >
             Log in
           </Link>
           <Link
-            href="/login"
+            href="/auth"
             className="font-semibold text-sm bg-ink text-white px-4 py-2 rounded-token hover:bg-ink-soft transition-colors"
           >
             Get Started

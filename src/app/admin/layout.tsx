@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
@@ -14,7 +14,7 @@ const ADMIN_NAV = [
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/auth');
 
   const admin = createAdminClient();
   const { data: profile } = await admin
@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="text-xs font-bold tracking-widest text-slate-400 uppercase shrink-0">
               Admin
             </span>
-            <span className="text-slate-600 shrink-0">·</span>
+            <span className="text-slate-600 shrink-0">Â·</span>
             {ADMIN_NAV.map(link => (
               <Link
                 key={link.href}

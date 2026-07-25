@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { LayoutDashboard, Plus, ListChecks, BookOpen, IndianRupee, AlertCircle, Clock, Zap, FileText, ChevronRight } from 'lucide-react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
@@ -84,7 +84,7 @@ async function getOverviewData(userId: string) {
 export default async function HostingOverviewPage() {
   const supabase = createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) redirect('/login');
+  if (error || !user) redirect('/auth');
 
   const { liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings } =
     await getOverviewData(user.id);
@@ -109,7 +109,7 @@ export default async function HostingOverviewPage() {
             <div className="size-9 rounded-xl bg-green-soft grid place-items-center mb-3">
               <IndianRupee className="size-4 text-green" aria-hidden />
             </div>
-            <p className="font-display font-bold text-xl text-ink">₹{(todayEarnings / 100).toFixed(0)}</p>
+            <p className="font-display font-bold text-xl text-ink">â‚¹{(todayEarnings / 100).toFixed(0)}</p>
             <p className="text-xs text-muted mt-0.5">Earned today</p>
           </div>
           <div className="bg-white rounded-2xl border border-border p-4">
@@ -254,7 +254,7 @@ export default async function HostingOverviewPage() {
             href="/lender/bookings"
             className="block text-center text-xs font-semibold text-volt-deep py-2"
           >
-            View all bookings →
+            View all bookings â†’
           </Link>
         </section>
       )}

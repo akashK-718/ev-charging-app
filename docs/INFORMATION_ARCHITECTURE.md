@@ -232,13 +232,26 @@ A unified surface for all lender operations. Reached via "Open Hosting Workspace
 ## Authentication Flow
 
 ```
-Landing          /
-Login            /login          (phone number)
-Verify OTP       /verify-otp
-Welcome / Name   /welcome/name
+Landing   /
+Auth      /auth          single route — internal AuthStep state: 'phone' | 'otp' | 'profile'
+Role      /welcome/role  only reached for new accounts after name capture
 ```
 
-There is no role selection step. A `/welcome/role` step (Driver / Lender / Both) was proposed and explicitly dropped. This stays consistent with the driver-first, lender-as-in-app-upgrade signup model: onboarding ends at name capture, role is never asked upfront, and lender access is only ever discovered later through Home's Hosting Preview or Profile's Hosting section.
+All auth lives at `/auth` with no full-page reload between steps:
+
+1. **phone** — 10-digit Indian mobile input (+91 prefix). Validates format (`/^[6-9]\d{9}$/`) before sending. Success message is always "Verification code sent" regardless of whether the number is new or existing (account-enumeration safe).
+2. **otp** — 6-box OTP entry. Phone number is held in component state and displayed as "Sent to +91 XXXXXXXXXX · Edit"; "Edit" returns to the phone step with the number pre-filled. Error messages: incorrect code → "The code you entered is incorrect. Try again."; expired code → "This code has expired. Request a new code."; rate-limited resend → explicit message, never silent.
+3. **profile** — name capture for new accounts only. Validates Unicode letters + spaces, 2–50 chars. On save, navigates to `/welcome/role`.
+
+**Existing-user auto-redirect:** after OTP verification, the API checks whether the phone belongs to an existing account. If it does, the session is created (single-session policy invalidates any prior session), a brief "✓ Verified — Welcome back, [name]" state is shown, then the user is redirected to Home. No "account already exists" interstitial — successful OTP verification is the login, regardless of which CTA was tapped on the landing page.
+
+**New-account path:** Phone → OTP → profile (name) → `/welcome/role` → Home.
+
+**Landing page CTAs:** both "Log in" and "Get Started" in the nav and hero route to `/auth`. Neither pre-determines login vs. registration — that is decided after OTP verification based solely on whether the phone matches an existing account.
+
+**Old routes:** `/login` and `/verify-otp` are server-side redirects to `/auth` (backward compatibility). `/welcome/name` is also a redirect to `/auth`; name capture now happens inside the `profile` step.
+
+**Role selection (`/welcome/role`)** remains a separate route reached only after name capture for genuinely new accounts. It is not part of the `/auth` route.
 
 ## Booking Flows
 

@@ -17,10 +17,10 @@ function requiresAuth(pathname: string) {
   return AUTH_REQUIRED.some(p => pathname.startsWith(p));
 }
 
-// Paths that remain reachable during emergency lockdown (login so admin can sign in)
-const LOCKDOWN_PASSTHROUGH = new Set(['/emergency', '/login', '/verify-otp']);
-// Paths that remain reachable during maintenance (login so admin can sign in)
-const MAINTENANCE_PASSTHROUGH = new Set(['/maintenance', '/emergency', '/login', '/verify-otp']);
+// Paths that remain reachable during emergency lockdown (so admin can sign in)
+const LOCKDOWN_PASSTHROUGH = new Set(['/emergency', '/auth', '/login', '/verify-otp']);
+// Paths that remain reachable during maintenance (so admin can sign in)
+const MAINTENANCE_PASSTHROUGH = new Set(['/maintenance', '/emergency', '/auth', '/login', '/verify-otp']);
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/emergency', request.url));
     }
     if (requiresAuth(pathname)) {
-      const url = new URL('/login', request.url);
+      const url = new URL('/auth', request.url);
       url.searchParams.set('next', pathname);
       return NextResponse.redirect(url);
     }
@@ -96,7 +96,7 @@ export async function middleware(request: NextRequest) {
   // ── 1. Auth gate ──────────────────────────────────────────────────────────────
 
   if (requiresAuth(pathname) && !user) {
-    const url = new URL('/login', request.url);
+    const url = new URL('/auth', request.url);
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
@@ -134,28 +134,39 @@ export async function middleware(request: NextRequest) {
 
   // ── 6. Auth screen redirect ───────────────────────────────────────────────────
   // Redirect logged-in users away from auth screens.
+  // For /auth: only redirect when the user has a name (profile complete); if no
+  // name, allow through so the page can show the profile step.
   if (pathname === '/login' || pathname === '/verify-otp') {
     const nextParam = request.nextUrl.searchParams.get('next');
     const safeNext = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
     const dest = safeNext ?? roleHome(role, isAdmin);
     return NextResponse.redirect(new URL(dest, request.url));
   }
+  if (pathname === '/auth') {
+    const authName = user.user_metadata?.name as string | undefined;
+    if (authName) {
+      const nextParam = request.nextUrl.searchParams.get('next');
+      const safeNext = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+      const dest = safeNext ?? roleHome(role, isAdmin);
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+    // No name — let /auth show the profile step
+  }
 
   // ── 7. Welcome flow gating ────────────────────────────────────────────────────
   if (pathname === '/welcome' || pathname === '/profile/name') {
-    return NextResponse.redirect(new URL('/welcome/name', request.url));
+    return NextResponse.redirect(new URL('/auth', request.url));
   }
 
   const name = user.user_metadata?.name as string | undefined;
   const onboarded = user.user_metadata?.onboarded;
 
-  const isWelcomeName = pathname === '/welcome/name';
+  const isWelcomeName = pathname === '/welcome/name'; // now redirects to /auth; kept to avoid redirect loop
   const isWelcomeRole = pathname === '/welcome/role';
+  const isAuthPage = pathname === '/auth';
 
-  if (!name && !isWelcomeName) {
-    const url = new URL('/welcome/name', request.url);
-    url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
+  if (!name && !isWelcomeName && !isAuthPage) {
+    return NextResponse.redirect(new URL('/auth', request.url));
   }
 
   if (name && onboarded === false && !isWelcomeRole && !isWelcomeName) {

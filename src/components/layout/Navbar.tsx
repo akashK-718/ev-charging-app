@@ -116,7 +116,7 @@ export function Navbar() {
         {!user && !loading && (
           <div className="ml-auto">
             <Link
-              href="/login"
+              href="/auth"
               className="px-4 py-2 rounded-token text-sm font-semibold bg-green text-white hover:bg-green-deep transition-colors"
             >
               Log in

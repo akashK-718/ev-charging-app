@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ProfileBody } from '@/components/profile/ProfileBody';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
@@ -80,7 +80,7 @@ export default async function ProfilePage({
 }) {
   const supabase = createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) redirect('/login');
+  if (error || !user) redirect('/auth');
 
   const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
 
@@ -89,9 +89,9 @@ export default async function ProfilePage({
     chargerStats, lifetimeEarningsPaise,
   } = await getProfileData(user.id);
 
-  // DB query error — don't redirect to /login since the user IS authenticated
+  // DB query error â€” don't redirect to /login since the user IS authenticated
   if (userError) throw new Error(userError.message);
-  if (!profile) redirect('/login');
+  if (!profile) redirect('/auth');
 
   // Derive hosting state from role + hosting_paused + published charger count
   const isHostingEnabled = profile.role === 'lender' || profile.role === 'both';
