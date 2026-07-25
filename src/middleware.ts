@@ -159,20 +159,12 @@ export async function middleware(request: NextRequest) {
   }
 
   const name = user.user_metadata?.name as string | undefined;
-  const onboarded = user.user_metadata?.onboarded;
 
-  const isWelcomeName = pathname === '/welcome/name'; // now redirects to /auth; kept to avoid redirect loop
-  const isWelcomeRole = pathname === '/welcome/role';
+  const isWelcomeName = pathname === '/welcome/name'; // redirects to /auth; kept to avoid redirect loop
   const isAuthPage = pathname === '/auth';
 
   if (!name && !isWelcomeName && !isAuthPage) {
     return NextResponse.redirect(new URL('/auth', request.url));
-  }
-
-  if (name && onboarded === false && !isWelcomeRole && !isWelcomeName) {
-    const url = new URL('/welcome/role', request.url);
-    url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
   }
 
   // ── 8. Role-based route guards ────────────────────────────────────────────────
@@ -186,21 +178,18 @@ export async function middleware(request: NextRequest) {
 
     if (isLenderRoute || isDriverRoute) {
       if (!role) {
-        console.warn(`[middleware] No role set — blocking ${pathname}, redirecting to /welcome/role`);
-        const url = new URL('/welcome/role', request.url);
-        const nextVal = pathname !== '/welcome/role' ? pathname : '/';
-        url.searchParams.set('next', nextVal);
-        return NextResponse.redirect(url);
+        console.warn(`[middleware] No role set — blocking ${pathname}, redirecting to /home`);
+        return NextResponse.redirect(new URL('/home', request.url));
       }
 
       if (isLenderRoute && !canAccessLender) {
-        const dest = canAccessDriver ? '/explore' : '/welcome/role';
+        const dest = canAccessDriver ? '/explore' : '/home';
         console.warn(`[middleware] Role '${role}' blocked from lender route ${pathname} → ${dest}`);
         return NextResponse.redirect(new URL(dest, request.url));
       }
 
       if (isDriverRoute && !canAccessDriver) {
-        const dest = canAccessLender ? '/lender/chargers' : '/welcome/role';
+        const dest = canAccessLender ? '/lender/chargers' : '/home';
         console.warn(`[middleware] Role '${role}' blocked from driver route ${pathname} → ${dest}`);
         return NextResponse.redirect(new URL(dest, request.url));
       }

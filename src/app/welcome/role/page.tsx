@@ -1,26 +1,7 @@
-﻿import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { WelcomeRoleForm } from './WelcomeRoleForm';
+import { redirect } from 'next/navigation';
 
-export default async function WelcomeRolePage({
-  searchParams,
-}: {
-  searchParams: { intent?: string };
-}) {
-  const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) redirect('/auth');
-
-  const name = (user.user_metadata?.name as string | undefined) ?? null;
-  if (!name) redirect('/welcome/name');
-
-  const onboarded = user.user_metadata?.onboarded;
-  const role = (user.user_metadata?.role as 'driver' | 'lender' | 'both' | undefined) ?? 'driver';
-
-  // Already fully onboarded â€” never show the welcome flow, forward to the right dashboard.
-  if (onboarded !== false) {
-    redirect('/home');
-  }
-
-  return <WelcomeRoleForm intent={searchParams.intent} />;
+// Role selection was removed — onboarding ends at name capture.
+// See docs/INFORMATION_ARCHITECTURE.md § Authentication Flow.
+export default function WelcomeRolePage() {
+  redirect('/home');
 }

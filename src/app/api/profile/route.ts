@@ -54,6 +54,8 @@ export async function PATCH(request: NextRequest) {
     const trimmedName = (b.name as string).trim();
     updates.name = trimmedName;
     metaUpdates.name = trimmedName;
+    // Name capture is the final onboarding step — mark the account as onboarded.
+    metaUpdates.onboarded = true;
   }
 
   // ── Role update ──────────────────────────────────────────────────────────────
