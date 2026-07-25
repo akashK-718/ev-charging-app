@@ -486,7 +486,7 @@ export function ProfileBody({
 
               <Link
                 href="/lender/dashboard"
-                className="block bg-zinc-900 text-white rounded-3xl p-4 shadow-lg active:scale-[0.98] transition"
+                className="tap-light block bg-zinc-900 text-white rounded-3xl p-4 shadow-lg shadow-green-900/20"
               >
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-green-400 flex items-center gap-1.5">
