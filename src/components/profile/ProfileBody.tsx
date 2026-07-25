@@ -485,7 +485,7 @@ export function ProfileBody({
               </SectionLabel>
 
               <Link
-                href="/lender/chargers"
+                href="/lender/dashboard"
                 className="block bg-zinc-900 text-white rounded-3xl p-4 shadow-lg active:scale-[0.98] transition"
               >
                 <div className="flex items-center justify-between">
@@ -500,7 +500,7 @@ export function ProfileBody({
                   {' '}<span className="text-xs font-normal text-white/50">earned all time</span>
                 </p>
                 <p className="text-[11px] text-white/60 mt-1">
-                  Bookings, payouts and your listing, managed in one place.
+                  Bookings, payouts and your listings, managed in one place.
                 </p>
               </Link>
 

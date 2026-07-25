@@ -612,7 +612,7 @@ export default async function HomePage() {
             return (
               <Link
                 key={`snap-host-${i}`}
-                href="/lender/chargers"
+                href="/lender/dashboard"
                 className="rise-in block bg-zinc-900 text-white rounded-3xl p-4 shadow-lg shadow-green-900/10 active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center justify-between">

@@ -195,7 +195,7 @@ Answers: "What belongs to me?" Nothing here changes minute to minute. Pure ident
 - **Vehicles**
 - **Payment Methods**
 - **Preferences** — notifications toggle, theme (future), language (future), permissions
-- **Hosting** — hosting enabled toggle, live chargers count, "Open Hosting Workspace →" link (a pointer into the workspace, not the operational tools themselves)
+- **Hosting** — hosting enabled toggle, live chargers count, "Open Hosting Workspace →" link (a pointer into the workspace, not the operational tools themselves). The Host Dashboard card and any other entry point into the Hosting Workspace **must always navigate to Hosting Workspace → Overview (`/lender/dashboard`), never directly to Chargers, Bookings, or any other sub-section**. My Chargers is one branch of hosting and does not fulfil what the Host Dashboard card promises.
 
 **Overflow menu** (⋮ icon, top-right, Profile screen only, Instagram-style, not global): Help, Terms, Admin (conditional on `is_admin`), Sign Out. Contact us is not a separate item, it lives inside the Help page itself.
 
@@ -208,6 +208,19 @@ A unified surface for all lender operations. Reached via "Open Hosting Workspace
 - **Overview** — weekly earnings, active chargers, draft chargers, recent bookings, quick actions
 - **Chargers** — all / live / paused / draft / suspended, plus charger detail
 - **Bookings** — active / past / cancelled, plus detail
+
+  > **Known IA cleanup (not yet scheduled):** The current filter taxonomy (`active / past / cancelled`) is a loose paraphrase of the actual booking state machine, not a 1:1 mapping. Backend states and user-facing filters are intentionally two separate layers — the filter model does not need to expose every lifecycle enum value. Proposed future grouping:
+  >
+  > | Filter | Backend states |
+  > |---|---|
+  > | Pending | `pending` |
+  > | Upcoming | `confirmed` |
+  > | In progress | `awaiting_driver_confirmation`, `in_progress`, `awaiting_end_confirmation` |
+  > | Completed | `completed` |
+  > | Cancelled | `cancelled`, `auto_reject` |
+  > | No-show | `no_show` |
+  >
+  > Do not implement this as part of any unrelated PR — this is a standalone reconciliation task to be scheduled separately.
 - **Finance**
   - **Overview** — total earned (all time), pending payouts at a glance *(not yet built — flag as separate scope)*
   - **Earnings** — this week/month/lifetime totals, per-session breakdown, trends (`/lender/earnings`)
