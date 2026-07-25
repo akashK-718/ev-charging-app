@@ -242,7 +242,7 @@ export default function LandingPage() {
               {/* Single CTA */}
               <div className="mb-5 md:mb-7">
                 <Link
-                  href="/login"
+                  href="/auth"
                   className="inline-block font-semibold text-[15px] px-5 py-3 rounded-token bg-green text-white hover:bg-green-deep transition-colors"
                 >
                   Get Started

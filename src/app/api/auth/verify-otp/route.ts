@@ -55,8 +55,12 @@ export async function POST(request: NextRequest) {
 
   const verification = await verifyOtp(fullPhone, otp);
   if (!verification.verified) {
+    const isExpired = verification.message?.toLowerCase().includes('expir') ?? false;
     return NextResponse.json(
-      { error: 'Incorrect OTP. Please try again.', code: 'INVALID_OTP' },
+      {
+        error: isExpired ? 'This code has expired. Request a new code.' : 'Incorrect OTP. Please try again.',
+        code: isExpired ? 'EXPIRED_OTP' : 'INVALID_OTP',
+      },
       { status: 400 },
     );
   }
@@ -97,12 +101,14 @@ export async function POST(request: NextRequest) {
   let role: string;
   let isAdmin: boolean;
   let isNewUser: boolean;
+  let userName: string | null = null;
 
   if (existingProfile) {
     userId = existingProfile.id;
     role = existingProfile.role;
     isAdmin = (existingProfile as { is_admin: boolean }).is_admin ?? false;
     isNewUser = false;
+    userName = existingProfile.name ?? null;
 
     const profile = existingProfile as { name: string | null; is_admin: boolean };
     const metaUpdate = {
@@ -189,5 +195,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ data: { userId, role, isNewUser, isAdmin } });
+  return NextResponse.json({ data: { userId, role, isNewUser, isAdmin, name: userName } });
 }

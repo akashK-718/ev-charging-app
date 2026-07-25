@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+﻿import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ActivityView, type HistoryItem, type UpdateItem } from './ActivityView';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
@@ -8,7 +8,7 @@ export default async function ActivityPage() {
   const admin    = createAdminClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/auth');
 
   const role      = (user.user_metadata?.role as string | undefined) ?? '';
   const isHosting = role === 'lender' || role === 'both';

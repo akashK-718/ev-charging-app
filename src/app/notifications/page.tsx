@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+﻿import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -43,7 +43,7 @@ export default async function NotificationsPage() {
   const adminSupabase = createAdminClient();
 
   const { data: { user: rawUser } } = await supabase.auth.getUser();
-  if (!rawUser) redirect('/login');
+  if (!rawUser) redirect('/auth');
 
   const { data: notifications } = await adminSupabase
     .from('notifications')

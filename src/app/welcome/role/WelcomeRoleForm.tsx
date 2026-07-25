@@ -75,7 +75,7 @@ export function WelcomeRoleForm({ intent }: { intent?: string }) {
   return (
     <main className="min-h-screen flex flex-col px-6 py-12 max-w-sm mx-auto w-full">
       <Link
-        href="/welcome/name"
+        href="/auth"
         className="flex items-center gap-1 -ml-2 p-2 w-fit rounded-xl text-muted hover:text-ink hover:bg-gray-50 transition-colors"
         aria-label="Back"
       >

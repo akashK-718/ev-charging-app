@@ -24,7 +24,7 @@ export default function EmergencyPage() {
           .
         </p>
         <a
-          href="/login"
+          href="/auth"
           className="inline-block text-xs text-muted underline underline-offset-2"
         >
           Admin sign in
