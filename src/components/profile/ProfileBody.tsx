@@ -409,7 +409,7 @@ export function ProfileBody({
                 <p className="text-xs text-white/80 mt-1 leading-relaxed">
                   Turn on hosting and earn when your neighbours charge at your place.
                 </p>
-                <span className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-800 text-xs font-bold pointer-events-none">
+                <span className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-deep text-xs font-bold pointer-events-none">
                   {hostingLoading ? 'Starting…' : 'Turn on hosting'}
                 </span>
               </button>
@@ -432,7 +432,7 @@ export function ProfileBody({
                 </p>
                 <Link
                   href={setupContinueHref}
-                  className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-800 text-xs font-bold"
+                  className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-deep text-xs font-bold"
                 >
                   Continue
                 </Link>
@@ -463,7 +463,7 @@ export function ProfileBody({
                 <button
                   type="button"
                   onClick={handleResumeSetup}
-                  className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-800 text-xs font-bold"
+                  className="inline-block mt-3 h-9 px-4 leading-9 rounded-full bg-white text-green-deep text-xs font-bold"
                 >
                   Resume
                 </button>
