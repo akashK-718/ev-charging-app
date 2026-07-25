@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { formatINR } from '@/lib/currency';
@@ -36,7 +36,7 @@ function timeFromNow(iso: string): string {
   return `in ${Math.floor(h / 24)}d`;
 }
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type BookingRow = {
   id: string;
@@ -77,7 +77,7 @@ type FailedPayout = {
   failed_reason: string | null;
 };
 
-// â”€â”€ Draft step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Draft step ────────────────────────────────────────────────────────────────
 
 function getDraftStep(c: HostCharger): number {
   if (!c.title) return 1;
@@ -89,7 +89,7 @@ function getDraftStep(c: HostCharger): number {
   return 7;
 }
 
-// â”€â”€ Data fetching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Data fetching ─────────────────────────────────────────────────────────────
 
 async function getHomeData(userId: string, isHosting: boolean) {
   const admin = createAdminClient();
@@ -106,7 +106,7 @@ async function getHomeData(userId: string, isHosting: boolean) {
   thirtyDaysAgo.setDate(now.getDate() - 30);
   const soonCutoff = new Date(now.getTime() + 45 * 60 * 1000);
 
-  // Round 1 â€” all independent queries in parallel
+  // Round 1 — all independent queries in parallel
   // Charging queries always run: every account can charge.
   // Hosting queries are gated on isHosting.
   const [
@@ -210,7 +210,7 @@ async function getHomeData(userId: string, isHosting: boolean) {
   );
   const startingSoon = upcoming.filter(b => new Date(b.scheduled_start) <= soonCutoff);
 
-  // Round 2 â€” enrich with charger titles and driver names
+  // Round 2 — enrich with charger titles and driver names
   const chargeChargerIds = [...new Set([
     ...(inProgress ? [inProgress.charger_id] : []),
     ...upcoming.map(b => b.charger_id),
@@ -279,7 +279,7 @@ async function getHomeData(userId: string, isHosting: boolean) {
   };
 }
 
-// â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
   const supabase = createClient();
@@ -294,9 +294,9 @@ export default async function HomePage() {
 
   const d = await getHomeData(user.id, isHosting);
 
-  // â”€â”€ Zone assembly â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Zone assembly ─────────────────────────────────────────────────────────
 
-  // â”€â”€ Attention (0..N) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Attention (0..N) ─────────────────────────────────────────────────────
   // Order: 1.time-sensitive  2.session-related  3.account-blocking  4.financial  5.informational
 
   // 1. Time-sensitive
@@ -306,7 +306,7 @@ export default async function HomePage() {
   const attnAwaitingConf    = d.awaitingConfirmation;
   const attnPendingRequests = d.pendingBookings;
   // 3. Account-blocking
-  // KYC "not started" only surfaces when isHosting â€” charging-only accounts are never nagged.
+  // KYC "not started" only surfaces when isHosting — charging-only accounts are never nagged.
   const attnKycBlocked   = isHosting && d.kycStatus === 'not_started';
   const attnKycRejected  = d.kycStatus === 'rejected' || d.kycStatus === 'resubmission_required';
   // 4. Financial
@@ -323,7 +323,7 @@ export default async function HomePage() {
     !!attnPayoutFailed ||
     attnSuspended.length > 0;
 
-  // â”€â”€ Snapshot (0..2, no action buttons, tap to open) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Snapshot (0..2, no action buttons, tap to open) ───────────────────────
 
   type SnapshotCard =
     | { type: 'upcoming-booking'; booking: BookingWithCharger; total: number }
@@ -356,7 +356,7 @@ export default async function HomePage() {
       });
     }
 
-    // KYC pending is informational â€” Snapshot, not Attention
+    // KYC pending is informational — Snapshot, not Attention
     if (d.kycStatus === 'pending' && snapshotCards.length < 2) {
       snapshotCards.push({ type: 'kyc-pending' });
     }
@@ -364,7 +364,7 @@ export default async function HomePage() {
     snapshotCards.splice(2); // max 2
   }
 
-  // â”€â”€ Nudge (0..1, cascade: unfinished â†’ rule â†’ discovery â†’ evergreen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Nudge (0..1, cascade: unfinished → rule → discovery → evergreen) ────────────────
 
   // new-user and resume-draft stay server-rendered (highest priority; install card never
   // outranks unfinished work). Everything below them is handled by DynamicNudge so the
@@ -387,7 +387,7 @@ export default async function HomePage() {
     return null;
   })();
 
-  // Serialisable rule nudge passed as a prop â€” shown by DynamicNudge only when
+  // Serialisable rule nudge passed as a prop — shown by DynamicNudge only when
   // the install card is ineligible (already installed, dismissed, or unsupported).
   const ruleNudge = ((): RuleNudge => {
     if (topNudge) return null;
@@ -411,7 +411,7 @@ export default async function HomePage() {
     return null;
   })();
 
-  // â”€â”€ Render helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render helpers ────────────────────────────────────────────────────────
 
   const avatarInitials = name
     .split(' ')
@@ -421,7 +421,7 @@ export default async function HomePage() {
     .toUpperCase()
     .slice(0, 2) || firstName[0]?.toUpperCase() || '?';
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -431,10 +431,10 @@ export default async function HomePage() {
     >
       <div className="max-w-2xl mx-auto px-4 pt-5 pb-4 space-y-3">
 
-        {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Header ──────────────────────────────────────────────────────── */}
         <GreetingHeader firstName={firstName} avatarInitials={avatarInitials} />
 
-        {/* â”€â”€ Account alerts: KYC / payout / suspended â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Account alerts: KYC / payout / suspended ────────────────────── */}
         {(attnKycBlocked || attnKycRejected || !!attnPayoutFailed || attnSuspended.length > 0) && (
           <div className="mt-3 rise-in bg-white border border-border rounded-3xl overflow-hidden divide-y divide-border shadow-sm">
             {attnKycBlocked && (
@@ -491,7 +491,7 @@ export default async function HomePage() {
           </div>
         )}
 
-        {/* â”€â”€ Charging in progress â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Charging in progress ─────────────────────────────────────────── */}
         {attnInProgress && (
           <Link
             href={`/bookings/${attnInProgress.id}`}
@@ -518,7 +518,7 @@ export default async function HomePage() {
           </Link>
         )}
 
-        {/* â”€â”€ Starting soon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Starting soon ────────────────────────────────────────────────── */}
         {attnStartingSoon.map(b => (
           <div key={`soon-${b.id}`} className="rise-in bg-green text-white rounded-3xl p-4 shadow-lg shadow-green-900/20">
             <div className="flex items-center justify-between">
@@ -550,7 +550,7 @@ export default async function HomePage() {
           </div>
         ))}
 
-        {/* â”€â”€ Awaiting driver confirmation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Awaiting driver confirmation ──────────────────────────────────── */}
         {attnAwaitingConf.map(b => (
           <Link
             key={`adc-${b.id}`}
@@ -570,7 +570,7 @@ export default async function HomePage() {
           </Link>
         ))}
 
-        {/* â”€â”€ Snapshot cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Snapshot cards ───────────────────────────────────────────────── */}
         {snapshotCards.map((card, i) => {
           if (card.type === 'upcoming-booking') {
             const b = card.booking;
@@ -682,7 +682,7 @@ export default async function HomePage() {
           return null;
         })}
 
-        {/* â”€â”€ Pending booking requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Pending booking requests ─────────────────────────────────────── */}
         {attnPendingRequests.map(b => {
           const initials = (b.driverName ?? '?')
             .split(' ')
@@ -726,7 +726,7 @@ export default async function HomePage() {
           );
         })}
 
-        {/* â”€â”€ Quick actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Quick actions ────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3 pt-1">
           <Link
             href="/explore?mode=near_me"
@@ -750,10 +750,10 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        {/* â”€â”€ PWA install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── PWA install ────────────────────────────────────────────────── */}
         <PwaInstallCard />
 
-        {/* â”€â”€ Nudge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Nudge ────────────────────────────────────────────────────────── */}
         {topNudge ? (
           <section aria-label="Suggestion">
             {topNudge.type === 'new-user' && (

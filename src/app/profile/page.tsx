@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ProfileBody } from '@/components/profile/ProfileBody';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
@@ -89,7 +89,7 @@ export default async function ProfilePage({
     chargerStats, lifetimeEarningsPaise,
   } = await getProfileData(user.id);
 
-  // DB query error â€” don't redirect to /login since the user IS authenticated
+  // DB query error — don't redirect to /login since the user IS authenticated
   if (userError) throw new Error(userError.message);
   if (!profile) redirect('/auth');
 

@@ -1,4 +1,4 @@
-﻿import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { cn } from '@/lib/utils';
 

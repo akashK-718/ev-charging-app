@@ -53,8 +53,8 @@ export function StepPricing({ draft, onChange, onValidChange }: StepPricingProps
   const errorMessage: string | null = (() => {
     if (!touched || isValid) return null;
     if (rawValue === '') return 'Enter a price per kWh';
-    if (!isNaN(price) && price < PRICE_MIN) return `Minimum is ₹${PRICE_MIN}/kWh`;
-    if (!isNaN(price) && price > PRICE_MAX) return `Maximum is ₹${PRICE_MAX}/kWh`;
+    if (!isNaN(price) && price < PRICE_MIN) return `Minimum is \u20B9${PRICE_MIN}/kWh`;
+    if (!isNaN(price) && price > PRICE_MAX) return `Maximum is \u20B9${PRICE_MAX}/kWh`;
     return 'Enter a valid number';
   })();
 

@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { ActivityView, type HistoryItem, type UpdateItem } from './ActivityView';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
