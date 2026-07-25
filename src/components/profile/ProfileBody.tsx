@@ -99,7 +99,7 @@ function ProfileRow({
     <div className="flex items-center gap-3 px-4 py-3.5 active:bg-surface-page transition-colors">
       <div className={cn(
         'size-9 rounded-2xl grid place-items-center shrink-0',
-        danger ? 'bg-danger-soft text-danger' : 'bg-surface-page text-muted',
+        danger ? 'bg-danger-soft text-danger' : 'bg-green-soft text-green-deep',
       )}>
         {icon}
       </div>
@@ -630,9 +630,12 @@ export function ProfileBody({
               <p className="text-xs text-muted mb-0.5">Phone</p>
               <p className="text-sm font-semibold text-ink">{maskPhone(phone)}</p>
               {/* TODO: Implement phone change flow in future PR */}
-              <Link href="/help" className="text-xs text-muted mt-0.5 block hover:text-ink transition-colors">
-                To change your phone number, contact support
-              </Link>
+              <p className="text-xs text-muted mt-0.5">
+                To change your phone number,{' '}
+                <Link href="/help" className="text-green font-medium underline underline-offset-2 hover:text-green-deep transition-colors">
+                  contact support
+                </Link>
+              </p>
             </div>
 
             <ProfileRow
@@ -794,14 +797,14 @@ export function ProfileBody({
             onClick={() => setAvatarSheetOpen(false)}
           />
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl px-5 pt-4 pb-8">
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <div className="w-10 h-1 bg-border rounded-full mx-auto mb-5" />
             <p className="text-sm font-bold text-ink mb-4 text-center">Profile photo</p>
 
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={openCamera}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-surface-page hover:bg-green-soft transition-colors text-left"
               >
                 <Camera className="w-5 h-5 text-muted shrink-0" />
                 <span className="text-sm font-semibold text-ink">Take a selfie</span>
@@ -810,7 +813,7 @@ export function ProfileBody({
               <button
                 type="button"
                 onClick={openFilePicker}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-surface-page hover:bg-green-soft transition-colors text-left"
               >
                 <ImageIcon className="w-5 h-5 text-muted shrink-0" />
                 <span className="text-sm font-semibold text-ink">Upload a photo</span>
@@ -820,7 +823,7 @@ export function ProfileBody({
                 <button
                   type="button"
                   onClick={() => { setAvatarSheetOpen(false); void handleResetAvatar(); }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-surface-page hover:bg-green-soft transition-colors text-left"
                 >
                   <ShieldQuestion className="w-5 h-5 text-muted shrink-0" />
                   <span className="text-sm font-semibold text-ink">Use verification photo</span>
@@ -831,10 +834,10 @@ export function ProfileBody({
                 <button
                   type="button"
                   onClick={() => { setAvatarSheetOpen(false); void handleRemoveAvatar(); }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-red-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-surface-page hover:bg-danger-soft transition-colors text-left"
                 >
-                  <Trash2 className="w-5 h-5 text-red-500 shrink-0" />
-                  <span className="text-sm font-semibold text-red-600">Remove photo</span>
+                  <Trash2 className="w-5 h-5 text-danger shrink-0" />
+                  <span className="text-sm font-semibold text-danger">Remove photo</span>
                 </button>
               )}
             </div>

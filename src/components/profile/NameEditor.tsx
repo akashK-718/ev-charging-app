@@ -86,22 +86,22 @@ export function NameEditor({
               autoFocus
               className={cn(
                 'flex-1 px-3 py-2 rounded-xl border text-sm font-medium text-ink',
-                'focus:outline-none focus:ring-2 focus:ring-volt transition-colors',
-                error ? 'border-red-400 bg-red-50' : 'border-gray-200',
+                'focus:outline-none focus:ring-2 focus:ring-green transition-colors',
+                error ? 'border-danger bg-danger-soft' : 'border-border',
               )}
             />
             <button
               onClick={save}
               disabled={saving}
               aria-label="Save name"
-              className="p-2 rounded-xl bg-volt text-ink hover:bg-volt/80 transition-colors disabled:opacity-50"
+              className="p-2 rounded-xl bg-green text-white hover:bg-green-deep transition-colors disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
             </button>
             <button
               onClick={cancelEdit}
               aria-label="Cancel"
-              className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-xl hover:bg-surface-page transition-colors"
             >
               <X className="w-4 h-4 text-muted" />
             </button>
@@ -114,7 +114,7 @@ export function NameEditor({
           <button
             onClick={startEdit}
             aria-label="Edit name"
-            className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-1 rounded-lg hover:bg-surface-page transition-colors"
           >
             <Pencil className="w-3.5 h-3.5 text-muted" />
           </button>
@@ -122,7 +122,7 @@ export function NameEditor({
       )}
 
       {toast && (
-        <p className="text-xs text-green-700 font-medium mt-1">Name updated!</p>
+        <p className="text-xs text-green font-medium mt-1">Name updated!</p>
       )}
 
       {!editing && (
