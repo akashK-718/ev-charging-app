@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { getFeatureFlags } from '@/lib/edge-config';
 
 type ReviewRow = {
   review_type: string;
@@ -107,6 +108,11 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const { ratings_enabled } = await getFeatureFlags();
+  if (!ratings_enabled) {
+    return NextResponse.json({ error: 'Ratings are temporarily unavailable.' }, { status: 503 });
+  }
+
   const supabase = createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

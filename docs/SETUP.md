@@ -122,6 +122,47 @@ NOSHOW_TIMEOUT_MINUTES=2
 SESSION_END_REVIEW_GRACE_MINUTES=2
 ```
 
-## 7. Architecture
+## 7. Vercel Edge Config (emergency lockdown + feature flags)
+
+Emergency lockdown and feature flags are stored in Vercel Edge Config — a CDN-edge key-value store that is read independently of Supabase. This means the lockdown can be activated and enforced even if the database is unreachable.
+
+### Step 1: Create an Edge Config store
+
+1. Go to your Vercel project → **Storage** → **Edge Config** → **Create store**.
+2. Note the store **ID** (format: `ecfg_xxxxxxxx`).
+3. In the store, click **Items** and seed the initial values:
+
+| Key | Value |
+|---|---|
+| `emergency_lockdown` | `false` |
+| `route_planning_enabled` | `true` |
+| `ratings_enabled` | `true` |
+| `saved_chargers_enabled` | `false` |
+| `vehicles_enabled` | `false` |
+
+### Step 2: Add environment variables
+
+Add these to your Vercel project environment and to `.env.local`:
+
+| Variable | Purpose |
+|---|---|
+| `EDGE_CONFIG` | Edge Config connection string — copy from the store's **Tokens** tab (format: `https://edge-config.vercel.com/ecfg_xxx?token=yyy`) |
+| `EDGE_CONFIG_ID` | Store ID only (format: `ecfg_xxxxxxxx`) — used by the write API |
+| `VERCEL_ACCESS_TOKEN` | A Vercel personal access token with **Full Account** scope — used to update Edge Config items via the Vercel REST API. Create at vercel.com → Account Settings → Tokens. |
+
+### Step 3: Connect the store to your project
+
+In Vercel project settings → **Storage**, connect the Edge Config store you created. This auto-populates `EDGE_CONFIG` in all environments.
+
+### Local development without Edge Config
+
+If `EDGE_CONFIG` is not set, all flags return safe defaults:
+- `emergency_lockdown` → `false`
+- `route_planning_enabled`, `ratings_enabled` → `true`
+- `saved_chargers_enabled`, `vehicles_enabled` → `false`
+
+Admin-initiated lockdown and feature flag changes from `/admin/settings` will fail locally unless `EDGE_CONFIG_ID` and `VERCEL_ACCESS_TOKEN` are also set.
+
+## 8. Architecture
 
 See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for the map provider abstraction, auth flow, and how to swap Mapbox for another provider.

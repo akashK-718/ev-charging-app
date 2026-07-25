@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
 import { getAdminUser, logAdminAction } from '@/lib/admin';
+import { readKillSwitch } from '@/lib/app-settings';
 
 export async function POST(
   _request: NextRequest,
@@ -10,6 +11,11 @@ export async function POST(
   const adminUser = await getAdminUser();
   if (!adminUser) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const payoutsEnabled = await readKillSwitch('allow_payouts');
+  if (!payoutsEnabled) {
+    return NextResponse.json({ error: 'Payout processing is temporarily unavailable.' }, { status: 503 });
   }
 
   const adminSupabase = createAdminClient();

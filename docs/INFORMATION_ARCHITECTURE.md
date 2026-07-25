@@ -294,7 +294,62 @@ Slot availability is derived from active booking status. When a booking reaches 
 
 ## Admin
 
-Dashboard → KYC → Payouts → Users → Disputes → Session review queue
+### Full architecture (reference ceiling — not a build target)
+
+The eventual shape of the admin panel covers 12 sections:
+
+1. **Overview** — platform-wide metrics, health indicators
+2. **Users** — user listing, search, manual role changes
+3. **KYC & Verification** — KYC review queue, approve/reject/request-resubmission
+4. **Chargers** — admin view of all listings, force-pause, force-suspend
+5. **Bookings & Sessions** — stuck session resolution, manual status overrides
+6. **Finance** — payout processing, manual payouts, revenue overview
+7. **Disputes & Reports** — driver/lender dispute resolution
+8. **Notifications** — platform announcement broadcasting
+9. **Configuration** — business-rule knobs (timeouts, commission %, pricing limits, payout delay, search radius)
+10. **Analytics** — user growth, booking funnel, revenue trends
+11. **Audit Log** — immutable log of all admin actions, filterable by type/admin/date
+12. **Administration** — admin role management, RBAC (Super Admin / Ops / KYC Reviewer / Finance / Support Admin)
+
+> **This describes the eventual shape of the admin panel. It is not a sprint plan — build only the slice that satisfies a current, real need, and leave the rest of this structure as documented-but-unbuilt scope.**
+
+### Currently built (Phase 1)
+
+**`/admin/settings`** — single settings page, `is_admin` boolean is the only admin distinction (no role tiers).
+
+- **Operational kill switches** (`app_settings` table): `allow_bookings`, `allow_payments`, `allow_payouts`, `allow_registrations`, `allow_charger_creation` — each defaults true; flipping false returns 503 from the relevant API route.
+- **Maintenance mode** (`app_settings` key `platform_mode: 'normal' | 'maintenance'`): middleware redirects all non-admin traffic to `/maintenance`; admins see the app normally.
+- **Emergency lockdown** (Vercel Edge Config key `emergency_lockdown: boolean`): middleware checks this first, before Supabase — blocks all non-admin page and API mutation traffic, shows `/emergency` page. Activation requires typing "LOCKDOWN" as confirmation. Each activation/deactivation writes an `audit_log` row.
+- **Feature flags** (Vercel Edge Config): `route_planning_enabled`, `ratings_enabled`, `saved_chargers_enabled` (false — not built), `vehicles_enabled` (false — not built). Changes are logged to `audit_log`.
+
+Also built (predates Phase 1): `/admin/kyc`, `/admin/payouts`, `/admin/users`, `/admin/review-queue`.
+
+### Parked, not scheduled (Phase 2)
+
+Business-rule configuration — these stay hardcoded in code, not admin-configurable, until a concrete need arises:
+
+- Booking request timeout (currently 30 min)
+- Session grace period (`SESSION_END_REVIEW_GRACE_MINUTES`, currently 30 min)
+- No-show warning time (`NOSHOW_WARNING_MINUTES`, currently 25 min)
+- No-show cutoff (`NOSHOW_TIMEOUT_MINUTES`, currently 30 min)
+- Platform commission % (`PLATFORM_COMMISSION_PERCENT`)
+- Min/max charger pricing limits (currently ₹6–₹50/kWh)
+- Payout delay / minimum payout threshold
+- Default search radius (`DEFAULT_SEARCH_RADIUS_METERS`)
+
+### Parked, not scheduled (Phase 3)
+
+Everything else in the 12-section structure:
+
+- Users admin view, KYC queue UI improvements
+- Chargers admin view (force-pause, force-suspend)
+- Bookings/Sessions admin view beyond the current review-queue
+- Finance admin (manual payout initiation, revenue overview)
+- Disputes & Reports
+- Notifications admin (platform broadcasting)
+- Analytics
+- Dedicated Audit Log viewer UI (the `audit_log` table exists and is written to; no browse UI yet)
+- Multi-role RBAC (Super Admin / Ops / KYC Reviewer / Finance / Support Admin)
 
 ## Help
 

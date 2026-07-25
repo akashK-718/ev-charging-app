@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/lib/supabase/types';
+import { isEmergencyLockdown } from '@/lib/edge-config';
 
 function roleHome(_role: string, isAdmin: boolean): string {
   if (isAdmin) return '/admin';
@@ -16,11 +17,20 @@ function requiresAuth(pathname: string) {
   return AUTH_REQUIRED.some(p => pathname.startsWith(p));
 }
 
+// Paths that remain reachable during emergency lockdown (login so admin can sign in)
+const LOCKDOWN_PASSTHROUGH = new Set(['/emergency', '/login', '/verify-otp']);
+// Paths that remain reachable during maintenance (login so admin can sign in)
+const MAINTENANCE_PASSTHROUGH = new Set(['/maintenance', '/emergency', '/login', '/verify-otp']);
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ── Emergency lockdown (Edge Config — Supabase-independent) ──────────────────
+  // Checked first, before any other logic. Edge Config reads are cached at the
+  // edge so this adds negligible latency on the hot path.
+  const lockdown = await isEmergencyLockdown();
+
   // ── Fast path for unauthenticated requests ────────────────────────────────────
-  // ── Fast path: skip getUser() when there is provably no session ─────────────
   // Supabase stores the session in a cookie starting with "sb-".
   // If no such cookie exists the user is definitely not authenticated.
   //
@@ -32,6 +42,9 @@ export async function middleware(request: NextRequest) {
   const hasSession = request.cookies.getAll().some(c => c.name.startsWith('sb-'));
 
   if (!hasSession) {
+    if (lockdown && !LOCKDOWN_PASSTHROUGH.has(pathname)) {
+      return NextResponse.redirect(new URL('/emergency', request.url));
+    }
     if (requiresAuth(pathname)) {
       const url = new URL('/login', request.url);
       url.searchParams.set('next', pathname);
@@ -65,7 +78,20 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Run auth check and platform_mode read in parallel to keep middleware fast.
+  // platform_mode is readable by the anon client thanks to the public SELECT
+  // RLS policy added in migration 028.
+  const [{ data: { user } }, settingsResult] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'platform_mode')
+      .maybeSingle(),
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const platformMode = ((settingsResult.data as any)?.value as string | undefined) ?? 'normal';
 
   // ── 1. Auth gate ──────────────────────────────────────────────────────────────
 
@@ -81,7 +107,17 @@ export async function middleware(request: NextRequest) {
   const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
   const role = (user.user_metadata?.role as string | undefined) ?? '';
 
-  // ── 2. Admin-only routes ──────────────────────────────────────────────────────
+  // ── 2. Emergency lockdown gate (authenticated) ────────────────────────────────
+  if (lockdown && !isAdmin && !LOCKDOWN_PASSTHROUGH.has(pathname)) {
+    return NextResponse.redirect(new URL('/emergency', request.url));
+  }
+
+  // ── 3. Maintenance mode gate ──────────────────────────────────────────────────
+  if (platformMode === 'maintenance' && !isAdmin && !MAINTENANCE_PASSTHROUGH.has(pathname)) {
+    return NextResponse.redirect(new URL('/maintenance', request.url));
+  }
+
+  // ── 4. Admin-only routes ──────────────────────────────────────────────────────
   // The is_admin flag is synced to JWT metadata when admin access is granted (migration 012).
   if (pathname.startsWith('/admin') && !isAdmin) {
     const dest = role === 'lender' || role === 'both' ? '/lender/chargers' : '/explore';
@@ -90,16 +126,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ── 3. Root redirect ──────────────────────────────────────────────────────────
+  // ── 5. Root redirect ──────────────────────────────────────────────────────────
   // Redirect logged-in users to their role's home page.
-  // Logged-out users are handled by the fast path above.
   if (pathname === '/') {
     return NextResponse.redirect(new URL(roleHome(role, isAdmin), request.url));
   }
 
-  // ── 4. Auth screen redirect ───────────────────────────────────────────────────
+  // ── 6. Auth screen redirect ───────────────────────────────────────────────────
   // Redirect logged-in users away from auth screens.
-  // Honour ?next= for internal paths so a failed page load doesn't silently land on /chargers.
   if (pathname === '/login' || pathname === '/verify-otp') {
     const nextParam = request.nextUrl.searchParams.get('next');
     const safeNext = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
@@ -107,15 +141,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
-  // ── 5. Welcome flow gating ────────────────────────────────────────────────────
-  // Legacy entry points always forward to the first step.
+  // ── 7. Welcome flow gating ────────────────────────────────────────────────────
   if (pathname === '/welcome' || pathname === '/profile/name') {
     return NextResponse.redirect(new URL('/welcome/name', request.url));
   }
 
   const name = user.user_metadata?.name as string | undefined;
-  // `onboarded` is explicitly false only for accounts mid-welcome-flow (set at signup,
-  // cleared once a role is chosen). Undefined means either pre-existing or already complete.
   const onboarded = user.user_metadata?.onboarded;
 
   const isWelcomeName = pathname === '/welcome/name';
@@ -133,9 +164,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ── 6. Role-based route guards ────────────────────────────────────────────────
+  // ── 8. Role-based route guards ────────────────────────────────────────────────
   // Admins bypass all role checks — they can access any route.
-  // Read role exclusively from JWT metadata: no DB query, stays fast at the edge.
   if (!isAdmin) {
     const canAccessLender = role === 'lender' || role === 'both';
     const canAccessDriver = role === 'driver' || role === 'both';
@@ -144,11 +174,9 @@ export async function middleware(request: NextRequest) {
     const isDriverRoute = pathname.startsWith('/bookings');
 
     if (isLenderRoute || isDriverRoute) {
-      // No role set yet → mid-onboarding, send to role selection.
       if (!role) {
         console.warn(`[middleware] No role set — blocking ${pathname}, redirecting to /welcome/role`);
         const url = new URL('/welcome/role', request.url);
-        // Anti-loop guard: if we'd set next= to the destination itself, go to root instead.
         const nextVal = pathname !== '/welcome/role' ? pathname : '/';
         url.searchParams.set('next', nextVal);
         return NextResponse.redirect(url);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOtp } from '@/lib/msg91';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { isEmergencyLockdown } from '@/lib/edge-config';
+import { readKillSwitch } from '@/lib/app-settings';
 
 async function derivePassword(phone: string): Promise<string> {
   const secret = process.env.SUPABASE_PHONE_PASSWORD_SECRET ?? 'dev-phone-secret-do-not-use-in-production';
@@ -69,6 +71,27 @@ export async function POST(request: NextRequest) {
     .select('id, role, name, is_admin')
     .eq('phone', fullPhone)
     .maybeSingle();
+
+  // Registrations kill switch only blocks brand-new accounts — existing users
+  // must always be able to sign in regardless of this flag.
+  if (!existingProfile) {
+    const [locked, registrationsEnabled] = await Promise.all([
+      isEmergencyLockdown(),
+      readKillSwitch('allow_registrations'),
+    ]);
+    if (locked) {
+      return NextResponse.json(
+        { error: 'Service is temporarily unavailable.' },
+        { status: 503 },
+      );
+    }
+    if (!registrationsEnabled) {
+      return NextResponse.json(
+        { error: 'New registrations are temporarily unavailable.' },
+        { status: 503 },
+      );
+    }
+  }
 
   let userId: string;
   let role: string;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FeatureFlags } from '@/lib/edge-config';
 import dynamic from 'next/dynamic';
 import { Filter, LocateFixed } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -125,6 +126,18 @@ function computeRouteBounds(
 export default function ExplorePage() {
   // ── Auth — stored so save effect can scope its key without re-fetching ───
   const userIdRef = useRef<string | null>(null);
+
+  // ── Feature flags — fetched once on mount, default to permissive ─────────
+  const [featureFlags, setFeatureFlags] = useState<Pick<FeatureFlags, 'route_planning_enabled'>>({
+    route_planning_enabled: true,
+  });
+
+  useEffect(() => {
+    fetch('/api/feature-flags')
+      .then(r => r.json() as Promise<FeatureFlags>)
+      .then(f => setFeatureFlags({ route_planning_enabled: f.route_planning_enabled }))
+      .catch(() => {});
+  }, []);
 
   // ── Search / view mode ────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
@@ -305,7 +318,9 @@ export default function ExplorePage() {
         // Old saved states that are missing centerType are treated as 'default'.
         setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
         setViewMode(saved.viewMode);
-        setSearchMode(saved.searchMode ?? 'along_route');
+        // Respect route_planning_enabled — if disabled, fall back to near_me regardless of saved state.
+        const savedMode = saved.searchMode ?? 'along_route';
+        setSearchMode(!featureFlags.route_planning_enabled && savedMode === 'along_route' ? 'near_me' : savedMode);
         setAllIndiaMode(isAllIndia);
         setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
         if (saved.routeFrom) {
@@ -451,6 +466,7 @@ export default function ExplorePage() {
   }
 
   function handleSearchModeChange(mode: SearchMode) {
+    if (mode === 'along_route' && !featureFlags.route_planning_enabled) return;
     setSearchMode(mode);
     setSelectedCharger(null);
     setRouteEditOpen(false);
@@ -773,7 +789,9 @@ export default function ExplorePage() {
     >
       {/* ── Header: segmented mode toggle + filters ────────────────────── */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 bg-white shrink-0">
-        <ModeToggle value={searchMode} onChange={handleSearchModeChange} />
+        {featureFlags.route_planning_enabled && (
+          <ModeToggle value={searchMode} onChange={handleSearchModeChange} />
+        )}
         <div className="flex-1" />
         <button
           onClick={() => setFiltersOpen(true)}
