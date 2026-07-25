@@ -3,6 +3,8 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getRazorpay, verifyPaymentSignature } from '@/lib/razorpay';
 import { sendPushNotification } from '@/lib/notifications/push';
 import { generateConfirmationCode } from '@/lib/utils';
+import { isEmergencyLockdown } from '@/lib/edge-config';
+import { readKillSwitch } from '@/lib/app-settings';
 
 /**
  * POST /api/payments/verify
@@ -12,6 +14,21 @@ import { generateConfirmationCode } from '@/lib/utils';
  * the booking + payment rows via the create_booking_with_payment RPC.
  */
 export async function POST(request: NextRequest) {
+  if (await isEmergencyLockdown()) {
+    return NextResponse.json({ error: 'Service is temporarily unavailable.' }, { status: 503 });
+  }
+
+  const [bookingsEnabled, paymentsEnabled] = await Promise.all([
+    readKillSwitch('allow_bookings'),
+    readKillSwitch('allow_payments'),
+  ]);
+  if (!bookingsEnabled) {
+    return NextResponse.json({ error: 'Bookings are temporarily unavailable.' }, { status: 503 });
+  }
+  if (!paymentsEnabled) {
+    return NextResponse.json({ error: 'Payments are temporarily unavailable.' }, { status: 503 });
+  }
+
   const supabase = createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { DEFAULT_SEARCH_RADIUS_METERS } from '@/lib/constants';
 import { applyLocationOffset } from '@/lib/location/offset';
+import { isEmergencyLockdown, getFeatureFlags } from '@/lib/edge-config';
+import { readKillSwitch } from '@/lib/app-settings';
 
 const VALID_CHARGER_TYPES = ['AC_3.3kW', 'AC_7kW', 'AC_22kW', 'DC_fast'] as const;
 const VALID_CONNECTOR_TYPES = ['Type2', 'BharatAC', 'CCS2', 'CHAdeMO', 'Type1'] as const;
@@ -65,6 +67,10 @@ export async function GET(request: NextRequest) {
 
   // ── Route mode ─────────────────────────────────────────────────────────────
   if (routeStr) {
+    const { route_planning_enabled } = await getFeatureFlags();
+    if (!route_planning_enabled) {
+      return NextResponse.json({ error: 'Route planning is not available.' }, { status: 503 });
+    }
     let parsedRoute: { type: string; coordinates: number[][] };
     try {
       parsedRoute = JSON.parse(routeStr) as { type: string; coordinates: number[][] };
@@ -232,6 +238,15 @@ export async function POST(request: NextRequest) {
 }
 
 async function postHandler(request: NextRequest) {
+  if (await isEmergencyLockdown()) {
+    return NextResponse.json({ error: 'Service is temporarily unavailable.' }, { status: 503 });
+  }
+
+  const chargerCreationEnabled = await readKillSwitch('allow_charger_creation');
+  if (!chargerCreationEnabled) {
+    return NextResponse.json({ error: 'New charger listings are temporarily unavailable.' }, { status: 503 });
+  }
+
   const supabase = createClient();
 
   // Auth check

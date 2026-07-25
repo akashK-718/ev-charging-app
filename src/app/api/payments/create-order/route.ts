@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getRazorpay } from '@/lib/razorpay';
 import { PLATFORM_COMMISSION_PERCENT } from '@/lib/constants';
+import { isEmergencyLockdown } from '@/lib/edge-config';
+import { readKillSwitch } from '@/lib/app-settings';
 
 // Rough nominal output per charger type, used only to estimate kWh for pricing
 // a slot upfront. Actual kwh_delivered is recorded at session end.
@@ -24,6 +26,21 @@ const MAX_DURATION_MINUTES = 12 * 60;
  * /api/payments/verify confirms the signature.
  */
 export async function POST(request: NextRequest) {
+  if (await isEmergencyLockdown()) {
+    return NextResponse.json({ error: 'Service is temporarily unavailable.' }, { status: 503 });
+  }
+
+  const [paymentsEnabled, bookingsEnabled] = await Promise.all([
+    readKillSwitch('allow_payments'),
+    readKillSwitch('allow_bookings'),
+  ]);
+  if (!paymentsEnabled) {
+    return NextResponse.json({ error: 'Payments are temporarily unavailable.' }, { status: 503 });
+  }
+  if (!bookingsEnabled) {
+    return NextResponse.json({ error: 'Bookings are temporarily unavailable.' }, { status: 503 });
+  }
+
   const supabase = createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {

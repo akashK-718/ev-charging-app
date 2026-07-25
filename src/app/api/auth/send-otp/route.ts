@@ -1,9 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOtp } from '@/lib/msg91';
+import { isEmergencyLockdown } from '@/lib/edge-config';
+import { readKillSwitch } from '@/lib/app-settings';
 
 // TODO: Add rate limiting here — 3 OTPs per phone per hour (Upstash Redis)
 
 export async function POST(request: NextRequest) {
+  if (await isEmergencyLockdown()) {
+    return NextResponse.json(
+      { error: 'Service is temporarily unavailable.', code: 'SERVICE_UNAVAILABLE' },
+      { status: 503 },
+    );
+  }
+
+  const registrationsEnabled = await readKillSwitch('allow_registrations');
+  if (!registrationsEnabled) {
+    return NextResponse.json(
+      { error: 'New registrations are temporarily unavailable.', code: 'REGISTRATIONS_DISABLED' },
+      { status: 503 },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

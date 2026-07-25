@@ -8,6 +8,7 @@ const ADMIN_NAV = [
   { href: '/admin/payouts',       label: 'Payouts' },
   { href: '/admin/users',         label: 'Users' },
   { href: '/admin/review-queue',  label: 'Review queue' },
+  { href: '/admin/settings',      label: 'Settings' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
