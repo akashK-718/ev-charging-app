@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Plus, ListChecks, BookOpen, IndianRupee, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Plus, ListChecks, BookOpen, IndianRupee, AlertCircle, Clock, Zap, FileText, ChevronRight } from 'lucide-react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 
@@ -106,25 +106,35 @@ export default async function HostingOverviewPage() {
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Today</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-2xl border border-border p-4">
-            <p className="text-xs text-muted">Earned today</p>
-            <p className="font-display font-bold text-xl text-ink mt-1">
-              ₹{(todayEarnings / 100).toFixed(0)}
-            </p>
+            <div className="size-9 rounded-xl bg-green-soft grid place-items-center mb-3">
+              <IndianRupee className="size-4 text-green" aria-hidden />
+            </div>
+            <p className="font-display font-bold text-xl text-ink">₹{(todayEarnings / 100).toFixed(0)}</p>
+            <p className="text-xs text-muted mt-0.5">Earned today</p>
           </div>
           <div className="bg-white rounded-2xl border border-border p-4">
-            <p className="text-xs text-muted">Upcoming</p>
-            <p className="font-display font-bold text-xl text-ink mt-1">
-              {upcomingCount} {upcomingCount === 1 ? 'booking' : 'bookings'}
+            <div className="size-9 rounded-xl bg-blue-50 grid place-items-center mb-3">
+              <Clock className="size-4 text-blue-600" aria-hidden />
+            </div>
+            <p className="font-display font-bold text-xl text-ink">
+              {upcomingCount}
             </p>
+            <p className="text-xs text-muted mt-0.5">Upcoming {upcomingCount === 1 ? 'booking' : 'bookings'}</p>
           </div>
           <div className="bg-white rounded-2xl border border-border p-4">
-            <p className="text-xs text-muted">Live chargers</p>
-            <p className="font-display font-bold text-xl text-ink mt-1">{liveCount}</p>
+            <div className="size-9 rounded-xl bg-green-soft grid place-items-center mb-3">
+              <Zap className="size-4 text-green" aria-hidden />
+            </div>
+            <p className="font-display font-bold text-xl text-ink">{liveCount}</p>
+            <p className="text-xs text-muted mt-0.5">Live chargers</p>
           </div>
           {draftCount > 0 && (
             <div className="bg-white rounded-2xl border border-border p-4">
-              <p className="text-xs text-muted">Drafts</p>
-              <p className="font-display font-bold text-xl text-ink mt-1">{draftCount}</p>
+              <div className="size-9 rounded-xl bg-gray-100 grid place-items-center mb-3">
+                <FileText className="size-4 text-muted" aria-hidden />
+              </div>
+              <p className="font-display font-bold text-xl text-ink">{draftCount}</p>
+              <p className="text-xs text-muted mt-0.5">Drafts</p>
             </div>
           )}
         </div>
@@ -133,29 +143,37 @@ export default async function HostingOverviewPage() {
       {hasAttention && (
         <section className="space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Attention</p>
-          <div className="bg-white border-2 border-amber-300/70 rounded-2xl p-4 space-y-2.5">
+          <div className="bg-white border-2 border-amber-300/70 rounded-2xl overflow-hidden divide-y divide-amber-100">
             {pendingCount > 0 && (
               <Link
                 href="/lender/bookings"
-                className="flex items-center gap-2 text-sm font-semibold text-amber-800 hover:text-amber-900"
+                className="tap-light flex items-center gap-3 p-4"
               >
-                <AlertCircle className="size-4 shrink-0" aria-hidden />
-                {pendingCount === 1
-                  ? '1 booking awaiting response'
-                  : `${pendingCount} bookings awaiting response`}
-                <span className="ml-auto text-amber-600">→</span>
+                <div className="size-9 rounded-xl bg-amber-50 grid place-items-center shrink-0">
+                  <AlertCircle className="size-4 text-amber-600" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink">
+                    {pendingCount === 1 ? '1 booking awaiting response' : `${pendingCount} bookings awaiting response`}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 text-amber-500 shrink-0" aria-hidden />
               </Link>
             )}
             {pausedCount > 0 && (
               <Link
                 href="/lender/chargers"
-                className="flex items-center gap-2 text-sm font-semibold text-amber-800 hover:text-amber-900"
+                className="tap-light flex items-center gap-3 p-4"
               >
-                <AlertCircle className="size-4 shrink-0" aria-hidden />
-                {pausedCount === 1
-                  ? '1 charger currently paused'
-                  : `${pausedCount} chargers currently paused`}
-                <span className="ml-auto text-amber-600">→</span>
+                <div className="size-9 rounded-xl bg-amber-50 grid place-items-center shrink-0">
+                  <AlertCircle className="size-4 text-amber-600" aria-hidden />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink">
+                    {pausedCount === 1 ? '1 charger currently paused' : `${pausedCount} chargers currently paused`}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 text-amber-500 shrink-0" aria-hidden />
               </Link>
             )}
           </div>
@@ -169,29 +187,41 @@ export default async function HostingOverviewPage() {
             href="/lender/chargers/new"
             className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
-            <Plus className="size-4 text-green-600 shrink-0" aria-hidden />
-            <span className="text-sm font-semibold text-ink">Add charger</span>
+            <div className="size-9 rounded-xl bg-green-soft grid place-items-center shrink-0">
+              <Plus className="size-4 text-green" aria-hidden />
+            </div>
+            <span className="text-sm font-semibold text-ink flex-1">Add charger</span>
+            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
           </Link>
           <Link
             href="/lender/chargers"
             className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
-            <ListChecks className="size-4 text-ink/50 shrink-0" aria-hidden />
-            <span className="text-sm font-semibold text-ink">Manage chargers</span>
+            <div className="size-9 rounded-xl bg-gray-100 grid place-items-center shrink-0">
+              <ListChecks className="size-4 text-muted" aria-hidden />
+            </div>
+            <span className="text-sm font-semibold text-ink flex-1">Manage chargers</span>
+            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
           </Link>
           <Link
             href="/lender/bookings"
             className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
-            <BookOpen className="size-4 text-ink/50 shrink-0" aria-hidden />
-            <span className="text-sm font-semibold text-ink">View bookings</span>
+            <div className="size-9 rounded-xl bg-blue-50 grid place-items-center shrink-0">
+              <BookOpen className="size-4 text-blue-600" aria-hidden />
+            </div>
+            <span className="text-sm font-semibold text-ink flex-1">View bookings</span>
+            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
           </Link>
           <Link
             href="/lender/earnings"
             className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
           >
-            <IndianRupee className="size-4 text-ink/50 shrink-0" aria-hidden />
-            <span className="text-sm font-semibold text-ink">Finance</span>
+            <div className="size-9 rounded-xl bg-emerald-50 grid place-items-center shrink-0">
+              <IndianRupee className="size-4 text-emerald-700" aria-hidden />
+            </div>
+            <span className="text-sm font-semibold text-ink flex-1">Finance</span>
+            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
           </Link>
         </div>
       </section>
