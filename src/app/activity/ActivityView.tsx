@@ -736,7 +736,7 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
         </Link>
         <p className="text-xs text-muted truncate">
           {item.counterpartyName
-            ? `Hosted by ${item.counterpartyName} · ${fmtDate(item.scheduledStart)}`
+            ? `Hosted by ${item.counterpartyName} \u00B7 ${fmtDate(item.scheduledStart)}`
             : fmtDate(item.scheduledStart)}
         </p>
         {item.lifecycleReason && isTerminal && (
@@ -794,7 +794,7 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
         </Link>
         <p className="text-xs text-muted truncate">
           {item.counterpartyName
-            ? `Guest: ${item.counterpartyName} · ${fmtDate(item.scheduledStart)}`
+            ? `Guest: ${item.counterpartyName} \u00B7 ${fmtDate(item.scheduledStart)}`
             : fmtDate(item.scheduledStart)}
         </p>
         {item.lifecycleReason && isTerminal && (

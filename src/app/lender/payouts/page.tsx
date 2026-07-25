@@ -196,7 +196,7 @@ export default function LenderPayoutsPage() {
                           </p>
                           <p className="text-xs text-muted mt-0.5">
                             {payout.processed_at ? formatDate(payout.processed_at) : '—'}
-                            {' · '}
+                            {' \u00B7 '}
                             {payout.booking_ids.length} booking{payout.booking_ids.length !== 1 ? 's' : ''}
                           </p>
                         </div>

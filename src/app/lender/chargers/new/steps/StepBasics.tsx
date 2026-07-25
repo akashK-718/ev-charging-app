@@ -8,10 +8,10 @@ import type { ConnectorType } from '@/lib/constants';
 import type { NewChargerDraft } from '@/types/charger-draft';
 
 const CHARGER_DESCRIPTIONS: Record<ChargerType, string> = {
-  'AC_3.3kW': 'Adds ~15–25 km per hour · ideal for overnight charging',
-  'AC_7kW': 'Adds ~35–50 km per hour · charges most EVs in 3–5 hrs',
-  'AC_22kW': 'Adds ~100 km per hour · requires 3-phase supply',
-  'DC_fast': '80% charge in under 30 min · commercial-grade hardware',
+  'AC_3.3kW': 'Adds ~15–25 km per hour \u00B7 ideal for overnight charging',
+  'AC_7kW': 'Adds ~35–50 km per hour \u00B7 charges most EVs in 3–5 hrs',
+  'AC_22kW': 'Adds ~100 km per hour \u00B7 requires 3-phase supply',
+  'DC_fast': '80% charge in under 30 min \u00B7 commercial-grade hardware',
 };
 
 const CHARGER_SHORT: Record<ChargerType, string> = {

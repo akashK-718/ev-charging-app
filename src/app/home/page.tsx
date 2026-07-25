@@ -470,7 +470,7 @@ export default async function HomePage() {
                   <p className="text-sm font-bold text-ink">Payout failed</p>
                   <p className="text-xs text-muted truncate">
                     {formatINR(attnPayoutFailed.amount_paise)} could not be transferred
-                    {attnPayoutFailed.failed_reason ? ` Â· ${attnPayoutFailed.failed_reason}` : ''}
+                    {attnPayoutFailed.failed_reason ? ` \u00B7 ${attnPayoutFailed.failed_reason}` : ''}
                   </p>
                 </div>
                 <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
@@ -531,7 +531,7 @@ export default async function HomePage() {
             </div>
             <p className="mt-2 text-xl font-bold">{fmtTime(b.scheduled_start)}</p>
             <p className="text-sm text-green-100 truncate">
-              {b.charger?.title ?? 'Charger'}{b.charger?.address ? ` Â· ${b.charger.address}` : ''}
+              {b.charger?.title ?? 'Charger'}{b.charger?.address ? ` \u00B7 ${b.charger.address}` : ''}
             </p>
             <div className="mt-3.5 flex gap-2">
               <Link
@@ -563,7 +563,7 @@ export default async function HomePage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-ink">Booking confirmed by host</p>
               <p className="text-xs text-muted truncate">
-                {b.charger?.title ?? 'Charger'} Â· {fmtDate(b.scheduled_start)} at {fmtTime(b.scheduled_start)}
+                {b.charger?.title ?? 'Charger'} &middot; {fmtDate(b.scheduled_start)} at {fmtTime(b.scheduled_start)}
               </p>
             </div>
             <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
@@ -588,8 +588,8 @@ export default async function HomePage() {
                 <p className="mt-2 text-xl font-bold">{fmtTime(b.scheduled_start)}</p>
                 <p className="text-sm text-green-100 truncate">
                   {b.charger?.title ?? 'Upcoming booking'}
-                  {b.charger?.address ? ` Â· ${b.charger.address}` : ''}
-                  {card.total > 1 ? ` Â· +${card.total - 1} more` : ''}
+                  {b.charger?.address ? ` \u00B7 ${b.charger.address}` : ''}
+                  {card.total > 1 ? ` \u00B7 +${card.total - 1} more` : ''}
                 </p>
                 <div className="mt-3.5 flex gap-2">
                   <Link
@@ -618,7 +618,7 @@ export default async function HomePage() {
               >
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-green-400 flex items-center gap-1.5">
-                    <TrendingUp className="size-3.5" aria-hidden /> Hosting Â· Today
+                    <TrendingUp className="size-3.5" aria-hidden /> Hosting &middot; Today
                   </p>
                   <ArrowRight className="size-4 text-white/50" aria-hidden />
                 </div>
@@ -634,7 +634,7 @@ export default async function HomePage() {
                     ? 'No bookings today'
                     : `${card.todayCount} booking${card.todayCount === 1 ? '' : 's'} today`}
                   {d.pendingBookings.length > 0
-                    ? ` Â· ${d.pendingBookings.length} request${d.pendingBookings.length === 1 ? '' : 's'} pending`
+                    ? ` \u00B7 ${d.pendingBookings.length} request${d.pendingBookings.length === 1 ? '' : 's'} pending`
                     : ''}
                 </p>
               </Link>

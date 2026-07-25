@@ -385,7 +385,7 @@ export default function LenderChargerDetailPage() {
                         {new Date(b.scheduled_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         {' '}
                         {new Date(b.scheduled_start).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                        {' · '}
+                        {' \u00B7 '}
                         {formatDuration(b.scheduled_start, b.scheduled_end)}
                       </p>
                     </div>
@@ -416,7 +416,7 @@ export default function LenderChargerDetailPage() {
                         </p>
                         <p className="text-xs text-muted mt-0.5">
                           {new Date(b.scheduled_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                          {' · '}
+                          {' \u00B7 '}
                           {formatDuration(b.scheduled_start, b.scheduled_end)}
                         </p>
                       </div>

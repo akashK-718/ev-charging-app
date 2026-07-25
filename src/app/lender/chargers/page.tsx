@@ -55,10 +55,10 @@ function sortChargers(chargers: Charger[], sort: SortKey): Charger[] {
 function TileStatusBadge({ status, inUse }: { status: ChargerStatus; inUse: boolean }) {
   const { label, className } = (() => {
     if (status === 'active' && inUse) {
-      return { label: 'Live · In use', className: 'bg-amber-500/90 text-white' };
+      return { label: 'Live \u00B7 In use', className: 'bg-amber-500/90 text-white' };
     }
     if (status === 'active') {
-      return { label: 'Live · Available', className: 'bg-[#10d96a]/90 text-[#0a5c2e]' };
+      return { label: 'Live \u00B7 Available', className: 'bg-[#10d96a]/90 text-[#0a5c2e]' };
     }
     if (status === 'paused') {
       return { label: 'Paused', className: 'bg-gray-800/70 text-white' };

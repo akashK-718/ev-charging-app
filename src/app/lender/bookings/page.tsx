@@ -170,14 +170,14 @@ function LenderBookingsContent() {
                   {booking.charger_title ?? 'Charger'}
                 </p>
                 <p className="text-xs text-muted mt-0.5">
-                  {booking.driver_display ?? 'Driver'} ·{' '}
+                  {booking.driver_display ?? 'Driver'} &middot;{' '}
                   {new Date(booking.scheduled_start).toLocaleDateString('en-IN', {
                     day: 'numeric', month: 'short',
                   })}{' '}
                   {new Date(booking.scheduled_start).toLocaleTimeString('en-IN', {
                     hour: '2-digit', minute: '2-digit', hour12: true,
                   })}
-                  {' · '}{formatDuration(booking.scheduled_start, booking.scheduled_end)}
+                  {' \u00B7 '}{formatDuration(booking.scheduled_start, booking.scheduled_end)}
                 </p>
               </div>
               <div className="ml-3 flex flex-col items-end gap-1 shrink-0">
