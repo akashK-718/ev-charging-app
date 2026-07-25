@@ -214,11 +214,10 @@ export default function LandingPage() {
             {/* Hero card */}
             <div className="bg-surface-card border border-border rounded-token-lg p-6 md:p-10 mb-4 md:mb-0">
 
-              {/* Eyebrow chip */}
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase text-green-deep bg-green-soft rounded-pill px-3 py-1.5 mb-4">
-                <span className="w-1.5 h-1.5 rounded-full bg-green shrink-0" />
-                You are here
-              </span>
+              {/* Section label */}
+              <p className="text-[14px] font-semibold text-green mb-4">
+                — Home EV Charging Network
+              </p>
 
               {/* Headline */}
               <h1 className="font-sans font-bold text-[28px] md:text-[44px] text-ink leading-[1.08] tracking-tight mb-3 md:mb-4">
