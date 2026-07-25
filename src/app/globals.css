@@ -102,6 +102,15 @@ h3 { font-size: 16px; font-weight: 700; }
   animation: pageIn var(--dur-fast) var(--ease-out) both;
 }
 
+/* Step cross-fade: pure opacity, no Y translation — used for AuthStep transitions */
+@keyframes stepIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-step-in {
+  animation: stepIn 150ms var(--ease-out) both;
+}
+
 .tappable:active {
   transform: scale(0.95);
   transition: transform var(--tap-dur) var(--tap-ease);
@@ -271,8 +280,9 @@ a, button, [role="button"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shake-error      { animation: none; }
-  .animate-check-pop { animation: none; }
+  .shake-error        { animation: none; }
+  .animate-check-pop  { animation: none; }
+  .animate-step-in    { animation: none; }
   .milestone-particle { animation: none; opacity: 0; }
 }
 
