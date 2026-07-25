@@ -197,6 +197,13 @@ function AuthFlow() {
         // Full-page reload so the browser re-reads admin session cookies from scratch
         window.location.href = '/admin';
       } else {
+        // Flush the router cache before navigating. The Navbar Logo renders a
+        // <Link href="/home"> on /auth, which Next.js 14 prefetches while the
+        // user is unauthenticated. Middleware redirects that prefetch to /auth,
+        // and Next.js caches it. Without this refresh(), router.push('/home')
+        // would serve the stale redirect — leaving the URL at /home (pushState
+        // already fired) while the auth screen stays visible.
+        router.refresh();
         setHasTransitioned(true);
         setWelcomeBackName(returnedName ?? '');
         setTimeout(() => { router.push('/home'); }, 1800);

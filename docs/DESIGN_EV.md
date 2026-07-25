@@ -47,7 +47,16 @@ remount it by changing its `key` prop.
 **When**: completing auth (name saved for new users, or welcome-back timeout for
 returning users) and navigating to `/home`.
 
-**How**: `router.push('/home')` — client-side navigation, no full-page reload.
+**How**: `router.refresh()` followed by `router.push('/home')`.
+
+`router.refresh()` must be called first to flush the client-side router cache.
+The Navbar Logo (`<Link href="/home">`) is present on `/auth` and Next.js 14
+eagerly prefetches it. While the user is unauthenticated the middleware redirects
+`/home` → `/auth`; Next.js caches that redirect. Without the refresh, `router.push`
+would serve the stale cached redirect — the optimistic `pushState` would advance
+the URL to `/home` while the transition committed the `/auth` redirect, leaving the
+screen stuck on the auth view. `router.refresh()` invalidates the cache; the 1800 ms
+welcome-back hold gives React plenty of time to process it before navigation fires.
 
 **Why this is safe**: `SplashIntro` checks `sessionStorage.getItem('kirin_intro_done')`
 on mount. By the time a user completes auth in the same session, this key is
