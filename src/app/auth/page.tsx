@@ -313,6 +313,7 @@ function AuthFlow() {
         setNameLoading(false);
         return;
       }
+      router.refresh();
       router.push('/home');
     } catch {
       setNameError('Something went wrong. Please try again.');
