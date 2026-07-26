@@ -509,7 +509,7 @@ export default function LenderChargerDetailPage() {
       </main>
 
       {/* ── Sticky action bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 flex gap-2 z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 flex gap-2 z-50">
         <button
           type="button"
           onClick={handleEditClick}

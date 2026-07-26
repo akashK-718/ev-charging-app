@@ -168,7 +168,7 @@ export default function EditChargerPage() {
   const isLastStep = step === TOTAL_STEPS;
 
   return (
-    <main className="min-h-screen flex flex-col px-6 py-10">
+    <main className="min-h-screen flex flex-col px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10">
       {/* Progress */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
