@@ -8,10 +8,12 @@ import {
   TrendingUp, ArrowRight, Map as MapIcon, Route,
   Check, X, Inbox, CalendarClock,
 } from 'lucide-react';
-import { getActiveTip } from '@/lib/home/tips';
+import { getEligibleTips } from '@/lib/home/tips';
+import { getFeatureFlags } from '@/lib/edge-config';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
+import { TipNudge } from '@/components/home/TipNudge';
 import { PwaInstallCard } from '@/components/home/PwaInstallCard';
 import { GreetingHeader } from '@/components/home/GreetingHeader';
 
@@ -292,7 +294,10 @@ export default async function HomePage() {
   const isHosting = role === 'lender' || role === 'both';
   const firstName = name.split(' ')[0] || 'there';
 
-  const d = await getHomeData(user.id, isHosting);
+  const [d, flags] = await Promise.all([
+    getHomeData(user.id, isHosting),
+    getFeatureFlags(),
+  ]);
 
   // ── Zone assembly ─────────────────────────────────────────────────────────
 
@@ -375,9 +380,8 @@ export default async function HomePage() {
     | { type: 'new-user' }
     | { type: 'resume-draft'; charger: HostCharger; step: number };
 
-  const isNewAccount = !d.inProgress && d.upcoming.length === 0 && d.chargeCompletedCount === 0 && !isHosting;
-  const daySeed      = Math.floor(Date.now() / 86400000);
-  const activeTip    = getActiveTip(daySeed, isHosting);
+  const isNewAccount  = !d.inProgress && d.upcoming.length === 0 && d.chargeCompletedCount === 0 && !isHosting;
+  const eligibleTips  = getEligibleTips(isHosting, flags.saved_chargers_enabled);
 
   const topNudge = ((): TopNudge | null => {
     if (isNewAccount) return { type: 'new-user' };
@@ -400,14 +404,6 @@ export default async function HomePage() {
       if (c) return { type: 'lower-price', chargerId: c.id, chargerTitle: c.title };
     }
     if (!isHosting && hasChargeActivity) return { type: 'hosting-discovery' };
-    if (activeTip) return {
-      type: 'tip',
-      id: activeTip.id,
-      title: activeTip.title,
-      body: activeTip.body,
-      linkLabel: activeTip.link?.label,
-      linkHref: activeTip.link?.href,
-    };
     return null;
   })();
 
@@ -803,8 +799,10 @@ export default async function HomePage() {
               </Link>
             )}
           </section>
-        ) : (
+        ) : ruleNudge ? (
           <DynamicNudge ruleNudge={ruleNudge} />
+        ) : (
+          <TipNudge userId={user.id} eligibleTips={eligibleTips} />
         )}
 
       </div>

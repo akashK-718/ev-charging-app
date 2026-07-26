@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AlertCircle, BookOpen, ChevronRight, TrendingDown } from 'lucide-react';
+import { AlertCircle, ChevronRight, TrendingDown } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -8,7 +8,6 @@ export type RuleNudge =
   | { type: 'photos';           chargerId: string; chargerTitle: string }
   | { type: 'lower-price';      chargerId: string; chargerTitle: string }
   | { type: 'hosting-discovery' }
-  | { type: 'tip'; id: string; title?: string; body: string; linkLabel?: string; linkHref?: string }
   | null;
 
 interface Props {
@@ -75,29 +74,6 @@ export function DynamicNudge({ ruleNudge }: Props) {
         </div>
       )}
 
-      {ruleNudge.type === 'tip' && (
-        <div className="rise-in bg-white border border-border rounded-3xl px-4 py-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-xl bg-surface-page grid place-items-center shrink-0">
-              <BookOpen className="size-4 text-muted" aria-hidden />
-            </div>
-            <div className="flex-1 min-w-0">
-              {ruleNudge.title && (
-                <p className="text-xs font-semibold text-muted mb-1 uppercase tracking-wide">{ruleNudge.title}</p>
-              )}
-              <p className="text-sm text-ink-soft leading-relaxed">{ruleNudge.body}</p>
-              {ruleNudge.linkHref && ruleNudge.linkLabel && (
-                <Link
-                  href={ruleNudge.linkHref}
-                  className="inline-block mt-2 text-xs font-semibold text-green underline underline-offset-2"
-                >
-                  {ruleNudge.linkLabel}
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

@@ -1,60 +1,87 @@
-export type TipContext = 'all' | 'hosting';
+export type TipEligibility = 'always' | 'hosting' | 'saved_chargers';
 
 export type Tip = {
   id: string;
-  title?: string;
   body: string;
-  link?: { label: string; href: string };
-  context: TipContext;
+  eligibility: TipEligibility;
 };
 
-const TIPS: Tip[] = [
+export const TIPS: Tip[] = [
   {
-    id: 'off-peak',
-    context: 'all',
-    body: 'Charging during off-peak hours is cheaper. Schedule your next session for late night.',
+    id: 'check-availability',
+    eligibility: 'always',
+    body: 'Check charger availability before starting your trip.',
   },
   {
-    id: 'session-history',
-    context: 'all',
-    body: 'Your session history in Activity shows kWh delivered and duration for every charge.',
+    id: 'plan-longer-journeys',
+    eligibility: 'always',
+    body: 'Plan your charging stop before longer journeys.',
+  },
+  {
+    id: 'vehicle-details',
+    eligibility: 'always',
+    body: 'Keep your vehicle details updated for smoother bookings.',
+  },
+  {
+    // Gated: only shown when the Saved Chargers feature is live (saved_chargers_enabled flag).
+    // Default false — feature is not yet built. See src/lib/edge-config.ts.
+    id: 'save-chargers',
+    eligibility: 'saved_chargers',
+    body: 'Save chargers you use often for quicker access.',
   },
   {
     id: 'pause-charger',
-    context: 'hosting',
-    body: 'You can pause your charger any time from Manage Hosting without losing your listing.',
+    eligibility: 'hosting',
+    body: 'You can pause your charger whenever it isn’t available.',
   },
   {
-    id: 'host-ratings',
-    context: 'hosting',
-    body: 'Hosts with an average rating above 4.5 receive more booking requests.',
+    id: 'update-availability',
+    eligibility: 'hosting',
+    body: 'Keeping your availability updated helps avoid cancellations.',
   },
   {
-    id: 'confirm-window',
-    context: 'hosting',
-    title: 'Respond quickly',
-    body: 'Booking requests expire after 12 hours if not accepted. A fast response builds your host score.',
+    id: 'clear-photos',
+    eligibility: 'hosting',
+    body: 'Clear charger photos help drivers know what to expect.',
   },
   {
-    id: 'parking-instructions',
-    context: 'hosting',
-    body: 'Clear parking instructions in your listing reduce no-shows and driver confusion.',
+    id: 'connector-details',
+    eligibility: 'hosting',
+    body: 'Keep your charger details and connector information up to date.',
   },
   {
-    id: 'photo-tip',
-    context: 'hosting',
-    body: 'Listings with 5 or more photos receive significantly more booking requests.',
-    link: { label: 'Update your listing', href: '/lender/chargers' },
+    id: 'review-listing',
+    eligibility: 'hosting',
+    body: 'Review your listing after changing your charging setup.',
   },
   {
-    id: 'connector-types',
-    context: 'hosting',
-    body: 'Specifying the exact connector type reduces mismatched bookings and cancellations.',
+    id: 'session-start',
+    eligibility: 'always',
+    body: 'Only start a session when the vehicle is at the charger.',
+  },
+  {
+    id: 'plan-trip',
+    eligibility: 'always',
+    body: 'Plan a trip to find charging stops along your route.',
+  },
+  {
+    id: 'check-activity',
+    eligibility: 'always',
+    body: 'Check Activity for your charging and hosting history.',
   },
 ];
 
-export function getActiveTip(seed: number, isHosting: boolean): Tip | null {
-  const eligible = TIPS.filter(t => t.context === 'all' || isHosting);
-  if (eligible.length === 0) return null;
-  return eligible[seed % eligible.length];
+/**
+ * Returns the subset of tips eligible for this user on this load.
+ * Hosting-tagged tips are excluded for users who have never enabled hosting.
+ * Saved-chargers tip is excluded unless the feature flag is on.
+ */
+export function getEligibleTips(isHosting: boolean, savedChargersEnabled: boolean): Tip[] {
+  return TIPS.filter(t => {
+    switch (t.eligibility) {
+      case 'always':        return true;
+      case 'hosting':       return isHosting;
+      case 'saved_chargers': return savedChargersEnabled;
+    }
+  });
 }
