@@ -396,13 +396,17 @@ There are two distinct kinds of PWA update. They use different mechanisms and ha
 **What updates:** JavaScript bundles, API routes, page content, this service worker (`/sw.js`).
 
 **How it works:**
-1. The browser detects a byte change in `/sw.js` on the next navigation (or after ~24 h if the app is left open).
+1. The browser detects a byte change in `/sw.js` on the next navigation (or after ~24 h if the app is left open). `/sw.js` is served by `src/app/api/sw/route.ts` (via a `beforeFiles` rewrite in `next.config.js`) and injects `VERCEL_DEPLOYMENT_ID` as a top-line comment, guaranteeing a byte change on every deploy.
 2. The new service worker downloads and enters the `waiting` state.
-3. `UpdateBanner` (`src/components/ui/UpdateBanner.tsx`) surfaces: *"Update available — A new version of Kirin is ready."*
-4. **"Update now"** → sends `SKIP_WAITING` to the waiting SW → SW activates → page reloads to pick up new JS bundles.
+3. `UpdateBanner` (`src/components/ui/UpdateBanner.tsx`) surfaces as a **global floating card at the root layout** (`src/app/layout.tsx`) — it is a sibling of `<BottomNav />`, not scoped to any individual screen. It appears on Home, Explore, Activity, Profile, and all other authenticated screens equally.
+4. **"Update"** → sends `SKIP_WAITING` to the waiting SW → SW activates → page reloads to pick up new JS bundles.
 5. **"Later"** → banner is dismissed for the current session only (React state, no localStorage). The banner reappears on the next fresh app open if the update is still pending.
 
-**What never happens:** an automatic reload without the user tapping "Update now." A surprise reload mid-booking, mid-payment, or mid-charging-session-confirmation is explicitly prevented by never calling `skipWaiting()` automatically in `sw.js`.
+**Positioning:** above BottomNav on mobile/PWA (`z-50`, `bottom-[calc(4.5rem+env(safe-area-inset-bottom))]`). On desktop (lg+) the bottom nav is hidden, so the banner sits bottom-right at `bottom-4 right-4 max-w-sm`.
+
+**What never happens:** an automatic reload without the user tapping "Update." A surprise reload mid-booking, mid-payment, or mid-charging-session-confirmation is explicitly prevented by never calling `skipWaiting()` automatically in `sw.js`.
+
+**Independence from other PWA systems:** `UpdateBanner`, `PwaInstallCard`, and the Home nudge cascade are three completely independent systems with no shared code paths, no shared conditions, and no shared rendering logic. `UpdateBanner` only cares about `reg.waiting` (a new SW version exists). `PwaInstallCard` only cares about `beforeinstallprompt` / iOS Safari (the app is not yet installed). The Home nudge cascade (`src/app/home/page.tsx`) manages the install-card display timing within that screen. None of these three systems know about each other.
 
 ### Path 2 — Installed app metadata (OS-cached at install time)
 
