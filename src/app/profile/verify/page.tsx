@@ -425,7 +425,7 @@ function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
   const isLastStep = step === TOTAL_STEPS;
 
   return (
-    <main className="min-h-screen flex flex-col px-6 py-10">
+    <main className="min-h-screen flex flex-col px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10">
       <Sheet open={cancelSheetOpen} onClose={() => setCancelSheetOpen(false)} title="Cancel hosting setup?">
         <div className="space-y-4">
           <p className="text-sm text-ink">Your verification progress will be removed.</p>

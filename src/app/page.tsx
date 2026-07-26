@@ -209,7 +209,7 @@ export default function LandingPage() {
           />
 
           {/* ── HERO ─────────────────────────────────────────────────────── */}
-          <div id="hero" className="pt-6 md:grid md:grid-cols-2 md:gap-11 md:items-center md:py-16">
+          <div id="hero" className="scroll-mt-20 pt-6 md:grid md:grid-cols-2 md:gap-11 md:items-center md:py-16">
 
             {/* Hero card */}
             <div className="bg-surface-card border border-border rounded-token-lg p-6 md:p-10 mb-4 md:mb-0">

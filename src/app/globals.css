@@ -75,6 +75,9 @@
   /* Tap feedback timing — used by .tap-* classes and Button active states */
   --tap-dur: 80ms;
   --tap-ease: ease-out;
+
+  /* Bottom nav height — used to clear fixed BottomNav on mobile (lg:hidden) */
+  --bottom-nav-h: 4.5rem;
 }
 
 body {
