@@ -181,6 +181,9 @@ export async function POST(request: NextRequest) {
 
   // Sign in with email+password to create a real Supabase Auth session.
   // createClient() uses cookies() from next/headers so session cookies are set on the response.
+  // The access_token and refresh_token are also returned to the client so it can call
+  // setSession() on the browser Supabase singleton, which is the only mechanism that fires
+  // SIGNED_IN on onAuthStateChange — getSession() does not notify subscribers.
   const supabase = createClient();
   const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
     email,
@@ -195,5 +198,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ data: { userId, role, isNewUser, isAdmin, name: userName } });
+  return NextResponse.json({
+    data: {
+      userId,
+      role,
+      isNewUser,
+      isAdmin,
+      name: userName,
+      // Returned so the browser client can call setSession() to fire SIGNED_IN immediately.
+      // Sending tokens over HTTPS is the standard Supabase pattern (same as supabase.auth.signIn).
+      session: {
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
+      },
+    },
+  });
 }
