@@ -64,6 +64,7 @@ export function useAuth() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[TRACE:useAuth] onAuthStateChange event:', _event, 'hasUser:', !!session?.user, 'ts:', Date.now());
       if (!session?.user) {
         setUser(null);
         setLoading(false);

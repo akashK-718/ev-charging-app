@@ -40,6 +40,10 @@ export async function middleware(request: NextRequest) {
   // redirects to /login regardless of this fast path. Routes that carry a
   // session cookie always fall through to getUser() below, no exceptions.
   const hasSession = request.cookies.getAll().some(c => c.name.startsWith('sb-'));
+  const isRsc = request.headers.get('rsc') === '1' || request.headers.get('next-router-state-tree') !== null;
+  if (pathname === '/auth' || pathname === '/home') {
+    console.log(`[TRACE:middleware] ${pathname} hasSession:${hasSession} isRSC:${isRsc} ts:${Date.now()}`);
+  }
 
   if (!hasSession) {
     if (lockdown && !LOCKDOWN_PASSTHROUGH.has(pathname)) {
@@ -130,6 +134,10 @@ export async function middleware(request: NextRequest) {
   // Redirect logged-in users to their role's home page.
   if (pathname === '/') {
     return NextResponse.redirect(new URL(roleHome(role, isAdmin), request.url));
+  }
+
+  if (pathname === '/auth' || pathname === '/home') {
+    console.log(`[TRACE:middleware] ${pathname} getUser result: userId=${user?.id?.slice(0,8) ?? 'null'} name=${user?.user_metadata?.name ?? 'null'} ts:${Date.now()}`);
   }
 
   // ── 6. Auth screen redirect ───────────────────────────────────────────────────

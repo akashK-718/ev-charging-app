@@ -188,8 +188,21 @@ function AuthFlow() {
         setOtpLoading(false);
         return;
       }
-      const { isNewUser, isAdmin, name: returnedName } = data.data ?? {};
+      // TRACE: check whether server-set sb-* cookies are visible to JS
+      // (they should be — @supabase/ssr sets httpOnly:false by default)
+      const sbCookieVisible = document.cookie.split(';').some(c => c.trim().startsWith('sb-'));
+      console.log('[TRACE:auth-page] API response ok. sb-* in document.cookie:', sbCookieVisible, 'ts:', Date.now());
+
+      type OtpData = { isNewUser: boolean; isAdmin: boolean; name: string | null; session?: { access_token: string; refresh_token: string } };
+      const { isNewUser, isAdmin, name: returnedName, session } = (data.data ?? {}) as OtpData;
+
       if (isNewUser) {
+        // Sync browser client before profile step so SIGNED_IN fires immediately.
+        if (session) {
+          console.log('[TRACE:auth-page] calling setSession (isNewUser)');
+          const { error: ssErr } = await createClient().auth.setSession(session);
+          console.log('[TRACE:auth-page] setSession (isNewUser) done, error:', ssErr?.message ?? null, 'ts:', Date.now());
+        }
         setDigits(Array(OTP_LENGTH).fill(''));
         setOtpLoading(false);
         goToStep('profile');
@@ -197,21 +210,27 @@ function AuthFlow() {
         // Full-page reload so the browser re-reads admin session cookies from scratch
         window.location.href = '/admin';
       } else {
-        // Sync the browser Supabase client with the session that verify-otp set
-        // server-side. The API route uses createServerClient which writes session
-        // cookies via Set-Cookie headers. The browser GoTrue client (createBrowserClient)
-        // is a singleton initialised before login with currentSession=null and has no
-        // mechanism to detect new cookies automatically. Calling getSession() forces it
-        // to re-read document.cookie, finds the new session, and immediately fires
-        // SIGNED_IN on onAuthStateChange so useAuth sets user before navigation. Without
-        // this the nav stays hidden until HomeRealtimeSync's realtime subscription
-        // triggers getSession() internally ~10 s later.
-        await createClient().auth.getSession();
-        // Flush the router cache before navigating (see commit 7ab76d1 for rationale).
-        router.refresh();
+        // setSession() is the only call that fires SIGNED_IN on onAuthStateChange.
+        // getSession() only reads cookies and returns — it does NOT notify subscribers
+        // (confirmed in @supabase/auth-js v2.108.1 GoTrueClient.__loadSession, line 2410).
+        // Without SIGNED_IN the browser Supabase singleton never learns about the
+        // server-created session, so useAuth stays {user:null} and BottomNav is hidden
+        // until the user switches tabs (visibilitychange → _recoverAndRefresh).
+        if (session) {
+          console.log('[TRACE:auth-page] calling setSession (returning user)');
+          const { error: ssErr } = await createClient().auth.setSession(session);
+          console.log('[TRACE:auth-page] setSession (returning user) done, error:', ssErr?.message ?? null, 'ts:', Date.now());
+        }
+        // Flush the router cache before navigating — the Navbar Logo <Link href="/home">
+        // was prefetched while unauthenticated and caches a redirect. router.refresh()
+        // invalidates it so router.push serves a fresh RSC with the real home page.
         setHasTransitioned(true);
         setWelcomeBackName(returnedName ?? '');
-        setTimeout(() => { router.push('/home'); }, 1800);
+        setTimeout(() => {
+          console.log('[TRACE:auth-page] firing router.refresh + push /home, ts:', Date.now());
+          router.refresh();
+          router.push('/home');
+        }, 1800);
       }
     } catch {
       setOtpError('Something went wrong. Please try again.');
@@ -318,7 +337,10 @@ function AuthFlow() {
         setNameLoading(false);
         return;
       }
-      await createClient().auth.getSession(); // same sync as existing-user path above
+      // setSession() was already called during OTP verification for new users.
+      // No additional session sync needed here — the browser client already has
+      // the session and SIGNED_IN was already fired.
+      console.log('[TRACE:auth-page] handleNameContinue navigating, ts:', Date.now());
       router.refresh();
       router.push('/home');
     } catch {
