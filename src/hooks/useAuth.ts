@@ -66,10 +66,16 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         setUser(null);
+        setLoading(false);
         return;
       }
-      // When session refreshes (e.g. after role change), re-derive user from updated metadata
-      void resolveAuthUser(session.user).then(setUser);
+      // When session refreshes (e.g. after role change), re-derive user from updated metadata.
+      // Also clears loading: onAuthStateChange fires INITIAL_SESSION from cookies faster than
+      // getUser()'s network round-trip, so this unblocks the nav on remount scenarios.
+      void resolveAuthUser(session.user).then(u => {
+        setUser(u);
+        setLoading(false);
+      });
     });
 
     return () => subscription.unsubscribe();
