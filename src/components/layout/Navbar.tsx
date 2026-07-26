@@ -130,7 +130,7 @@ export function Navbar() {
 
 function Logo() {
   return (
-    <Link href="/home" className="flex items-center shrink-0" aria-label="Kirin home">
+    <Link href="/home" prefetch={false} className="flex items-center shrink-0" aria-label="Kirin home">
       <img src="/brand/kirin-wordmark.svg" alt="Kirin" className="h-7 w-auto" />
     </Link>
   );
