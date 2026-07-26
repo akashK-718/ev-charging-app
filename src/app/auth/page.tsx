@@ -197,12 +197,17 @@ function AuthFlow() {
         // Full-page reload so the browser re-reads admin session cookies from scratch
         window.location.href = '/admin';
       } else {
-        // Flush the router cache before navigating. The Navbar Logo renders a
-        // <Link href="/home"> on /auth, which Next.js 14 prefetches while the
-        // user is unauthenticated. Middleware redirects that prefetch to /auth,
-        // and Next.js caches it. Without this refresh(), router.push('/home')
-        // would serve the stale redirect — leaving the URL at /home (pushState
-        // already fired) while the auth screen stays visible.
+        // Sync the browser Supabase client with the session that verify-otp set
+        // server-side. The API route uses createServerClient which writes session
+        // cookies via Set-Cookie headers. The browser GoTrue client (createBrowserClient)
+        // is a singleton initialised before login with currentSession=null and has no
+        // mechanism to detect new cookies automatically. Calling getSession() forces it
+        // to re-read document.cookie, finds the new session, and immediately fires
+        // SIGNED_IN on onAuthStateChange so useAuth sets user before navigation. Without
+        // this the nav stays hidden until HomeRealtimeSync's realtime subscription
+        // triggers getSession() internally ~10 s later.
+        await createClient().auth.getSession();
+        // Flush the router cache before navigating (see commit 7ab76d1 for rationale).
         router.refresh();
         setHasTransitioned(true);
         setWelcomeBackName(returnedName ?? '');
@@ -313,6 +318,7 @@ function AuthFlow() {
         setNameLoading(false);
         return;
       }
+      await createClient().auth.getSession(); // same sync as existing-user path above
       router.refresh();
       router.push('/home');
     } catch {
