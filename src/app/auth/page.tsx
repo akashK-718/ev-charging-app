@@ -218,7 +218,6 @@ function AuthFlow() {
         setHasTransitioned(true);
         setWelcomeBackName(returnedName ?? '');
         setTimeout(() => {
-          router.refresh();
           router.push('/home');
         }, 1800);
       }
@@ -330,7 +329,6 @@ function AuthFlow() {
       // setSession() was already called during OTP verification for new users.
       // No additional session sync needed here — the browser client already has
       // the session and SIGNED_IN was already fired.
-      router.refresh();
       router.push('/home');
     } catch {
       setNameError('Something went wrong. Please try again.');
