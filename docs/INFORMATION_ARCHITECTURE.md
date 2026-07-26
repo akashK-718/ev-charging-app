@@ -74,7 +74,28 @@ Used for Nudge (rule and tip variants) specifically. This deliberately avoids bu
 
 - **Class A, State Cards** — generated directly from deterministic database state (booking starts soon, resume draft, KYC rejected, charger offline, payout processed). These primarily populate Attention and Snapshot.
 - **Class B, Rule Cards** — simple boolean conditions, no ML. Example: `if charger.photos < 3` → "Listings with 3+ photos receive more bookings." `if vehicle_count == 0` → "Add your first vehicle." `if no_booking_30_days` → "Lowering your price may increase bookings." These populate Nudge (rule variant). Note: the nudge threshold (3 photos) is distinct from the upload cap (5 photos max per charger) — do not conflate them.
-- **Class C, Evergreen Tips** — lowest priority, static rotating content from a simple pool (e.g. a `tips.ts` file), used only when nothing better exists. "Charging during off-peak hours can be cheaper." "You can pause your charger any time." These populate Nudge (tip variant).
+- **Class C, Evergreen Tips** — lowest priority, static rotating content from `src/lib/home/tips.ts`, shown only when no Class A or Class B card exists. Rendered by `src/components/home/TipNudge.tsx` (client component). **Class A and Class B are purely state-driven and have no time component — they re-evaluate on every Home load.** Only Class C has time-based behavior.
+
+  **Tip pool (12 tips):**
+
+  | ID | Eligibility | Body |
+  |---|---|---|
+  | `check-availability` | always | Check charger availability before starting your trip. |
+  | `plan-longer-journeys` | always | Plan your charging stop before longer journeys. |
+  | `vehicle-details` | always | Keep your vehicle details updated for smoother bookings. |
+  | `session-start` | always | Only start a session when the vehicle is at the charger. |
+  | `plan-trip` | always | Plan a trip to find charging stops along your route. |
+  | `check-activity` | always | Check Activity for your charging and hosting history. |
+  | `save-chargers` | `saved_chargers` flag | Save chargers you use often for quicker access. |
+  | `pause-charger` | hosting | You can pause your charger whenever it isn't available. |
+  | `update-availability` | hosting | Keeping your availability updated helps avoid cancellations. |
+  | `clear-photos` | hosting | Clear charger photos help drivers know what to expect. |
+  | `connector-details` | hosting | Keep your charger details and connector information up to date. |
+  | `review-listing` | hosting | Review your listing after changing your charging setup. |
+
+  **Eligibility gating:** Tips tagged `hosting` are only shown to users with hosting enabled (`isHosting === true`). The `save-chargers` tip is gated behind the `saved_chargers_enabled` Vercel Edge Config flag (currently `false` — feature not yet built). Users who have never had hosting enabled will never see a hosting-tagged tip. The server computes the eligible subset and passes it to `TipNudge` as `eligibleTips: Tip[]`.
+
+  **6-hour rolling window rotation:** `TipNudge` reads `kirin:home:tip:{userId}` from localStorage (`{base}:{userId}` User-level scoped pattern via `userKey()`). If the stored tip is still in the eligible pool and fewer than 6 hours have elapsed since `firstShown`, the same tip continues to show — across multiple Home loads, app closes, and reopens within that window. After 6 hours, a new tip is selected (excluding the just-shown tip if the pool has more than one option) and `firstShown` is reset to now. Selection is deterministic by 6-hour window index (`Math.floor(Date.now() / WINDOW_MS)`), not random per load. If the stored tip becomes ineligible mid-window (e.g. hosting is disabled), re-selection happens immediately on the next load without waiting for the window to expire.
 
 ### KYC cards
 
