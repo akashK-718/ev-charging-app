@@ -188,20 +188,13 @@ function AuthFlow() {
         setOtpLoading(false);
         return;
       }
-      // TRACE: check whether server-set sb-* cookies are visible to JS
-      // (they should be — @supabase/ssr sets httpOnly:false by default)
-      const sbCookieVisible = document.cookie.split(';').some(c => c.trim().startsWith('sb-'));
-      console.log('[TRACE:auth-page] API response ok. sb-* in document.cookie:', sbCookieVisible, 'ts:', Date.now());
-
       type OtpData = { isNewUser: boolean; isAdmin: boolean; name: string | null; session?: { access_token: string; refresh_token: string } };
       const { isNewUser, isAdmin, name: returnedName, session } = (data.data ?? {}) as OtpData;
 
       if (isNewUser) {
         // Sync browser client before profile step so SIGNED_IN fires immediately.
         if (session) {
-          console.log('[TRACE:auth-page] calling setSession (isNewUser)');
-          const { error: ssErr } = await createClient().auth.setSession(session);
-          console.log('[TRACE:auth-page] setSession (isNewUser) done, error:', ssErr?.message ?? null, 'ts:', Date.now());
+          await createClient().auth.setSession(session);
         }
         setDigits(Array(OTP_LENGTH).fill(''));
         setOtpLoading(false);
@@ -217,9 +210,7 @@ function AuthFlow() {
         // server-created session, so useAuth stays {user:null} and BottomNav is hidden
         // until the user switches tabs (visibilitychange → _recoverAndRefresh).
         if (session) {
-          console.log('[TRACE:auth-page] calling setSession (returning user)');
-          const { error: ssErr } = await createClient().auth.setSession(session);
-          console.log('[TRACE:auth-page] setSession (returning user) done, error:', ssErr?.message ?? null, 'ts:', Date.now());
+          await createClient().auth.setSession(session);
         }
         // Flush the router cache before navigating — the Navbar Logo <Link href="/home">
         // was prefetched while unauthenticated and caches a redirect. router.refresh()
@@ -227,7 +218,6 @@ function AuthFlow() {
         setHasTransitioned(true);
         setWelcomeBackName(returnedName ?? '');
         setTimeout(() => {
-          console.log('[TRACE:auth-page] firing router.refresh + push /home, ts:', Date.now());
           router.refresh();
           router.push('/home');
         }, 1800);
@@ -340,7 +330,6 @@ function AuthFlow() {
       // setSession() was already called during OTP verification for new users.
       // No additional session sync needed here — the browser client already has
       // the session and SIGNED_IN was already fired.
-      console.log('[TRACE:auth-page] handleNameContinue navigating, ts:', Date.now());
       router.refresh();
       router.push('/home');
     } catch {

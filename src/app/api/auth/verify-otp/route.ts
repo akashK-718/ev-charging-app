@@ -198,7 +198,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  console.log('[TRACE:verify-otp] signIn ok, returning tokens to client');
   return NextResponse.json({
     data: {
       userId,
