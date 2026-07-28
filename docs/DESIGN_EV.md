@@ -120,6 +120,36 @@ Call `shake()` immediately when setting an error, not inside a `useEffect`.
 
 ---
 
+## J — Fixed bottom CTAs above the nav bar
+
+**Rule**: any screen with a fixed or sticky bottom CTA must account for the bottom nav bar's height. `bottom: 0` puts the bar *on top of* or *behind* the nav bar depending on z-index — neither is correct.
+
+**CSS variable**: `--bottom-nav-h: 4.5rem` is defined in `globals.css` and represents the nav bar height including its internal safe-area inset.
+
+### Fixed / sticky CTA (overlay bar, e.g. `<ActionBar>`)
+
+Use `<ActionBar>` from `src/components/ui/ActionBar.tsx`. It handles the offset automatically:
+
+```
+bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:bottom-0
+```
+
+`lg:bottom-0` resets to baseline on desktop where `BottomNav` is `lg:hidden`.
+
+### Inline CTA (button at the end of scrollable content)
+
+Add this to the `<main>` container — the established pattern used by the Add Charger, KYC, and Edit Charger wizards:
+
+```
+pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10
+```
+
+`lg:pb-10` resets the padding on desktop.
+
+**Never use `bottom: 0` for an action bar on a screen that renders `BottomNav`.** This bug has recurred three times (Add Charger, Hosting Intro, Booking screen); the shared pattern above is the fix.
+
+---
+
 ## Related files
 
 - `src/app/globals.css` — keyframe definitions (`pageIn`, `stepIn`, `shake-error`, `check-pop`)

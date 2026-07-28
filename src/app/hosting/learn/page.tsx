@@ -139,10 +139,7 @@ export default async function HostingLearnPage() {
       </main>
 
       {/* Mobile CTA — fixed above bottom nav */}
-      <div
-        className="fixed inset-x-0 z-20 bg-surface-page/95 backdrop-blur-sm border-t border-border px-6 py-4 lg:hidden"
-        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
-      >
+      <div className="fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] z-20 bg-surface-page/95 backdrop-blur-sm border-t border-border px-6 py-4 lg:hidden">
         <StartHostingButton />
       </div>
     </>

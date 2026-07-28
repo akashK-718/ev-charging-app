@@ -286,7 +286,7 @@ export default function LenderChargerDetailPage() {
 
   return (
     <>
-      <main className="min-h-screen pb-28">
+      <main className="min-h-screen pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:pb-28">
 
         {/* ── Header ── */}
         <div className="relative">
@@ -509,7 +509,7 @@ export default function LenderChargerDetailPage() {
       </main>
 
       {/* ── Sticky action bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 flex gap-2 z-50">
+      <div className="fixed bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 flex gap-2 z-50">
         <button
           type="button"
           onClick={handleEditClick}
@@ -595,7 +595,7 @@ export default function LenderChargerDetailPage() {
 
       {/* ── Toast ── */}
       {toast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-ink text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none">
+        <div className="fixed bottom-[calc(10rem+env(safe-area-inset-bottom))] lg:bottom-24 left-1/2 -translate-x-1/2 bg-ink text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg z-50 pointer-events-none">
           {toast}
         </div>
       )}
