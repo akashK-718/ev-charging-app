@@ -23,9 +23,12 @@ const NOMINAL_KW: Record<string, number> = {
 const DURATION_OPTIONS = [
   { minutes: 30, label: '30 min' },
   { minutes: 60, label: '1 hour' },
-  { minutes: 90, label: '1.5 hours' },
+  { minutes: 90, label: '1.5 hrs' },
   { minutes: 120, label: '2 hours' },
 ];
+
+// Minimum selectable duration — matches the shortest preset.
+const MIN_CUSTOM_DURATION_MINUTES = 30;
 
 type Charger = {
   id: string;
@@ -82,7 +85,17 @@ function NewBookingContent() {
   const { date: defaultDate, time: defaultTime } = useMemo(defaultDateTime, []);
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState(defaultTime);
+
+  // Duration mode: 'preset' uses one of the fixed options; 'custom' lets the
+  // driver pick an explicit end date+time (supports overnight bookings).
+  const [durationMode, setDurationMode] = useState<'preset' | 'custom'>('preset');
   const [durationMinutes, setDurationMinutes] = useState(60);
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [customEndTime, setCustomEndTime] = useState('');
+
+  // Availability window fetched from server for the selected start time.
+  const [maxEnd, setMaxEnd] = useState<Date | null>(null);
+  const [maxEndReason, setMaxEndReason] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -99,19 +112,115 @@ function NewBookingContent() {
       .finally(() => setLoadingCharger(false));
   }, [chargerId]);
 
+  // Fetch the availability window (maxEnd) whenever the start date/time changes.
+  // Debounced 400 ms so rapid typing doesn't flood the server.
+  useEffect(() => {
+    if (!chargerId) return;
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const timeoutId = setTimeout(() => {
+      const startIso = new Date(`${date}T${time}:00`).toISOString();
+      fetch(
+        `/api/chargers/${chargerId}/availability-window?start=${encodeURIComponent(startIso)}`,
+        { signal: controller.signal },
+      )
+        .then(res => res.json())
+        .then((body: { data?: { max_end: string; reason: string } }) => {
+          if (!cancelled && body.data) {
+            setMaxEnd(new Date(body.data.max_end));
+            setMaxEndReason(body.data.reason);
+          }
+        })
+        .catch(() => {
+          // Fail open — the server independently revalidates on submission.
+          if (!cancelled) { setMaxEnd(null); setMaxEndReason(''); }
+        });
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [chargerId, date, time]);
+
   const scheduledStart = useMemo(() => new Date(`${date}T${time}:00`), [date, time]);
-  const scheduledEnd = useMemo(() => new Date(scheduledStart.getTime() + durationMinutes * 60000), [scheduledStart, durationMinutes]);
+
+  const scheduledEnd = useMemo(() => {
+    if (durationMode === 'custom' && customEndDate && customEndTime) {
+      const parsed = new Date(`${customEndDate}T${customEndTime}:00`);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date(scheduledStart.getTime() + durationMinutes * 60000);
+  }, [durationMode, customEndDate, customEndTime, scheduledStart, durationMinutes]);
+
+  const effectiveDurationMinutes = useMemo(
+    () => Math.max(0, (scheduledEnd.getTime() - scheduledStart.getTime()) / 60000),
+    [scheduledEnd, scheduledStart],
+  );
 
   const estimate = useMemo(() => {
     if (!charger) return null;
     const nominalKw = NOMINAL_KW[charger.charger_type] ?? 7;
-    const kwh = Math.round(nominalKw * (durationMinutes / 60) * 100) / 100;
+    const kwh = Math.round(nominalKw * (effectiveDurationMinutes / 60) * 100) / 100;
     const grossRupees = Math.round(charger.price_per_kwh * kwh);
     return { kwh, grossRupees };
-  }, [charger, durationMinutes]);
+  }, [charger, effectiveDurationMinutes]);
+
+  // True when maxEnd is so close to start that even the 30-minute minimum can't fit.
+  const noAvailability = useMemo(
+    () => maxEnd !== null && maxEnd <= new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000),
+    [maxEnd, scheduledStart],
+  );
+
+  function isPresetDisabled(minutes: number): boolean {
+    if (!maxEnd) return false;
+    return scheduledStart.getTime() + minutes * 60000 > maxEnd.getTime();
+  }
+
+  function handlePresetSelect(minutes: number) {
+    setDurationMode('preset');
+    setDurationMinutes(minutes);
+  }
+
+  function handleSelectCustom() {
+    setDurationMode('custom');
+    if (!customEndDate || !customEndTime) {
+      // Initialise to start + 1 hour, capped at maxEnd if available.
+      const initialMs = scheduledStart.getTime() + 60 * 60000;
+      const cappedMs = maxEnd ? Math.min(initialMs, maxEnd.getTime()) : initialMs;
+      const initialEnd = new Date(cappedMs);
+      setCustomEndDate(initialEnd.toISOString().slice(0, 10));
+      setCustomEndTime(initialEnd.toTimeString().slice(0, 5));
+    }
+  }
+
+  // Derived min/max values for the custom end date+time inputs.
+  const minEnd = new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000);
+  const minEndDate = minEnd.toISOString().slice(0, 10);
+  const minEndTimeOnMinDate = minEnd.toTimeString().slice(0, 5);
+  const maxEndDateStr = maxEnd ? maxEnd.toISOString().slice(0, 10) : undefined;
+  const maxEndTimeOnMaxDate =
+    maxEnd && customEndDate === maxEndDateStr
+      ? maxEnd.toTimeString().slice(0, 5)
+      : undefined;
+
+  const customEndIsValid = useMemo(() => {
+    if (durationMode !== 'custom') return true;
+    if (!customEndDate || !customEndTime) return false;
+    const end = new Date(`${customEndDate}T${customEndTime}:00`);
+    if (isNaN(end.getTime())) return false;
+    if (end < minEnd) return false;
+    if (maxEnd && end > maxEnd) return false;
+    return true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [durationMode, customEndDate, customEndTime, scheduledStart, maxEnd]);
+
+  const canSubmit = !submitting && customEndIsValid && !noAvailability;
 
   async function handlePayAndBook() {
-    if (!charger || submitting) return;
+    if (!charger || !canSubmit) return;
     setSubmitting(true);
     setSubmitError(null);
 
@@ -242,22 +351,101 @@ function NewBookingContent() {
 
         <div>
           <p className="text-sm font-semibold text-ink mb-1.5">Duration</p>
-          <div className="grid grid-cols-4 gap-2">
-            {DURATION_OPTIONS.map(opt => (
+
+          {noAvailability ? (
+            <p className="text-sm text-amber-600 font-medium">
+              {maxEndReason} — no slot available at this start time. Choose a different start.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-4 gap-2">
+                {DURATION_OPTIONS.map(opt => {
+                  const disabled = isPresetDisabled(opt.minutes);
+                  const selected = durationMode === 'preset' && durationMinutes === opt.minutes;
+                  return (
+                    <button
+                      key={opt.minutes}
+                      onClick={() => !disabled && handlePresetSelect(opt.minutes)}
+                      disabled={disabled}
+                      className={cn(
+                        'py-2 rounded-xl text-xs font-semibold transition-colors',
+                        selected
+                          ? 'bg-volt text-ink'
+                          : disabled
+                            ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                            : 'bg-gray-100 text-muted hover:text-ink',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               <button
-                key={opt.minutes}
-                onClick={() => setDurationMinutes(opt.minutes)}
+                onClick={handleSelectCustom}
                 className={cn(
-                  'py-2 rounded-xl text-xs font-semibold transition-colors',
-                  durationMinutes === opt.minutes
+                  'mt-2 w-full py-2 rounded-xl text-xs font-semibold transition-colors',
+                  durationMode === 'custom'
                     ? 'bg-volt text-ink'
                     : 'bg-gray-100 text-muted hover:text-ink',
                 )}
               >
-                {opt.label}
+                Custom
               </button>
-            ))}
-          </div>
+
+              {/* Show reason when any preset is disabled and driver hasn't opened Custom */}
+              {maxEnd && DURATION_OPTIONS.some(o => isPresetDisabled(o.minutes)) && durationMode !== 'custom' && (
+                <p className="text-xs text-muted mt-1.5">{maxEndReason}</p>
+              )}
+
+              {durationMode === 'custom' && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-date">
+                      <Calendar className="w-4 h-4" /> End date
+                    </label>
+                    <input
+                      id="end-date"
+                      type="date"
+                      value={customEndDate}
+                      min={minEndDate}
+                      max={maxEndDateStr}
+                      onChange={e => setCustomEndDate(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-time">
+                      <Clock className="w-4 h-4" /> End time
+                    </label>
+                    <input
+                      id="end-time"
+                      type="time"
+                      value={customEndTime}
+                      min={customEndDate === minEndDate ? minEndTimeOnMinDate : undefined}
+                      max={maxEndTimeOnMaxDate}
+                      onChange={e => setCustomEndTime(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                    />
+                  </div>
+
+                  {maxEndReason && (
+                    <p className="text-xs text-amber-600">{maxEndReason}</p>
+                  )}
+
+                  {customEndDate && customEndTime && !customEndIsValid && (
+                    <p className="text-xs text-red-500">
+                      {new Date(`${customEndDate}T${customEndTime}:00`) < minEnd
+                        ? `Minimum booking duration is ${MIN_CUSTOM_DURATION_MINUTES} minutes`
+                        : 'End time exceeds the available window'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -286,9 +474,10 @@ function NewBookingContent() {
         variant="primary"
         size="lg"
         loading={submitting}
+        disabled={!canSubmit}
         onClick={() => { void handlePayAndBook(); }}
       >
-        {submitting ? 'Processing…' : `Pay \u20B9${estimate?.grossRupees ?? ''} & book`}
+        {submitting ? 'Processing…' : `Pay ₹${estimate?.grossRupees ?? ''} & book`}
       </Button>
     </main>
   );
