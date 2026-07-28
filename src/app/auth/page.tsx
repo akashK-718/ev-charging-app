@@ -531,15 +531,22 @@ function AuthFlow() {
     );
   }
 
-  // Profile step — Part C
+  // Profile step — name capture
+  // Uses min-h-[calc(100dvh-3.5rem)] (full dynamic viewport minus Navbar h-14) so
+  // the main fills exactly the space below the Navbar without creating page overflow.
+  // Content sits at the top; a flex-1 spacer pins Continue to the bottom of the viewport.
   const nameValid = validateName(name) === null;
+  const profileCls = cn(
+    'min-h-[calc(100dvh-3.5rem)] flex flex-col px-6 pt-10 pb-[calc(2rem+env(safe-area-inset-bottom))] max-w-sm mx-auto w-full',
+    hasTransitioned && 'animate-step-in',
+  );
   return (
-    <main key={stepKey} className={baseCls}>
-      <div className="flex-1 flex flex-col justify-center">
+    <main key={stepKey} className={profileCls}>
+      <div>
         <h1 className="text-2xl font-bold text-ink">Let&apos;s get started</h1>
         <p className="mt-2 text-muted">First, what should we call you?</p>
 
-        <div className="mt-10 space-y-1.5">
+        <div className="mt-6 space-y-1.5">
           <label htmlFor="display-name" className="block text-sm font-semibold text-ink">
             Your name
           </label>
@@ -571,7 +578,9 @@ function AuthFlow() {
         </div>
       </div>
 
-      <div className="mt-8 space-y-4">
+      <div className="flex-1" />
+
+      <div className="space-y-4">
         <Button
           onClick={() => { void handleNameContinue(); }}
           variant="primary"
