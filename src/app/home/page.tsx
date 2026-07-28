@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { formatINR } from '@/lib/currency';
 import {
   AlertCircle, ChevronRight,
-  Zap, Calendar, Shield, MapPin,
+  Zap, Calendar, Shield,
   TrendingUp, ArrowRight, Map as MapIcon, Route,
   Check, X, Inbox, CalendarClock,
 } from 'lucide-react';
@@ -762,13 +762,6 @@ export default async function HomePage() {
                   When you have an upcoming charge, a request, or anything else that needs you, it&apos;ll show up here.
                 </p>
                 <div className="mt-5 flex gap-2 flex-wrap justify-center">
-                  <Link
-                    href="/explore"
-                    className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-green text-white text-sm font-semibold shadow-md shadow-green-900/20"
-                  >
-                    <MapPin className="size-4" aria-hidden />
-                    Find a charger
-                  </Link>
                   <Link
                     href="/profile"
                     className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-white border border-border text-ink text-sm font-semibold"

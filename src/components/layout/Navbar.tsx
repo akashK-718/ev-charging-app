@@ -69,7 +69,7 @@ export function Navbar() {
       <div className="hidden lg:flex items-center h-full px-6 gap-6">
         <Logo />
 
-        {user && (
+        {user?.onboarded && (
           <nav className="flex items-center gap-0.5 h-full" aria-label="Main navigation">
             {NAV_LINKS.map(({ href, label }) => {
               const active = isLinkActive(href, pathname);
@@ -98,7 +98,7 @@ export function Navbar() {
           </nav>
         )}
 
-        {user && (
+        {user?.onboarded && (
           <div className="ml-auto flex items-center gap-1">
             <button
               onClick={handleSignOut}
