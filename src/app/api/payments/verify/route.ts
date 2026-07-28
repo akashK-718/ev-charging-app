@@ -99,6 +99,18 @@ export async function POST(request: NextRequest) {
 
   if (rpcError || !bookingId) {
     console.error('[payments/verify] create_booking_with_payment failed:', rpcError);
+    // SLOT_CONFLICT means another booking was created in the race window between
+    // the create-order check and payment capture. The driver's money was taken
+    // by Razorpay — flag it clearly so support can issue a refund.
+    if (rpcError?.message?.includes('SLOT_CONFLICT')) {
+      return NextResponse.json(
+        {
+          error: 'This slot was just taken by another booking. Your payment will be refunded — contact support with your payment ID.',
+          payment_id: paymentId,
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { error: 'Payment succeeded but booking creation failed. Contact support with your payment ID.', payment_id: paymentId },
       { status: 500 },

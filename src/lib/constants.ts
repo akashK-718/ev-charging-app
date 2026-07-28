@@ -89,3 +89,10 @@ export const PROXIMITY_CHECK_DEFAULTS = { enabled: true, radius_km: 0.5 } as con
 
 // Valid radius options surfaced in the admin UI
 export const PROXIMITY_RADIUS_STEPS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] as const;
+
+// Booking duration + buffer — Phase-2 placeholder values.
+// When business-rule tuning is promoted to the admin panel (app_settings or
+// Edge Config, consistent with the existing kill-switch pattern), change only
+// the getter functions in src/lib/bookings/availability.ts — not these constants.
+export const PLATFORM_MAX_BOOKING_DURATION_HOURS = 12;
+export const BOOKING_BUFFER_MINUTES = 15;

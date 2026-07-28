@@ -302,6 +302,12 @@ All auth lives at `/auth` with no full-page reload between steps. The page start
 
 **Lender side:** Booking Detail → Accept/Reject → Session → Complete → Rating
 
+### Duration picker
+
+Four fixed presets (30 min, 1 h, 1.5 h, 2 h) plus a **Custom** option that reveals separate end-date and end-time pickers. Custom is the only mode that supports overnight bookings (end date ≠ start date); the presets always end on the same calendar day as they start. Minimum duration for any selection is 30 minutes.
+
+All duration options — presets and Custom — are constrained by the same availability window computed for the selected start time (see *Slot conflict rules* below). Presets that would exceed the window are disabled in the picker; Custom's end-time picker is hard-capped at the window boundary.
+
 ## Booking Lifecycle
 
 ### State machine
@@ -347,6 +353,27 @@ Lazy sweeps in individual API routes remain as a belt-and-suspenders fallback. S
 ### Charger slot availability
 
 Slot availability is derived from active booking status. When a booking reaches any terminal state (`auto_rejected`, `no_show`, `cancelled`, `completed`), it is no longer "active" and the slot is immediately available for new bookings. No explicit slot-release step is needed — the status-based filtering in `chargers_within_radius` and `chargers_along_route` handles this automatically.
+
+### Slot conflict rules and booking duration constraints
+
+When a driver requests a booking `[start, end)`:
+
+**Platform maximum:** `end` may not exceed `start + PLATFORM_MAX_BOOKING_DURATION_HOURS` (currently 12 h). This is a Phase-2 placeholder constant — when business-rule tuning is promoted to the admin panel, only the getter in `src/lib/bookings/availability.ts` changes.
+
+**Conflict buffer:** Every active booking occupies `[scheduled_start, scheduled_end + BOOKING_BUFFER_MINUTES)` as its *effective blocking window*. `BOOKING_BUFFER_MINUTES = 15` — same Phase-2 promotion path. `pending` counts as blocking to prevent two drivers racing for the same slot before the host has responded.
+
+**Maximum end time formula** (implemented in `src/lib/bookings/availability.ts → computeMaxEndTime()`):
+
+```
+maxEnd = min(
+  start + PLATFORM_MAX_BOOKING_DURATION_HOURS,
+  next_active_booking.scheduled_start − BOOKING_BUFFER_MINUTES
+)
+```
+
+**Charger operating hours (`availability_slots`):** The `availability_slots` table (`day_of_week`, `start_time`, `end_time`) represents the lender's declared operating hours but is **currently not enforced during booking creation** — the API accepts bookings at any hour. This table is not included in `computeMaxEndTime` and is treated as "no per-day window constraint." Enforcing it is deferred to a future PR.
+
+**Server-side revalidation:** `POST /api/payments/create-order` re-runs the conflict check independently before opening a Razorpay order. The `create_booking_with_payment` DB function (migration 029) re-runs it atomically with a `SELECT … FOR UPDATE` lock, so races that slip through the API layer are caught and rejected with a `SLOT_CONFLICT` exception before any booking row is written.
 
 ## Admin
 

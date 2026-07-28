@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getRazorpay } from '@/lib/razorpay';
-import { PLATFORM_COMMISSION_PERCENT } from '@/lib/constants';
+import { PLATFORM_COMMISSION_PERCENT, ACTIVE_BOOKING_STATUSES } from '@/lib/constants';
+import { getPlatformMaxBookingDurationHours, getBookingBufferMinutes } from '@/lib/bookings/availability';
 import { isEmergencyLockdown } from '@/lib/edge-config';
 import { readKillSwitch } from '@/lib/app-settings';
 
@@ -15,7 +16,6 @@ const NOMINAL_KW: Record<string, number> = {
 };
 
 const MIN_DURATION_MINUTES = 15;
-const MAX_DURATION_MINUTES = 12 * 60;
 
 /**
  * POST /api/payments/create-order
@@ -72,9 +72,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'scheduled_start must be in the future' }, { status: 400 });
   }
   const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-  if (durationMinutes < MIN_DURATION_MINUTES || durationMinutes > MAX_DURATION_MINUTES) {
+  const maxDurationMinutes = getPlatformMaxBookingDurationHours() * 60;
+  if (durationMinutes < MIN_DURATION_MINUTES || durationMinutes > maxDurationMinutes) {
     return NextResponse.json(
-      { error: `Booking duration must be between ${MIN_DURATION_MINUTES} minutes and ${MAX_DURATION_MINUTES / 60} hours` },
+      { error: `Booking duration must be between ${MIN_DURATION_MINUTES} minutes and ${getPlatformMaxBookingDurationHours()} hours` },
       { status: 400 },
     );
   }
@@ -94,6 +95,27 @@ export async function POST(request: NextRequest) {
   }
   if (charger.lender_id === user.id) {
     return NextResponse.json({ error: 'You cannot book your own charger' }, { status: 400 });
+  }
+
+  // Reject if the requested window overlaps any active booking's effective
+  // blocking window [scheduled_start, scheduled_end + BOOKING_BUFFER_MINUTES).
+  // The DB function re-checks this atomically with FOR UPDATE; this early check
+  // surfaces a friendly error before payment is attempted.
+  const bufferMs = getBookingBufferMinutes() * 60 * 1000;
+  const startMinusBuffer = new Date(start.getTime() - bufferMs);
+  const endPlusBuffer = new Date(end.getTime() + bufferMs);
+  const { count: conflictCount } = await adminSupabase
+    .from('bookings')
+    .select('id', { count: 'exact', head: true })
+    .eq('charger_id', chargerId)
+    .in('status', ACTIVE_BOOKING_STATUSES)
+    .lt('scheduled_start', endPlusBuffer.toISOString())
+    .gt('scheduled_end', startMinusBuffer.toISOString());
+  if ((conflictCount ?? 0) > 0) {
+    return NextResponse.json(
+      { error: 'This time slot is no longer available. Please choose a different start time or duration.' },
+      { status: 409 },
+    );
   }
 
   const nominalKw = NOMINAL_KW[charger.charger_type] ?? 7;
