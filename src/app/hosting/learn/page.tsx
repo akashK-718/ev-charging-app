@@ -37,7 +37,7 @@ export default async function HostingLearnPage() {
 
   return (
     <>
-      <main className="min-h-screen px-6 pt-10 pb-[calc(6rem+env(safe-area-inset-bottom))] space-y-8 lg:pb-10">
+      <main className="min-h-screen px-6 pt-10 pb-[calc(11rem+env(safe-area-inset-bottom))] space-y-8 lg:pb-10">
 
         {/* Back */}
         <Link
@@ -101,7 +101,7 @@ export default async function HostingLearnPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-ink">Identity verification</p>
-                <p className="text-xs text-muted mt-0.5">Required before your charger goes live</p>
+                <p className="text-xs text-muted mt-0.5">We collect Aadhaar and PAN as required by Indian payment regulations</p>
               </div>
             </div>
             <div className="flex items-start gap-3 px-4 py-4">
