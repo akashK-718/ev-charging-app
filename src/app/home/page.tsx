@@ -763,7 +763,7 @@ export default async function HomePage() {
                 </p>
                 <div className="mt-5 flex gap-2 flex-wrap justify-center">
                   <Link
-                    href="/profile"
+                    href="/hosting/learn"
                     className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-white border border-border text-ink text-sm font-semibold"
                   >
                     Learn about hosting

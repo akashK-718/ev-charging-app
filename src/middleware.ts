@@ -10,7 +10,7 @@ function roleHome(_role: string, isAdmin: boolean): string {
 
 const AUTH_REQUIRED = [
   '/home', '/activity', '/notifications', '/lender', '/admin',
-  '/bookings', '/welcome', '/explore', '/profile',
+  '/bookings', '/welcome', '/explore', '/profile', '/hosting',
 ] as const;
 
 function requiresAuth(pathname: string) {
