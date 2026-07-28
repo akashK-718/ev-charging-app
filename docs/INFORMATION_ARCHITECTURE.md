@@ -150,6 +150,17 @@ Hosting
 Manage →
 ```
 
+### Hosting-enable entry points (two, intentional, distinct)
+
+There are two places in the app that can lead a user into enabling hosting. They serve different populations and must not be conflated.
+
+| Entry point | Location | Who sees it | Behaviour |
+|---|---|---|---|
+| **"Learn about hosting"** | Home — Nudge zone, `new-user` empty-state fallback | Brand-new users only, when Attention has nothing to show | Routes to `/hosting/learn` (Hosting Introduction screen) before enabling hosting |
+| **"Have a home charger? Turn on hosting"** | Profile — hosting section, `not_enabled` state | Any non-hosting user, at any time | Calls `POST /api/profile/enable-hosting` directly on tap; no education step |
+
+The Home entry is in the Attention-zone `new-user` empty-state fallback — a fixed affordance that renders only when Attention has nothing else to show for a brand-new user. It is not part of the Nudge cascade. The Profile entry is a persistent gradient card always visible to non-hosting users; it is the shortcut for users who have already decided. Both are intentional: do not merge them into a single path, and do not change the Profile card to route through `/hosting/learn`.
+
 ### Adding a new card or feature to Home
 
 Ask three questions, in order:
@@ -224,6 +235,20 @@ Answers: "What belongs to me?" Nothing here changes minute to minute. Pure ident
 **Overflow menu** (⋮ icon, top-right, Profile screen only, Instagram-style, not global): Help, Terms, Admin (conditional on `is_admin`), Sign Out. Contact us is not a separate item, it lives inside the Help page itself.
 
 Sign out always redirects to `/` (the public landing page), never to an authenticated route.
+
+## Hosting Introduction (`/hosting/learn`)
+
+A standalone pre-decision educational screen. It does not fit the Hosting Workspace ownership table (the Workspace only exists post-first-publish) and does not belong in Profile (which owns configuration, not pre-decision education). It is its own screen with its own route.
+
+**Reached from:** Home's `new-user` empty-state fallback ("Learn about hosting" CTA). Not linked from the bottom nav, not linked from Profile, not reachable from the Hosting Workspace, and not part of any wizard flow.
+
+**Purpose:** Give undecided users a brief, factual look at what hosting involves before they commit. Sections: what hosting is, how it works (5 steps), what you will need, what is required before going live (KYC + bank/UPI), and the benefits. These sections reflect only what is already established in the app — no new claims or promises are introduced here.
+
+**CTA ("Start hosting"):** Calls `POST /api/profile/enable-hosting` on the client, then navigates to `/profile`. After the call succeeds, Profile renders the `setup_in_progress` hosting state, and its existing `setupContinueHref` logic routes the user to KYC (if not yet approved) or Add Charger (if already approved).
+
+**Not a wizard step.** This screen has no Back step within a flow; it is read-then-decide. The user can leave via the back link (Home) or the bottom nav at any time.
+
+**Profile's "Turn on hosting" card is unaffected.** Profile calls `enable-hosting` directly on tap and has always done so. This screen is a new front door for undecided users, not a replacement for the shortcut on Profile. See the "Hosting-enable entry points" table in the Home section above.
 
 ## Hosting Workspace
 
