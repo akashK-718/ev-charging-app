@@ -42,6 +42,7 @@ export function BottomNav() {
   if (
     loading ||
     !user ||
+    !user.onboarded ||
     SUPPRESSED.includes(pathname) ||
     pathname.startsWith('/welcome')
   ) return null;

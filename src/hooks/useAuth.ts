@@ -10,11 +10,13 @@ export interface AuthUser {
   name: string | null;
   role: 'driver' | 'lender' | 'both';
   is_admin: boolean;
+  onboarded: boolean;
 }
 
 async function resolveAuthUser(rawUser: User): Promise<AuthUser> {
   const role = rawUser.user_metadata?.role as AuthUser['role'] | undefined;
   const name = (rawUser.user_metadata?.name as string | undefined) ?? null;
+  const onboarded = (rawUser.user_metadata?.onboarded as boolean | undefined) ?? (name !== null);
 
   if (role) {
     // Fast path: role is in JWT metadata — is_admin also read from metadata.
@@ -25,6 +27,7 @@ async function resolveAuthUser(rawUser: User): Promise<AuthUser> {
       name,
       role,
       is_admin: (rawUser.user_metadata?.is_admin as boolean | undefined) ?? false,
+      onboarded,
     };
   }
 
@@ -32,15 +35,17 @@ async function resolveAuthUser(rawUser: User): Promise<AuthUser> {
   try {
     const res = await fetch('/api/auth/me');
     const data = (await res.json()) as { data?: { role?: string; name?: string | null; is_admin?: boolean } };
+    const slowName = data.data?.name ?? name;
     return {
       id: rawUser.id,
       phone: rawUser.phone ?? null,
-      name: data.data?.name ?? name,
+      name: slowName,
       role: (data.data?.role as AuthUser['role']) ?? 'driver',
       is_admin: data.data?.is_admin ?? false,
+      onboarded: onboarded || (slowName !== null),
     };
   } catch {
-    return { id: rawUser.id, phone: rawUser.phone ?? null, name, role: 'driver', is_admin: false };
+    return { id: rawUser.id, phone: rawUser.phone ?? null, name, role: 'driver', is_admin: false, onboarded };
   }
 }
 

@@ -8,7 +8,7 @@ import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
-type AuthStep = 'phone' | 'otp' | 'profile';
+type AuthStep = null | 'phone' | 'otp' | 'profile';
 
 const OTP_LENGTH = 6;
 const INITIAL_COOLDOWN = 30;
@@ -71,7 +71,7 @@ function validateName(v: string): string | null {
 function AuthFlow() {
   const router = useRouter();
 
-  const [step, setStep] = useState<AuthStep>('phone');
+  const [step, setStep] = useState<AuthStep>(null);
   // Tracks whether a step transition has occurred — controls animate-step-in.
   // False on initial load (PageTransition handles the page entrance); true after
   // any user-initiated step change so cross-fade fires on subsequent steps.
@@ -104,19 +104,20 @@ function AuthFlow() {
   const { shaking: nameShaking, shake: shakeName } = useShake();
 
   // User-initiated step change — marks hasTransitioned so animate-step-in fires
-  function goToStep(next: AuthStep) {
+  function goToStep(next: Exclude<AuthStep, null>) {
     setHasTransitioned(true);
     setStep(next);
   }
 
-  // If already signed in, skip to the right step (no entrance animation —
-  // this is a programmatic redirect, not a user-initiated transition)
+  // Resolve initial step: check whether session exists and onboarding is complete.
+  // Starts as null to avoid flashing the phone step before we know auth state.
   useEffect(() => {
     const supabase = createClient();
     void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      const existingName = user.user_metadata?.name as string | undefined;
-      if (existingName) {
+      if (!user) { setStep('phone'); return; }
+      const onboarded = (user.user_metadata?.onboarded as boolean | undefined)
+        ?? !!(user.user_metadata?.name as string | undefined);
+      if (onboarded) {
         router.replace('/home');
       } else {
         setStep('profile');
@@ -326,9 +327,8 @@ function AuthFlow() {
         setNameLoading(false);
         return;
       }
-      // setSession() was already called during OTP verification for new users.
-      // No additional session sync needed here — the browser client already has
-      // the session and SIGNED_IN was already fired.
+      // Refresh the session so the JWT picks up onboarded:true set by the profile API.
+      await createClient().auth.refreshSession();
       router.push('/home');
     } catch {
       setNameError('Something went wrong. Please try again.');
@@ -350,6 +350,15 @@ function AuthFlow() {
     'min-h-screen flex flex-col px-6 py-12 max-w-sm mx-auto w-full',
     hasTransitioned && 'animate-step-in',
   );
+
+  // Checking auth state — no flash of phone step while getUser() resolves
+  if (step === null) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <p className="text-muted text-sm">Loading…</p>
+      </main>
+    );
+  }
 
   // Transient welcome-back state — Part D
   if (welcomeBackName !== null) {
@@ -526,16 +535,6 @@ function AuthFlow() {
   const nameValid = validateName(name) === null;
   return (
     <main key={stepKey} className={baseCls}>
-      <div className="flex justify-end">
-        <button
-          onClick={() => { void handleSignOut(); }}
-          disabled={signingOut}
-          className="text-xs font-semibold text-muted hover:text-ink transition-colors disabled:opacity-50 tap-opacity"
-        >
-          {signingOut ? 'Signing out…' : 'Sign out'}
-        </button>
-      </div>
-
       <div className="flex-1 flex flex-col justify-center">
         <h1 className="text-2xl font-bold text-ink">Let&apos;s get started</h1>
         <p className="mt-2 text-muted">First, what should we call you?</p>
@@ -572,7 +571,7 @@ function AuthFlow() {
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-4">
         <Button
           onClick={() => { void handleNameContinue(); }}
           variant="primary"
@@ -583,6 +582,15 @@ function AuthFlow() {
         >
           {!nameLoading && 'Continue'}
         </Button>
+        <div className="text-center">
+          <button
+            onClick={() => { void handleSignOut(); }}
+            disabled={signingOut}
+            className="text-xs font-semibold text-muted hover:text-ink transition-colors disabled:opacity-50 tap-opacity"
+          >
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
       </div>
     </main>
   );

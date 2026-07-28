@@ -106,6 +106,10 @@ export async function middleware(request: NextRequest) {
 
   const isAdmin = (user.user_metadata?.is_admin as boolean | undefined) ?? false;
   const role = (user.user_metadata?.role as string | undefined) ?? '';
+  const name = user.user_metadata?.name as string | undefined;
+  // onboarded:false is set on new-user creation; cleared to true when name/role saved.
+  // Fall back to !!name for accounts created before this flag was introduced.
+  const isOnboarded = (user.user_metadata?.onboarded as boolean | undefined) ?? !!name;
 
   // ── 2. Emergency lockdown gate (authenticated) ────────────────────────────────
   if (lockdown && !isAdmin && !LOCKDOWN_PASSTHROUGH.has(pathname)) {
@@ -127,15 +131,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── 5. Root redirect ──────────────────────────────────────────────────────────
-  // Redirect logged-in users to their role's home page.
+  // Send onboarding-incomplete users back to /auth; fully onboarded users go to their home.
   if (pathname === '/') {
+    if (!isOnboarded) return NextResponse.redirect(new URL('/auth', request.url));
     return NextResponse.redirect(new URL(roleHome(role, isAdmin), request.url));
   }
 
   // ── 6. Auth screen redirect ───────────────────────────────────────────────────
   // Redirect logged-in users away from auth screens.
-  // For /auth: only redirect when the user has a name (profile complete); if no
-  // name, allow through so the page can show the profile step.
+  // For /auth: only redirect when onboarding is complete; otherwise show profile step.
   if (pathname === '/login' || pathname === '/verify-otp') {
     const nextParam = request.nextUrl.searchParams.get('next');
     const safeNext = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
@@ -143,14 +147,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(dest, request.url));
   }
   if (pathname === '/auth') {
-    const authName = user.user_metadata?.name as string | undefined;
-    if (authName) {
+    if (isOnboarded) {
       const nextParam = request.nextUrl.searchParams.get('next');
       const safeNext = nextParam?.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
       const dest = safeNext ?? roleHome(role, isAdmin);
       return NextResponse.redirect(new URL(dest, request.url));
     }
-    // No name — let /auth show the profile step
+    // Not yet onboarded — let /auth show the profile step
   }
 
   // ── 7. Welcome flow gating ────────────────────────────────────────────────────
@@ -158,12 +161,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth', request.url));
   }
 
-  const name = user.user_metadata?.name as string | undefined;
-
   const isWelcomeName = pathname === '/welcome/name'; // redirects to /auth; kept to avoid redirect loop
   const isAuthPage = pathname === '/auth';
 
-  if (!name && !isWelcomeName && !isAuthPage) {
+  if (!isOnboarded && !isWelcomeName && !isAuthPage) {
     return NextResponse.redirect(new URL('/auth', request.url));
   }
 

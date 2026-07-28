@@ -257,19 +257,38 @@ A unified surface for all lender operations. Reached via "Open Hosting Workspace
 
 ```
 Landing   /
-Auth      /auth          single route — internal AuthStep state: 'phone' | 'otp' | 'profile'
+Auth      /auth          single route — internal AuthStep state: null | 'phone' | 'otp' | 'profile'
 Role      /welcome/role  only reached for new accounts after name capture
 ```
 
-All auth lives at `/auth` with no full-page reload between steps:
+### Session states
+
+Two distinct states are tracked in `user_metadata`:
+
+- **`authenticated`** — a Supabase Auth session exists (OTP verified). `onboarded: false` in `user_metadata`.
+- **`onboarding_complete`** — name has been saved, `onboarded: true` in `user_metadata`. BottomNav, desktop nav links, and authenticated-app routes are only accessible once this is true.
+
+`onboarded` is set to `false` on new-user creation (`verify-otp` route) and flipped to `true` when name (or role) is saved (`/api/profile`). Existing accounts without the flag fall back to `!!name`.
+
+### Route resolution order (middleware)
+
+1. **No session** → redirect to `/auth`
+2. **Session + `!isOnboarded`** → redirect to `/auth` (profile step shown; no re-OTP required)
+3. **Session + `isOnboarded`** → allow through to the requested route (or redirect `/` to role home)
+
+### Auth steps
+
+All auth lives at `/auth` with no full-page reload between steps. The page starts in `null` (loading) state to check auth before showing the phone step, preventing a flash for users resuming mid-onboarding.
 
 1. **phone** — 10-digit Indian mobile input (+91 prefix). Validates format (`/^[6-9]\d{9}$/`) before sending. Success message is always "Verification code sent" regardless of whether the number is new or existing (account-enumeration safe).
 2. **otp** — 6-box OTP entry. Phone number is held in component state and displayed as "Sent to +91 XXXXXXXXXX · Edit"; "Edit" returns to the phone step with the number pre-filled. Error messages: incorrect code → "The code you entered is incorrect. Try again."; expired code → "This code has expired. Request a new code."; rate-limited resend → explicit message, never silent.
-3. **profile** — name capture for new accounts only. Validates Unicode letters + spaces, 2–50 chars. On save, navigates to `/welcome/role`.
+3. **profile** — name capture for new accounts only. Validates Unicode letters + spaces, 2–50 chars. On save, calls `refreshSession()` to update the browser JWT with `onboarded: true`, then navigates to `/home`.
 
 **Existing-user auto-redirect:** after OTP verification, the API checks whether the phone belongs to an existing account. If it does, the session is created (single-session policy invalidates any prior session), a brief "✓ Verified — Welcome back, [name]" state is shown, then the user is redirected to Home. No "account already exists" interstitial — successful OTP verification is the login, regardless of which CTA was tapped on the landing page.
 
-**New-account path:** Phone → OTP → profile (name) → `/welcome/role` → Home.
+**New-account path:** Phone → OTP → profile (name) → Home.
+
+**Resuming mid-onboarding:** if a user closes the app after OTP but before saving their name, returning to `/auth` skips the phone and OTP steps and lands directly on the profile step (session is still valid; middleware allows `/auth` when `!isOnboarded`).
 
 **Landing page CTAs:** both "Log in" and "Get Started" in the nav and hero route to `/auth`. Neither pre-determines login vs. registration — that is decided after OTP verification based solely on whether the phone matches an existing account.
 
