@@ -64,24 +64,20 @@ export default function EditChargerPage() {
 
     async function loadCharger() {
       try {
-        // Fetch from lender chargers endpoint
-        const res = await fetch('/api/lender/chargers');
+        const res = await fetch(`/api/lender/chargers/${chargerId}`);
         if (!res.ok) { setLoadError('Failed to load charger'); setLoading(false); return; }
-        const body = await res.json() as { data: RawCharger[] };
-        const charger = body.data.find(c => c.id === chargerId);
+        const body = await res.json() as {
+          charger: RawCharger;
+          slots: AvailabilitySlot[];
+        };
+        const { charger, slots } = body;
         if (!charger) { setLoadError('Charger not found'); setLoading(false); return; }
 
-        // Fetch availability slots
-        const slotsRes = await fetch(`/api/chargers/${chargerId}/slots`);
-        let availability: NewChargerDraft['availability'] = [];
-        if (slotsRes.ok) {
-          const slotsBody = await slotsRes.json() as { data: AvailabilitySlot[] };
-          availability = (slotsBody.data ?? []).map((s: AvailabilitySlot) => ({
-            day_of_week: s.day_of_week[0] ?? 0,
-            start_time: s.start_time,
-            end_time: s.end_time,
-          }));
-        }
+        const availability: NewChargerDraft['availability'] = (slots ?? []).map(s => ({
+          day_of_week: s.day_of_week[0] ?? 0,
+          start_time: s.start_time,
+          end_time: s.end_time,
+        }));
 
         setDraft({
           chargerType: charger.charger_type as NewChargerDraft['chargerType'],
