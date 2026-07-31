@@ -169,7 +169,8 @@ export default function ExplorePage() {
   const [activeRouteInput, setActiveRouteInput] = useState<'from' | 'to'>('from');
   /** Which pin is currently being reverse-geocoded after a drop or drag. */
   const [geocodingPin, setGeocodingPin] = useState<'from' | 'to' | null>(null);
-  const dragDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const dragDebounceFromRef = useRef<ReturnType<typeof setTimeout>>();
+  const dragDebounceToRef = useRef<ReturnType<typeof setTimeout>>();
   /** True when routeFrom was set from GPS — renders a locked "Your location" chip instead of editable input. */
   const [fromIsGps, setFromIsGps] = useState(false);
   /** Prevents the GPS pre-fill effect from re-firing after the user explicitly clears the From field. */
@@ -600,8 +601,9 @@ export default function ExplorePage() {
   }
 
   async function handlePinDragEnd(pinId: 'from' | 'to', coords: Coords) {
-    clearTimeout(dragDebounceRef.current);
-    dragDebounceRef.current = setTimeout(async () => {
+    const debounceRef = pinId === 'from' ? dragDebounceFromRef : dragDebounceToRef;
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
       setGeocodingPin(pinId);
       let address: string;
       try {
@@ -687,6 +689,7 @@ export default function ExplorePage() {
     function applyGps(gps: Coords) {
       setGpsCoords(gps);
       setGpsAvailable(true);
+      setSearchCenter(gps);
       setRouteFrom({ coords: gps, address: 'Your location' });
       setRouteFromAddress('Your location');
       setFromIsGps(true);
