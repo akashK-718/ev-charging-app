@@ -472,12 +472,14 @@ Any feature that persists state in the browser MUST classify its storage key int
 | Bucket | Scope | Rule | Examples |
 |---|---|---|---|
 | **Device-level** | Device | Fine as a flat key — not tied to any user | `pwa_install_nudge_v1`, `kirin_intro_done` (sessionStorage) |
-| **User-level** | Authenticated user ID | Key MUST use `{base}:{userId}` pattern via `userKey()` in `src/lib/user-storage.ts`. NOT cleared on logout — persists for that user on next login. Legacy flat key MUST be purged on init via `purgeLegacyKey()`. | `chargers_map_state_v2:{userId}`, `kirin:milestones:{userId}`, `lender:new-charger:draft:{userId}` |
-| **Session-level** | Auth token lifetime | Must be fully cleared when `supabase.signOut()` is called. Supabase handles its own tokens; OTP and in-progress booking/payment state fall here. | Supabase access/refresh tokens, OTP flow state |
+| **User-level** | Authenticated user ID | Key MUST use `{base}:{userId}` pattern via `userKey()` in `src/lib/user-storage.ts`. NOT cleared on logout — persists for that user on next login. Legacy flat key MUST be purged on init via `purgeLegacyKey()`. | `kirin:milestones:{userId}`, `lender:new-charger:draft:{userId}` |
+| **Session-level** | Auth token lifetime | Must be fully cleared when `supabase.signOut()` is called. Supabase handles its own tokens; OTP and in-progress booking/payment state fall here. App code uses `clearExploreSession()` from `src/lib/user-storage.ts`. | Supabase access/refresh tokens, OTP flow state, `kirin:explore:mode`, `kirin:explore:near_me`, `kirin:explore:along_route` |
 
 **Why this matters:** a flat User-level key written by User A remains visible to User B who logs in on the same device after User A logs out. Route searches include real coordinates and are personal data — this is a privacy bug, not just a UX issue. The `{base}:{userId}` pattern ensures each user reads and writes only their own state.
 
-**On logout:** Supabase `signOut()` clears Session-level tokens. User-level scoped keys are intentionally *not* cleared — the point is that User A's saved state is still there if User A logs back in later. Device-level keys are never touched by login/logout.
+**On logout:** Supabase `signOut()` clears Session-level tokens. App code must call `clearExploreSession()` (already wired into all four signOut handlers) to clear Explore's sessionStorage keys — sessionStorage survives same-origin navigation. User-level scoped keys are intentionally *not* cleared — the point is that User A's saved state is still there if User A logs back in later. Device-level keys are never touched by login/logout.
+
+**Explore storage scoping note (2026-07):** `chargers_map_state_v2:{userId}` was previously classified as User-level (localStorage, 24h expiry, user-scoped). It has been replaced by the three `kirin:explore:*` sessionStorage keys above. The earlier decision correctly fixed a cross-user privacy bug (unscoped key visible to any user on shared device). This change is a separate product decision: searches represent ephemeral intent, not durable user data, so they should not persist across sessions even for the same user. The scoping mechanism (`{key}:{userId}`) is retired in favour of sessionStorage's natural per-tab isolation, plus explicit `clearExploreSession()` on signOut.
 
 ## PWA Update Paths
 
