@@ -62,49 +62,44 @@ const DELHI_NCR: Coords = { lat: 28.6139, lng: 77.209 };
 const DEFAULT_RADIUS = 10000;
 const DEFAULT_BUFFER = 2500;
 const MAX_PRICE = 50;
-// Base key without userId suffix — used for scoping and legacy-key purge.
-const STORAGE_KEY_BASE = 'chargers_map_state_v2';
-const EXPIRY_MS = 24 * 60 * 60 * 1000;
+// Legacy User-level key — never written again; purged on first load.
+const LEGACY_STORAGE_KEY = 'chargers_map_state_v2';
 
-// ── Saved state helpers ───────────────────────────────────────────────────────
+// Session-scoped storage keys (sessionStorage, cleared on signOut).
+// No userId suffix needed — sessionStorage is per-tab and not shared across users.
+const SESSION_KEY_MODE        = 'kirin:explore:mode';
+const SESSION_KEY_NEAR_ME     = 'kirin:explore:near_me';
+const SESSION_KEY_ALONG_ROUTE = 'kirin:explore:along_route';
+
+// ── Session state types ───────────────────────────────────────────────────────
 
 type SearchMode = 'near_me' | 'along_route';
 type RouteCharger = ChargerRow & { distance_from_route_m: number };
 
-type SavedMapState = {
+type NearMeSession = {
   center: Coords;
-  zoom: number;
   radius: number | 'all_india';
   viewMode: 'map' | 'list';
   centerType: 'gps' | 'manual' | 'default';
-  searchMode: SearchMode;
-  timestamp: number;
-  routeFrom?: { coords: Coords; address: string };
-  routeFromAddress?: string;
-  routeTo?: { coords: Coords; address: string };
-  routeToAddress?: string;
-  fromIsGps?: boolean;
 };
 
-function loadMapState(userId: string): SavedMapState | null {
+type AlongRouteSession = {
+  routeFrom: { coords: Coords; address: string } | null;
+  routeFromAddress: string;
+  routeTo: { coords: Coords; address: string } | null;
+  routeToAddress: string;
+  fromIsGps: boolean;
+};
+
+function loadSession<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_BASE}:${userId}`);
-    if (!raw) return null;
-    const state = JSON.parse(raw) as SavedMapState;
-    if (Date.now() - state.timestamp > EXPIRY_MS) return null;
-    return state;
-  } catch {
-    return null;
-  }
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch { return null; }
 }
 
-function saveMapState(userId: string, s: Omit<SavedMapState, 'timestamp'>) {
-  try {
-    localStorage.setItem(
-      `${STORAGE_KEY_BASE}:${userId}`,
-      JSON.stringify({ ...s, timestamp: Date.now() }),
-    );
-  } catch { /* quota exceeded — silently skip */ }
+function saveSession(key: string, value: unknown): void {
+  try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
 function computeRouteBounds(
@@ -126,6 +121,7 @@ function computeRouteBounds(
 export default function ExplorePage() {
   // ── Auth — stored so save effect can scope its key without re-fetching ───
   const userIdRef = useRef<string | null>(null);
+  const initCompleteRef = useRef(false); // guards persist effects during async init
 
   // ── Feature flags — fetched once on mount, default to permissive ─────────
   const [featureFlags, setFeatureFlags] = useState<Pick<FeatureFlags, 'route_planning_enabled'>>({
@@ -141,7 +137,7 @@ export default function ExplorePage() {
 
   // ── Search / view mode ────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-  const [searchMode, setSearchMode] = useState<SearchMode>('along_route');
+  const [searchMode, setSearchMode] = useState<SearchMode>('near_me');
 
   // ── Near-me: search centre ────────────────────────────────────────────────
   const [searchCenter, setSearchCenter] = useState<Coords | null>(null);
@@ -256,47 +252,36 @@ export default function ExplorePage() {
     }
   }, []);
 
-  // ── Deeplink: ?charger_id=<id> opens that charger's bottom sheet ────────────
-
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const deeplinkedId = searchParams.get('charger_id');
-    const modeParam = searchParams.get('mode');
-    if (!deeplinkedId && !modeParam) return;
-
-    // Strip params immediately so back navigation returns cleanly to /explore
-    window.history.replaceState(null, '', '/explore');
-
-    if (modeParam === 'near_me' || modeParam === 'along_route') {
-      setSearchMode(modeParam);
-    }
-
-    if (deeplinkedId) {
-      void (async () => {
-        try {
-          const res = await fetch(`/api/chargers/${deeplinkedId}`);
-          if (!res.ok) return;
-          const body = await res.json() as { data: ChargerRow & { latitude: number; longitude: number } };
-          const charger = body.data;
-          setSelectedCharger(charger);
-          setSearchCenter({ lat: Number(charger.latitude), lng: Number(charger.longitude) });
-          setCenterType('manual');
-        } catch {
-          // Deeplink failure must never break the map
-        }
-      })();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Init: resolve user → purge legacy key → restore saved state → GPS ──────
+  // ── Init: URL params → session state → user → purge legacy → GPS ──────────
   //
-  // getUser() must complete before loading saved state so we use the correct
-  // user-scoped key. The legacy unscoped key is deleted unconditionally — data
-  // written before this fix cannot be attributed to a specific user.
+  // URL params are read synchronously at the top (before any await) so a
+  // ?mode=near_me deeplink from Home always wins over saved session state —
+  // this is the fix for non-deterministic Home shortcut behaviour.
+  // initCompleteRef guards persist effects from writing during the async gap.
 
   useEffect(() => {
     let cancelled = false;
+
+    // ── 1. URL params — read before any await so deeplinks are deterministic ──
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlMode = urlParams.get('mode');
+    const deeplinkedId = urlParams.get('charger_id');
+    if (urlParams.toString()) {
+      // Strip params immediately so back navigation returns cleanly to /explore
+      window.history.replaceState(null, '', '/explore');
+    }
+
+    // ── 2. Resolve initial mode: URL param > session memory > default ─────────
+    //    URL param is authoritative — Home shortcuts always force a specific mode.
+    //    Bottom-nav entry falls back to the last-used mode from this session.
+    const sessionMode = loadSession<SearchMode>(SESSION_KEY_MODE);
+    const isValidMode = (m: string | null): m is SearchMode =>
+      m === 'near_me' || m === 'along_route';
+
+    let resolvedMode: SearchMode =
+      isValidMode(urlMode)     ? urlMode     :
+      isValidMode(sessionMode) ? sessionMode :
+      'near_me'; // default for new sessions
 
     (async () => {
       const supabase = createClient();
@@ -305,38 +290,71 @@ export default function ExplorePage() {
 
       userIdRef.current = user?.id ?? null;
 
-      // Remove any flat key written before user-scoping was introduced.
-      purgeLegacyKey(STORAGE_KEY_BASE);
-
-      const saved = user ? loadMapState(user.id) : null;
-
-      if (saved) {
-        const isAllIndia = saved.radius === 'all_india';
-        setSearchCenter(saved.center);
-        // Never restore centerType as 'gps' from storage — the GPS success handler
-        // below will set it to 'gps' again if permission is still granted this session.
-        // Old saved states that are missing centerType are treated as 'default'.
-        setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
-        setViewMode(saved.viewMode);
-        // Respect route_planning_enabled — if disabled, fall back to near_me regardless of saved state.
-        const savedMode = saved.searchMode ?? 'along_route';
-        setSearchMode(!featureFlags.route_planning_enabled && savedMode === 'along_route' ? 'near_me' : savedMode);
-        setAllIndiaMode(isAllIndia);
-        setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
-        if (saved.routeFrom) {
-          setRouteFrom(saved.routeFrom);
-          setRouteFromAddress(saved.routeFromAddress ?? saved.routeFrom.address);
-        }
-        if (saved.routeTo) {
-          setRouteTo(saved.routeTo);
-          setRouteToAddress(saved.routeToAddress ?? saved.routeTo.address);
-        }
-        if (saved.fromIsGps) setFromIsGps(true);
+      // Purge both legacy storage keys (unscoped and old User-level scoped).
+      purgeLegacyKey(LEGACY_STORAGE_KEY);
+      if (user?.id) {
+        try { localStorage.removeItem(`${LEGACY_STORAGE_KEY}:${user.id}`); } catch {}
       }
+
+      // ── 3. Feature-flag constraint ──────────────────────────────────────────
+      if (!featureFlags.route_planning_enabled && resolvedMode === 'along_route') {
+        resolvedMode = 'near_me';
+      }
+      setSearchMode(resolvedMode);
+
+      // ── 4. Restore mode-specific session state ──────────────────────────────
+      if (resolvedMode === 'near_me') {
+        const saved = loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
+        if (saved) {
+          setSearchCenter(saved.center);
+          // Never restore centerType as 'gps' — GPS handler below re-sets it
+          // if permission is still granted this session.
+          setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
+          setViewMode(saved.viewMode);
+          const isAllIndia = saved.radius === 'all_india';
+          setAllIndiaMode(isAllIndia);
+          setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
+        }
+      } else {
+        const saved = loadSession<AlongRouteSession>(SESSION_KEY_ALONG_ROUTE);
+        if (saved) {
+          if (saved.routeFrom) {
+            setRouteFrom(saved.routeFrom);
+            setRouteFromAddress(saved.routeFromAddress || saved.routeFrom.address);
+          }
+          if (saved.routeTo) {
+            setRouteTo(saved.routeTo);
+            setRouteToAddress(saved.routeToAddress || saved.routeTo.address);
+          }
+          if (saved.fromIsGps) setFromIsGps(true);
+        }
+      }
+
+      // ── 5. Deeplinked charger ───────────────────────────────────────────────
+      if (deeplinkedId) {
+        void (async () => {
+          try {
+            const res = await fetch(`/api/chargers/${deeplinkedId}`);
+            if (!res.ok) return;
+            const body = await res.json() as { data: ChargerRow & { latitude: number; longitude: number } };
+            const charger = body.data;
+            setSelectedCharger(charger);
+            setSearchCenter({ lat: Number(charger.latitude), lng: Number(charger.longitude) });
+            setCenterType('manual');
+          } catch {
+            // Deeplink failure must never break the map
+          }
+        })();
+      }
+
+      // ── 6. GPS resolution — set initCompleteRef first so any user interaction
+      //       during the GPS wait is persisted correctly. ──────────────────────
+      const hasSavedNearMe = !!loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
+      initCompleteRef.current = true;
 
       if (!navigator.geolocation) {
         setGpsAvailable(false);
-        if (!saved) {
+        if (!hasSavedNearMe) {
           setSearchCenter(DELHI_NCR);
           showToastMsg('Showing chargers near Delhi. Set a location or allow GPS access to personalise.');
         }
@@ -350,7 +368,8 @@ export default function ExplorePage() {
           const gps: Coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           setGpsCoords(gps);
           setGpsAvailable(true);
-          if (!saved || saved.centerType === 'gps') {
+          const nearMe = loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
+          if (!nearMe || nearMe.centerType === 'gps') {
             setSearchCenter(gps);
             setCenterType('gps');
           }
@@ -359,7 +378,7 @@ export default function ExplorePage() {
         () => {
           if (cancelled) return;
           setGpsAvailable(false);
-          if (!saved) {
+          if (!hasSavedNearMe) {
             setSearchCenter(DELHI_NCR);
             showToastMsg('Showing chargers near Delhi. Set a location or allow GPS access to personalise.');
           }
@@ -428,26 +447,37 @@ export default function ExplorePage() {
     }
   }, [searchMode, gpsCoords, routeFrom]);
 
-  // ── Persist state ─────────────────────────────────────────────────────────
+  // ── Persist: Near Me state ────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!searchCenter) return;
-    const uid = userIdRef.current;
-    if (!uid) return; // userId not yet resolved — skip to avoid writing an unscoped key
-    saveMapState(uid, {
+    if (!initCompleteRef.current || searchMode !== 'near_me' || !searchCenter) return;
+    saveSession(SESSION_KEY_NEAR_ME, {
       center: searchCenter,
-      zoom,
       radius: allIndiaMode ? 'all_india' : radius,
       viewMode,
       centerType,
-      searchMode,
-      routeFrom: routeFrom ?? undefined,
-      routeFromAddress: routeFromAddress || undefined,
-      routeTo: routeTo ?? undefined,
-      routeToAddress: routeToAddress || undefined,
+    } satisfies NearMeSession);
+  }, [searchMode, searchCenter, radius, allIndiaMode, viewMode, centerType]);
+
+  // ── Persist: Along Route state ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!initCompleteRef.current || searchMode !== 'along_route') return;
+    saveSession(SESSION_KEY_ALONG_ROUTE, {
+      routeFrom: routeFrom ?? null,
+      routeFromAddress,
+      routeTo: routeTo ?? null,
+      routeToAddress,
       fromIsGps,
-    });
-  }, [searchCenter, zoom, radius, viewMode, centerType, allIndiaMode, searchMode, routeFrom, routeFromAddress, routeTo, routeToAddress, fromIsGps]);
+    } satisfies AlongRouteSession);
+  }, [searchMode, routeFrom, routeFromAddress, routeTo, routeToAddress, fromIsGps]);
+
+  // ── Persist: last-used mode ───────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!initCompleteRef.current) return;
+    saveSession(SESSION_KEY_MODE, searchMode);
+  }, [searchMode]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -467,6 +497,52 @@ export default function ExplorePage() {
 
   function handleSearchModeChange(mode: SearchMode) {
     if (mode === 'along_route' && !featureFlags.route_planning_enabled) return;
+
+    // Save the departing mode's state then restore the arriving mode's,
+    // so each mode maintains independent state across switches.
+    if (searchMode === 'near_me' && searchCenter) {
+      saveSession(SESSION_KEY_NEAR_ME, {
+        center: searchCenter,
+        radius: allIndiaMode ? 'all_india' : radius,
+        viewMode,
+        centerType,
+      } satisfies NearMeSession);
+    } else if (searchMode === 'along_route') {
+      saveSession(SESSION_KEY_ALONG_ROUTE, {
+        routeFrom: routeFrom ?? null,
+        routeFromAddress,
+        routeTo: routeTo ?? null,
+        routeToAddress,
+        fromIsGps,
+      } satisfies AlongRouteSession);
+    }
+
+    if (mode === 'near_me') {
+      const saved = loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
+      if (saved) {
+        setSearchCenter(saved.center);
+        setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
+        setViewMode(saved.viewMode);
+        const isAllIndia = saved.radius === 'all_india';
+        setAllIndiaMode(isAllIndia);
+        setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
+      }
+    } else {
+      const saved = loadSession<AlongRouteSession>(SESSION_KEY_ALONG_ROUTE);
+      if (saved) {
+        if (saved.routeFrom) {
+          setRouteFrom(saved.routeFrom);
+          setRouteFromAddress(saved.routeFromAddress || saved.routeFrom.address);
+        }
+        if (saved.routeTo) {
+          setRouteTo(saved.routeTo);
+          setRouteToAddress(saved.routeToAddress || saved.routeTo.address);
+        }
+        if (saved.fromIsGps) setFromIsGps(true);
+      }
+    }
+
+    saveSession(SESSION_KEY_MODE, mode);
     setSearchMode(mode);
     setSelectedCharger(null);
     setRouteEditOpen(false);

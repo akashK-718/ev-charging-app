@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { clearExploreSession } from '@/lib/user-storage';
 
 type AuthStep = null | 'phone' | 'otp' | 'profile';
 
@@ -339,6 +340,7 @@ function AuthFlow() {
 
   async function handleSignOut() {
     setSigningOut(true);
+    clearExploreSession();
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = '/';

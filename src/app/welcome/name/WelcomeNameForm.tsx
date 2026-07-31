@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/lib/supabase/client';
+import { clearExploreSession } from '@/lib/user-storage';
 
 // Allows letters (including Unicode for Indian scripts) and spaces, 2–50 chars
 const NAME_REGEX = /^[\p{L}\s]{2,50}$/u;
@@ -70,6 +71,7 @@ export function WelcomeNameForm({ initialName, intent }: { initialName: string; 
 
   async function handleSignOut() {
     setSigningOut(true);
+    clearExploreSession();
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = '/';

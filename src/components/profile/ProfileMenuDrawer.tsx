@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MoreVertical, LogOut, Shield, FileText } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { createClient } from '@/lib/supabase/client';
+import { clearExploreSession } from '@/lib/user-storage';
 import { cn } from '@/lib/utils';
 
 interface ProfileMenuDrawerProps {
@@ -15,6 +16,7 @@ export function ProfileMenuDrawer({ isAdmin }: ProfileMenuDrawerProps) {
   const [open, setOpen] = useState(false);
 
   async function handleSignOut() {
+    clearExploreSession();
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = '/';

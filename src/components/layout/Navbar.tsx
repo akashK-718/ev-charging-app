@@ -7,6 +7,7 @@ import { LogOut } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { clearExploreSession } from '@/lib/user-storage';
 import { useAuth } from '@/hooks/useAuth';
 
 const AUTH_PAGES = ['/login', '/verify-otp'];
@@ -34,6 +35,7 @@ export function Navbar() {
   if (isAuthPage || isLandingPage || isDesignPage) return null;
 
   async function handleSignOut() {
+    clearExploreSession();
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = '/';

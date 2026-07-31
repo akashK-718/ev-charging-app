@@ -8,11 +8,13 @@
  * |---------------|------------|--------------------------------------------|---------------------|
  * | Device-level  | Device     | pwa_install_nudge_v1                       | Untouched           |
  * |               |            | kirin_intro_done (sessionStorage)          |                     |
- * | User-level    | User ID    | chargers_map_state_v2:{userId}             | NOT cleared —       |
- * |               |            | kirin:milestones:{userId}                  | persists for that   |
- * |               |            | lender:new-charger:draft:{userId}          | user on next login  |
+ * | User-level    | User ID    | kirin:milestones:{userId}                  | NOT cleared —       |
+ * |               |            | lender:new-charger:draft:{userId}          | persists for that   |
+ * |               |            |                                            | user on next login  |
  * | Session-level | Auth token | Supabase access/refresh tokens, OTP state  | Cleared by          |
- * |               |            |                                            | supabase.signOut()  |
+ * |               |            | kirin:explore:mode (sessionStorage)        | supabase.signOut()  |
+ * |               |            | kirin:explore:near_me (sessionStorage)     | + clearExploreSession() |
+ * |               |            | kirin:explore:along_route (sessionStorage) |                     |
  *
  * User-level keys use the pattern `{base}:{userId}` via `userKey()`.
  * On first load, call `purgeLegacyKey(base)` for any key that was previously
@@ -36,5 +38,18 @@ export function purgeLegacyKey(key: string): void {
     if (localStorage.getItem(key) !== null) {
       localStorage.removeItem(key);
     }
+  } catch {}
+}
+
+/**
+ * Clears all Explore session-scoped keys from sessionStorage.
+ * Call this in every signOut handler so search state from the previous
+ * session is never shown to the next user on the same tab.
+ */
+export function clearExploreSession(): void {
+  try {
+    sessionStorage.removeItem('kirin:explore:mode');
+    sessionStorage.removeItem('kirin:explore:near_me');
+    sessionStorage.removeItem('kirin:explore:along_route');
   } catch {}
 }
