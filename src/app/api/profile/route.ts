@@ -3,7 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 // Allows letters (including Unicode for Indian scripts) and spaces, 2–50 chars
 const NAME_REGEX = /^[\p{L}\s]{2,50}$/u;
-const VALID_ROLES = ['driver', 'lender', 'both'] as const;
+const VALID_ROLES = ['driver', 'lender'] as const;
 type Role = (typeof VALID_ROLES)[number];
 
 function validateName(v: unknown): string | null {
@@ -43,7 +43,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const adminSupabase = createAdminClient();
-  const updates: { name?: string; role?: 'driver' | 'lender' | 'both' } = {};
+  const updates: { name?: string; role?: 'driver' | 'lender' } = {};
   const metaUpdates: { name?: string; role?: string; onboarded?: boolean } = {};
   let roleForcedBoth = false;
 
@@ -63,7 +63,7 @@ export async function PATCH(request: NextRequest) {
     const newRole = b.role;
     if (typeof newRole !== 'string' || !VALID_ROLES.includes(newRole as Role)) {
       return NextResponse.json(
-        { error: 'Invalid role. Must be driver, lender, or both.' },
+        { error: 'Invalid role. Must be driver or lender.' },
         { status: 400 },
       );
     }
@@ -80,14 +80,11 @@ export async function PATCH(request: NextRequest) {
     const currentRole = (currentUser?.role ?? 'driver') as Role;
 
     // Role transition rules:
-    // Lender/Both → Driver: blocked if user has any non-deleted chargers (force Both instead).
+    // Lender → Driver: blocked if user has any non-deleted chargers (stay lender instead).
     // All other transitions are always allowed.
     let resolvedRole = requestedRole;
 
-    if (
-      requestedRole === 'driver' &&
-      (currentRole === 'lender' || currentRole === 'both')
-    ) {
+    if (requestedRole === 'driver' && currentRole === 'lender') {
       const { count } = await adminSupabase
         .from('chargers')
         .select('id', { count: 'exact', head: true })
@@ -96,8 +93,8 @@ export async function PATCH(request: NextRequest) {
         .in('status', ['draft', 'active', 'paused']);
 
       if ((count ?? 0) > 0) {
-        // Cannot fully switch to driver while chargers exist — force Both
-        resolvedRole = 'both';
+        // Cannot downgrade while chargers exist — keep lender
+        resolvedRole = 'lender';
         roleForcedBoth = true;
       }
     }

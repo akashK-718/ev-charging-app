@@ -11,7 +11,7 @@ export default async function ActivityPage() {
   if (!user) redirect('/auth');
 
   const role      = (user.user_metadata?.role as string | undefined) ?? '';
-  const isHosting = role === 'lender' || role === 'both';
+  const isHosting = role === 'lender';
 
   type ChargerFields = {
     title?: string;

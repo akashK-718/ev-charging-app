@@ -124,7 +124,7 @@ export async function middleware(request: NextRequest) {
   // ── 4. Admin-only routes ──────────────────────────────────────────────────────
   // The is_admin flag is synced to JWT metadata when admin access is granted (migration 012).
   if (pathname.startsWith('/admin') && !isAdmin) {
-    const dest = role === 'lender' || role === 'both' ? '/lender/chargers' : '/explore';
+    const dest = role === 'lender' ? '/lender/chargers' : '/explore';
     const url = new URL(dest, request.url);
     url.searchParams.set('error', 'admin_required');
     return NextResponse.redirect(url);
@@ -170,31 +170,11 @@ export async function middleware(request: NextRequest) {
 
   // ── 8. Role-based route guards ────────────────────────────────────────────────
   // Admins bypass all role checks — they can access any route.
-  if (!isAdmin) {
-    const canAccessLender = role === 'lender' || role === 'both';
-    const canAccessDriver = role === 'driver' || role === 'both';
-
-    const isLenderRoute = pathname.startsWith('/lender');
-    const isDriverRoute = pathname.startsWith('/bookings');
-
-    if (isLenderRoute || isDriverRoute) {
-      if (!role) {
-        console.warn(`[middleware] No role set — blocking ${pathname}, redirecting to /home`);
-        return NextResponse.redirect(new URL('/home', request.url));
-      }
-
-      if (isLenderRoute && !canAccessLender) {
-        const dest = canAccessDriver ? '/explore' : '/home';
-        console.warn(`[middleware] Role '${role}' blocked from lender route ${pathname} → ${dest}`);
-        return NextResponse.redirect(new URL(dest, request.url));
-      }
-
-      if (isDriverRoute && !canAccessDriver) {
-        const dest = canAccessLender ? '/lender/chargers' : '/home';
-        console.warn(`[middleware] Role '${role}' blocked from driver route ${pathname} → ${dest}`);
-        return NextResponse.redirect(new URL(dest, request.url));
-      }
-    }
+  // Driver routes (/bookings/*) are NEVER role-gated — charging is universal for every account.
+  // Only hosting-specific routes (/lender/*) require role === 'lender'.
+  if (!isAdmin && pathname.startsWith('/lender') && role !== 'lender') {
+    console.warn(`[middleware] Role '${role}' blocked from lender route ${pathname} → /explore`);
+    return NextResponse.redirect(new URL('/explore', request.url));
   }
 
   return supabaseResponse;

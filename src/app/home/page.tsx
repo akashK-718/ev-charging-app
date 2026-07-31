@@ -291,7 +291,7 @@ export default async function HomePage() {
   // Capability model: every account can charge; hosting is the only optional capability.
   const role      = (user.user_metadata?.role as string | undefined) ?? '';
   const name      = (user.user_metadata?.name as string | undefined) ?? '';
-  const isHosting = role === 'lender' || role === 'both';
+  const isHosting = role === 'lender';
   const firstName = name.split(' ')[0] || 'there';
 
   const [d, flags] = await Promise.all([
