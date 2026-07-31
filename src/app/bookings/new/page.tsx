@@ -1,11 +1,13 @@
 'use client';
 
 import { Suspense, useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { haptic } from '@/lib/haptics';
 import { Calendar, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 declare global {
   interface Window {
@@ -77,6 +79,7 @@ function NewBookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const chargerId = searchParams.get('charger');
+  const { user: currentUser, loading: authLoading } = useAuth();
 
   const [charger, setCharger] = useState<Charger | null>(null);
   const [loadingCharger, setLoadingCharger] = useState(true);
@@ -295,7 +298,7 @@ function NewBookingContent() {
     }
   }
 
-  if (loadingCharger) {
+  if (loadingCharger || authLoading) {
     return <div className="text-center py-12 text-muted">Loading…</div>;
   }
 
@@ -305,6 +308,25 @@ function NewBookingContent() {
         <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {loadError ?? 'Charger not found'}
         </div>
+      </main>
+    );
+  }
+
+  // Per-charger ownership check: hosts must not book their own charger.
+  // The explore/[id] detail page already shows "Edit listing" instead of
+  // "Book now" for owners, so this guard catches direct URL access only.
+  if (currentUser && currentUser.id === charger.lender_id) {
+    return (
+      <main className="px-6 py-10 space-y-4">
+        <div className="px-4 py-3 bg-amber-50 rounded-xl text-sm text-amber-800 font-semibold">
+          This is your charger — you can&apos;t book your own listing.
+        </div>
+        <Link href={`/lender/chargers/${charger.id}/edit`} className="block">
+          <Button variant="secondary" className="w-full">Edit listing</Button>
+        </Link>
+        <Link href="/explore" className="block">
+          <Button variant="primary" className="w-full">Find another charger</Button>
+        </Link>
       </main>
     );
   }
