@@ -365,7 +365,7 @@ function LenderChargersContent() {
   const displayed = sortChargers(filtered, sort);
 
   return (
-    <main className="min-h-screen px-4 sm:px-6 py-8 space-y-4">
+    <main className="min-h-screen px-4 sm:px-6 py-8 space-y-4 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-8">
 
       {/* Header */}
       <div className="flex items-center justify-between">

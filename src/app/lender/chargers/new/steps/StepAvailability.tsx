@@ -139,48 +139,45 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
             <div
               key={day.day_of_week}
               className={cn(
-                'flex items-center gap-3 p-3 rounded-xl border-2 transition-colors',
+                'p-3 rounded-xl border-2 transition-colors',
                 day.enabled ? 'border-volt bg-volt-soft' : 'border-gray-100 bg-white',
               )}
             >
-              {/* Toggle */}
-              <button
-                type="button"
-                aria-label={`${day.enabled ? 'Disable' : 'Enable'} ${day.label}`}
-                onClick={() => toggleDay(day.day_of_week)}
-                className={cn(
-                  'shrink-0 w-10 h-6 rounded-full relative transition-colors',
-                  day.enabled ? 'bg-volt' : 'bg-gray-200',
-                )}
-              >
-                <span
+              {/* Row 1: toggle + day label */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  aria-label={`${day.enabled ? 'Disable' : 'Enable'} ${day.label}`}
+                  onClick={() => toggleDay(day.day_of_week)}
                   className={cn(
-                    'absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                    day.enabled ? 'translate-x-5' : 'translate-x-1',
+                    'shrink-0 w-10 h-6 rounded-full relative transition-colors',
+                    day.enabled ? 'bg-volt' : 'bg-gray-200',
                   )}
-                />
-              </button>
+                >
+                  <span
+                    className={cn(
+                      'absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                      day.enabled ? 'translate-x-5' : 'translate-x-1',
+                    )}
+                  />
+                </button>
+                <span className={cn(
+                  'text-sm font-semibold',
+                  day.enabled ? 'text-ink' : 'text-muted',
+                )}>
+                  {day.label}
+                </span>
+              </div>
 
-              {/* Day label */}
-              <span className={cn(
-                'ml-3 min-w-[40px] text-xs font-bold shrink-0',
-                day.enabled ? 'text-ink' : 'text-muted',
-              )}>
-                {day.shortLabel}
-              </span>
-
-              {/* Spacer */}
-              <div className="flex-1" />
-
-              {/* Time inputs */}
-              <div className="flex items-center gap-1.5 shrink-0">
+              {/* Row 2: time inputs — indented to align under the day label */}
+              <div className="mt-2.5 flex items-center gap-2 pl-[52px]">
                 <input
                   type="time"
                   value={day.start_time}
                   disabled={!day.enabled}
                   onChange={e => setTime(day.day_of_week, 'start_time', e.target.value)}
                   className={cn(
-                    'shrink-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
+                    'flex-1 min-w-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
                     'bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-volt',
                     !day.enabled && 'opacity-40',
                     endError && 'border-red-400',
@@ -193,7 +190,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
                   disabled={!day.enabled}
                   onChange={e => setTime(day.day_of_week, 'end_time', e.target.value)}
                   className={cn(
-                    'shrink-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
+                    'flex-1 min-w-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
                     'bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-volt',
                     !day.enabled && 'opacity-40',
                     endError && 'border-red-400',
