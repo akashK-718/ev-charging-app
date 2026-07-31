@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  if (!profile || !['lender', 'both'].includes(profile.role)) {
+  if (!profile || profile.role !== 'lender') {
     return NextResponse.json({ error: 'Only lenders can view payouts' }, { status: 403 });
   }
 

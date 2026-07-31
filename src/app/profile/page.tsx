@@ -94,7 +94,7 @@ export default async function ProfilePage({
   if (!profile) redirect('/auth');
 
   // Derive hosting state from role + hosting_paused + published charger count
-  const isHostingEnabled = profile.role === 'lender' || profile.role === 'both';
+  const isHostingEnabled = profile.role === 'lender';
   const hostingState: HostingState = (() => {
     if (!isHostingEnabled) return 'not_enabled';
     if (chargerStats.published === 0) {

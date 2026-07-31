@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/chargers
  *
- * Auth required. User must have role 'lender' or 'both'.
+ * Auth required. User must have role 'lender'.
  * Inserts charger + availability slots atomically via the
  * create_charger_with_slots Postgres function (migration 004).
  */
@@ -265,7 +265,7 @@ async function postHandler(request: NextRequest) {
     .single();
   const profile = profileRaw as { role: string; kyc_status: string } | null;
 
-  if (!profile || !['lender', 'both'].includes(profile.role)) {
+  if (!profile || profile.role !== 'lender') {
     return NextResponse.json(
       { error: 'Only lenders can list chargers' },
       { status: 403 },

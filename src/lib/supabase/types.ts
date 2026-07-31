@@ -28,7 +28,7 @@ export type Database = {
           id: string;
           phone: string;
           name: string | null;
-          role: 'driver' | 'lender' | 'both' | 'admin';
+          role: 'driver' | 'lender' | 'admin';
           kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           kyc_doc_url: string | null;
           avg_rating: number | null;
@@ -46,7 +46,7 @@ export type Database = {
           id?: string;
           phone: string;
           name?: string | null;
-          role?: 'driver' | 'lender' | 'both' | 'admin';
+          role?: 'driver' | 'lender' | 'admin';
           kyc_status?: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           kyc_doc_url?: string | null;
           is_admin?: boolean;

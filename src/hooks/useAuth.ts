@@ -8,13 +8,13 @@ export interface AuthUser {
   id: string;
   phone: string | null;
   name: string | null;
-  role: 'driver' | 'lender' | 'both';
+  role: 'driver' | 'lender';
   is_admin: boolean;
   onboarded: boolean;
 }
 
 async function resolveAuthUser(rawUser: User): Promise<AuthUser> {
-  const role = rawUser.user_metadata?.role as AuthUser['role'] | undefined;
+  const role = rawUser.user_metadata?.role as 'driver' | 'lender' | undefined;
   const name = (rawUser.user_metadata?.name as string | undefined) ?? null;
   const onboarded = (rawUser.user_metadata?.onboarded as boolean | undefined) ?? (name !== null);
 

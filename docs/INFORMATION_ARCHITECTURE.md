@@ -2,9 +2,15 @@
 
 This is the locked navigation and screen structure for the app. Every screen-level build should reference this doc, along with `/design` (visual tokens) and `DESIGN_EV.md` (styling and copy guardrails).
 
+## Capability Model
+
+**Charging is universal.** Every account can always book and use a charger regardless of hosting status. **Hosting is the only optional capability**, turned on from inside the app — not chosen at signup.
+
+**`role` is exactly two values: `driver` and `lender`.** There is no `both` value and none should ever be introduced — `lender` already implies full driver capability. Internally the DB stores a role enum (`driver` / `lender`) for routing and feature-gating convenience; the user never sees it. Any code gating driver-route access by role is a bug: only hosting-specific routes (`/lender/*` and lender API endpoints) should ever check `role === 'lender'`. The `canAccessDriver` pattern must never exist.
+
 ## Bottom Navigation
 
-Four tabs, role-agnostic. The nav structure never changes based on whether a user is a driver, a lender, or both. What changes is the *content* inside each tab, never the tabs themselves.
+Four tabs, role-agnostic. The nav structure never changes based on whether a user is a driver or a lender. What changes is the *content* inside each tab, never the tabs themselves.
 
 1. Home
 2. Explore

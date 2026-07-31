@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  if (!profile || !['lender', 'both'].includes(profile.role as string)) {
+  if (!profile || profile.role !== 'lender') {
     return NextResponse.json({ error: 'Only lenders can submit KYC' }, { status: 403 });
   }
 

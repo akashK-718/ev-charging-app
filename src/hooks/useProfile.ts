@@ -8,7 +8,7 @@ export interface UserProfile {
   id: string;
   phone: string | null;
   name: string | null;
-  role: 'driver' | 'lender' | 'both' | 'admin';
+  role: 'driver' | 'lender' | 'admin';
   kyc_status: KycStatus;
 }
 

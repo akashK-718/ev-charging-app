@@ -19,15 +19,16 @@ export async function POST() {
   const currentRole = (profile?.role ?? 'driver') as string;
 
   // Already hosting-enabled — idempotent
-  if (currentRole === 'lender' || currentRole === 'both') {
+  if (currentRole === 'lender') {
     return NextResponse.json({ ok: true });
   }
 
-  // Enable hosting: driver → both (retains booking capability alongside hosting).
-  // Setting 'lender' here would block the user from /bookings/* routes in middleware.
+  // Enable hosting: driver → lender. lender already implies full driver capability
+  // (charging is universal); there is no 'both' value — it was a workaround for an
+  // incorrect middleware guard that has since been removed.
   const { error: updateError } = await admin
     .from('users')
-    .update({ role: 'both' })
+    .update({ role: 'lender' })
     .eq('id', user.id);
 
   if (updateError) {
@@ -36,7 +37,7 @@ export async function POST() {
 
   // Keep JWT metadata in sync so useAuth fast-path reflects the change
   await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { role: 'both' },
+    user_metadata: { role: 'lender' },
   });
 
   return NextResponse.json({ ok: true });
