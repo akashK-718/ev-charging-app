@@ -150,7 +150,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
                   aria-label={`${day.enabled ? 'Disable' : 'Enable'} ${day.label}`}
                   onClick={() => toggleDay(day.day_of_week)}
                   className={cn(
-                    'shrink-0 w-10 h-6 rounded-full relative transition-colors',
+                    'shrink-0 w-10 h-6 rounded-full relative overflow-hidden transition-colors',
                     day.enabled ? 'bg-volt' : 'bg-gray-200',
                   )}
                 >
@@ -162,7 +162,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
                   />
                 </button>
                 <span className={cn(
-                  'text-sm font-semibold',
+                  'flex-1 min-w-0 text-sm font-semibold',
                   day.enabled ? 'text-ink' : 'text-muted',
                 )}>
                   {day.label}
