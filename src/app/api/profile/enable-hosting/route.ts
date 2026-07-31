@@ -23,10 +23,11 @@ export async function POST() {
     return NextResponse.json({ ok: true });
   }
 
-  // Enable hosting: driver → lender
+  // Enable hosting: driver → both (retains booking capability alongside hosting).
+  // Setting 'lender' here would block the user from /bookings/* routes in middleware.
   const { error: updateError } = await admin
     .from('users')
-    .update({ role: 'lender' })
+    .update({ role: 'both' })
     .eq('id', user.id);
 
   if (updateError) {
@@ -35,7 +36,7 @@ export async function POST() {
 
   // Keep JWT metadata in sync so useAuth fast-path reflects the change
   await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { role: 'lender' },
+    user_metadata: { role: 'both' },
   });
 
   return NextResponse.json({ ok: true });
