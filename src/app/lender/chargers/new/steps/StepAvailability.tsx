@@ -52,18 +52,113 @@ function toDraftSlots(days: DayState[]): AvailabilityDay[] {
 }
 
 function isValid(days: DayState[]): boolean {
-  const enabledDays = days.filter(d => d.enabled);
-  if (enabledDays.length === 0) return false;
-  return enabledDays.every(d => d.start_time < d.end_time);
+  const enabled = days.filter(d => d.enabled);
+  if (enabled.length === 0) return false;
+  return enabled.every(d => d.start_time < d.end_time);
 }
+
+// ─── DayRow ──────────────────────────────────────────────────────────────────
+
+interface DayRowProps {
+  day: DayState;
+  onToggle: () => void;
+  onTimeChange: (field: 'start_time' | 'end_time', value: string) => void;
+}
+
+function DayRow({ day, onToggle, onTimeChange }: DayRowProps) {
+  const timeError = day.enabled && day.start_time >= day.end_time;
+
+  return (
+    <div
+      className={cn(
+        // border-2 on both states to prevent 1px layout-shift when toggling
+        'p-3 rounded-xl border-2 transition-colors duration-150',
+        day.enabled
+          ? 'border-green bg-green-soft'
+          : 'border-gray-200 bg-white',
+      )}
+    >
+      {/* Row 1 — toggle + day label */}
+      <div className="flex items-center gap-3">
+        {/*
+          Toggle track. No overflow-hidden so the thumb's shadow renders fully.
+          The thumb is anchored with left-0 so translate values are predictable
+          across all browsers (without left-0, "auto" positioning is ambiguous).
+        */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={day.enabled}
+          aria-label={`${day.enabled ? 'Disable' : 'Enable'} ${day.label}`}
+          onClick={onToggle}
+          className={cn(
+            'relative shrink-0 w-10 h-6 rounded-full transition-colors duration-200',
+            day.enabled ? 'bg-green' : 'bg-gray-300',
+          )}
+        >
+          {/* Thumb: left-0 + translate for crisp left/right knob position */}
+          <span
+            className={cn(
+              'pointer-events-none absolute top-1 left-0 w-4 h-4 rounded-full bg-white shadow-md',
+              'transition-transform duration-200',
+              day.enabled ? 'translate-x-5' : 'translate-x-1',
+            )}
+          />
+        </button>
+
+        <span
+          className={cn(
+            'flex-1 text-sm font-semibold select-none',
+            day.enabled ? 'text-ink' : 'text-muted',
+          )}
+        >
+          {day.label}
+        </span>
+      </div>
+
+      {/*
+        Row 2 — time inputs.
+        pl-[52px] = 40px toggle + 12px gap, aligning inputs under the day label.
+        Always rendered (not conditionally) so the row height is stable on toggle.
+      */}
+      <div className="mt-2.5 flex items-center gap-2 pl-[52px]">
+        <input
+          type="time"
+          value={day.start_time}
+          disabled={!day.enabled}
+          onChange={e => onTimeChange('start_time', e.target.value)}
+          className={cn(
+            'flex-1 min-w-0 px-2 py-1.5 rounded-lg text-xs font-semibold bg-white border',
+            'focus:outline-none focus:ring-2 focus:ring-green',
+            timeError ? 'border-red-400' : 'border-gray-200',
+            !day.enabled && 'opacity-40',
+          )}
+        />
+        <span className="shrink-0 text-xs text-muted">–</span>
+        <input
+          type="time"
+          value={day.end_time}
+          disabled={!day.enabled}
+          onChange={e => onTimeChange('end_time', e.target.value)}
+          className={cn(
+            'flex-1 min-w-0 px-2 py-1.5 rounded-lg text-xs font-semibold bg-white border',
+            'focus:outline-none focus:ring-2 focus:ring-green',
+            timeError ? 'border-red-400' : 'border-gray-200',
+            !day.enabled && 'opacity-40',
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── StepAvailability ────────────────────────────────────────────────────────
 
 export function StepAvailability({ draft, onChange, onValidChange }: StepAvailabilityProps) {
   const [days, setDays] = useState<DayState[]>(() => buildDays(draft.availability));
 
-  // In edit mode the parent fetches charger data asynchronously. If draft.availability
-  // arrives after this component mounts (e.g. before the loading gate fires), the
-  // useState initializer will have run with undefined and all days stay disabled.
-  // This effect syncs the local days state once the saved slots land in draft.
+  // Edit mode: draft.availability arrives async after mount. Sync once it lands
+  // if all days are still at their initial disabled state.
   useEffect(() => {
     if (draft.availability?.length && !days.some(d => d.enabled)) {
       setDays(buildDays(draft.availability));
@@ -84,13 +179,13 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
 
   function toggleDay(dayOfWeek: number) {
     updateDays(days.map(d =>
-      d.day_of_week === dayOfWeek ? { ...d, enabled: !d.enabled } : d
+      d.day_of_week === dayOfWeek ? { ...d, enabled: !d.enabled } : d,
     ));
   }
 
   function setTime(dayOfWeek: number, field: 'start_time' | 'end_time', value: string) {
     updateDays(days.map(d =>
-      d.day_of_week === dayOfWeek ? { ...d, [field]: value } : d
+      d.day_of_week === dayOfWeek ? { ...d, [field]: value } : d,
     ));
   }
 
@@ -113,18 +208,18 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
         When is your charger available for bookings?
       </p>
 
-      {/* Quick-set buttons */}
+      {/* Quick-set presets */}
       <div className="mt-6 flex flex-wrap gap-2">
         {[
           { label: 'Weekdays only', action: applyWeekdays },
           { label: 'Weekends only', action: applyWeekends },
-          { label: '24/7 always', action: apply247 },
+          { label: '24/7 always',   action: apply247 },
         ].map(({ label, action }) => (
           <button
             key={label}
             type="button"
             onClick={action}
-            className="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-semibold text-ink hover:bg-volt-soft transition-colors"
+            className="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-semibold text-ink hover:bg-green-soft transition-colors"
           >
             {label}
           </button>
@@ -133,76 +228,17 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
 
       {/* Day rows */}
       <div className="mt-5 flex flex-col gap-2">
-        {days.map(day => {
-          const endError = day.enabled && day.start_time >= day.end_time;
-          return (
-            <div
-              key={day.day_of_week}
-              className={cn(
-                'p-3 rounded-xl border-2 transition-colors',
-                day.enabled ? 'border-volt bg-volt-soft' : 'border-gray-100 bg-white',
-              )}
-            >
-              {/* Row 1: toggle + day label */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  aria-label={`${day.enabled ? 'Disable' : 'Enable'} ${day.label}`}
-                  onClick={() => toggleDay(day.day_of_week)}
-                  className={cn(
-                    'shrink-0 w-10 h-6 rounded-full relative overflow-hidden transition-colors',
-                    day.enabled ? 'bg-volt' : 'bg-gray-200',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                      day.enabled ? 'translate-x-5' : 'translate-x-1',
-                    )}
-                  />
-                </button>
-                <span className={cn(
-                  'flex-1 min-w-0 text-sm font-semibold',
-                  day.enabled ? 'text-ink' : 'text-muted',
-                )}>
-                  {day.label}
-                </span>
-              </div>
-
-              {/* Row 2: time inputs — indented to align under the day label */}
-              <div className="mt-2.5 flex items-center gap-2 pl-[52px]">
-                <input
-                  type="time"
-                  value={day.start_time}
-                  disabled={!day.enabled}
-                  onChange={e => setTime(day.day_of_week, 'start_time', e.target.value)}
-                  className={cn(
-                    'flex-1 min-w-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
-                    'bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-volt',
-                    !day.enabled && 'opacity-40',
-                    endError && 'border-red-400',
-                  )}
-                />
-                <span className="text-muted text-xs shrink-0">–</span>
-                <input
-                  type="time"
-                  value={day.end_time}
-                  disabled={!day.enabled}
-                  onChange={e => setTime(day.day_of_week, 'end_time', e.target.value)}
-                  className={cn(
-                    'flex-1 min-w-0 px-2 py-1.5 rounded-xl text-xs font-semibold',
-                    'bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-volt',
-                    !day.enabled && 'opacity-40',
-                    endError && 'border-red-400',
-                  )}
-                />
-              </div>
-            </div>
-          );
-        })}
+        {days.map(day => (
+          <DayRow
+            key={day.day_of_week}
+            day={day}
+            onToggle={() => toggleDay(day.day_of_week)}
+            onTimeChange={(field, value) => setTime(day.day_of_week, field, value)}
+          />
+        ))}
       </div>
 
-      {/* Validation hint */}
+      {/* Validation hints */}
       {days.filter(d => d.enabled).length === 0 && (
         <p className="mt-3 text-xs text-red-500 font-semibold">
           Enable at least one day.
