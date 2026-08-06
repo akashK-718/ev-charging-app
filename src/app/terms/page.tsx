@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { BackButton } from '@/components/ui/BackButton';
 
 export const metadata: Metadata = {
   title: 'Terms and Privacy — Kirin',
@@ -9,13 +8,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8 pb-24">
-      <Link
-        href="/profile"
-        className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink transition-colors mb-6"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Back
-      </Link>
+      <BackButton href="/profile" className="mb-3" />
 
       <h1 className="text-2xl font-semibold text-ink mb-2">Terms and Privacy</h1>
       <p className="text-sm text-muted mb-8">Last updated: July 2026</p>

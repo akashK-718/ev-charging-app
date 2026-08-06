@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, MapPin, Star } from 'lucide-react';
+import { ContainedBackButton } from '@/components/ui/BackButton';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
@@ -77,7 +78,7 @@ export default async function ChargerDetailPage({
       {isOwner && <OwnerPreviewBanner />}
 
       {/* Mobile hero — edge-to-edge */}
-      <div className="md:hidden">
+      <div className="md:hidden relative">
         <ImageCarousel
           photos={charger.photos ?? []}
           alt={charger.title}
@@ -85,6 +86,7 @@ export default async function ChargerDetailPage({
           useIntersectionObserver={false}
           className="w-full h-[220px]"
         />
+        <ContainedBackButton href="/explore" className="absolute top-4 left-4 z-10" />
       </div>
 
       {/* Desktop breadcrumb */}

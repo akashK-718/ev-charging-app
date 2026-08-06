@@ -4,9 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ChevronLeft, ChevronRight, Edit3, Pause, Play, MoreVertical,
+  ChevronRight, Edit3, Pause, Play, MoreVertical,
   Trash2, Copy, Eye, Zap, MapPin, Star,
 } from 'lucide-react';
+import { ContainedBackButton } from '@/components/ui/BackButton';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import { cn } from '@/lib/utils';
 
@@ -296,13 +297,10 @@ export default function LenderChargerDetailPage() {
             autoRotate
             useIntersectionObserver={false}
           />
-          <button
-            type="button"
+          <ContainedBackButton
             onClick={() => router.back()}
-            className="absolute top-4 left-4 z-10 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
-          >
-            <ChevronLeft className="w-5 h-5 text-ink" />
-          </button>
+            className="absolute top-4 left-4 z-10"
+          />
         </div>
 
         <div className="px-6 py-5 space-y-6">

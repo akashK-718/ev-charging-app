@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ChevronLeft, CalendarCheck, BatteryCharging,
+  CalendarCheck, BatteryCharging,
   Home, ShieldCheck, Wallet, Megaphone, Tag, Lock,
 } from 'lucide-react';
+import { BackButton } from '@/components/ui/BackButton';
 import { cn } from '@/lib/utils';
 
 type Prefs = {
@@ -139,14 +140,7 @@ export function NotificationsBody({ initialPrefs }: { initialPrefs: Prefs }) {
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-6 pb-5">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Go back"
-          className="size-9 grid place-items-center rounded-full bg-white border border-border shadow-sm active:scale-95 transition shrink-0"
-        >
-          <ChevronLeft className="size-5 text-ink" />
-        </button>
+        <BackButton onClick={() => router.back()} />
         <div>
           <h1 className="text-xl font-bold text-ink">Notifications</h1>
           <p className="text-xs text-muted mt-0.5">Choose what you want to be notified about</p>

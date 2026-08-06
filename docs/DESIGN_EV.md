@@ -150,6 +150,39 @@ pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10
 
 ---
 
+## Navigation and dismissal controls
+
+Choose the control based on background predictability and interaction type, not the screen name.
+
+### Bucket 1 — Predictable solid/light background
+
+Use `<BackButton>` from `src/components/ui/BackButton.tsx`.
+
+- 44dp transparent tap target, plain `ChevronLeft`, `opacity-shift` on press
+- No background, no border, no shadow, no scale animation, no haptic
+- Applies to: Notifications, Reviews, Host Reviews, About Kirin, Help, Terms, Hosting Learn, and any other screen with a consistent header background
+
+### Bucket 2 — Variable/unpredictable background
+
+Use `<ContainedBackButton>` from `src/components/ui/BackButton.tsx`.
+
+- 40dp visible circle, `bg-white/90 backdrop-blur-sm shadow-sm`, opacity-shift on press
+- Guarantees legibility regardless of what photo, map tile, or gradient sits behind it
+- Applies to: charger detail (over photo carousel), map editor (over map tiles), explore charger detail (mobile hero)
+
+### Bucket 3 — Full-screen modal or bottom sheet
+
+Use `X` (close icon) or "Done" text, not a back arrow. Dismissing an overlay is not the same interaction as navigating back in history.
+
+- `X` for cancel-style dismiss (filter sheet, delete confirmation, leave confirmation)
+- "Done" for confirm-style dismiss where applicable
+- The shared `<Sheet>` component in `src/components/ui/Sheet.tsx` handles this automatically when `title` is provided
+- Never render a `<BackButton>` or `<ContainedBackButton>` inside a sheet or modal
+
+**Rule for new screens:** apply the correct bucket automatically based on what's behind the nav control. There is no list to consult — the rule is structural, not a registry.
+
+---
+
 ## Related files
 
 - `src/app/globals.css` — keyframe definitions (`pageIn`, `stepIn`, `shake-error`, `check-pop`)

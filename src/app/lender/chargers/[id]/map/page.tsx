@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ContainedBackButton } from '@/components/ui/BackButton';
 import { cn } from '@/lib/utils';
 
 const MapView = dynamic(
@@ -93,21 +92,17 @@ export default function LenderChargerMapPage() {
       {/* Top overlay — back button + title */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center gap-3 px-4 pt-4 pb-6 bg-gradient-to-b from-black/40 to-transparent pointer-events-none">
         {readonly ? (
-          <button
+          <ContainedBackButton
             onClick={() => router.back()}
-            className="pointer-events-auto w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
+            className="pointer-events-auto"
             aria-label="Back"
-          >
-            <ChevronLeft className="w-5 h-5 text-ink" />
-          </button>
+          />
         ) : (
-          <Link
+          <ContainedBackButton
             href={`/lender/chargers/${params.id}`}
-            className="pointer-events-auto w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow"
+            className="pointer-events-auto"
             aria-label="Back to charger detail"
-          >
-            <ChevronLeft className="w-5 h-5 text-ink" />
-          </Link>
+          />
         )}
         <h1 className="text-white text-sm font-bold drop-shadow truncate">{charger.title}</h1>
       </div>

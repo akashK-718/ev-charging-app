@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Check, Shield, IndianRupee,
+  Check, Shield, IndianRupee,
   Zap, MapPin, Calendar, Camera, Tag,
 } from 'lucide-react';
+import { BackButton } from '@/components/ui/BackButton';
 import { createClient } from '@/lib/supabase/server';
 import { StartHostingButton } from './StartHostingButton';
 
@@ -40,13 +41,7 @@ export default async function HostingLearnPage() {
       <main className="min-h-screen px-6 pt-10 pb-[calc(11rem+env(safe-area-inset-bottom))] space-y-8 lg:pb-10">
 
         {/* Back */}
-        <Link
-          href="/home"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted tap-light -ml-1"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          Home
-        </Link>
+        <BackButton href="/home" className="-ml-1.5" />
 
         {/* Header */}
         <div>

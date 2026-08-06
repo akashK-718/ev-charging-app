@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Star, Zap, User } from 'lucide-react';
+import { Star, Zap, User } from 'lucide-react';
+import { BackButton } from '@/components/ui/BackButton';
 import { cn } from '@/lib/utils';
 
 export type WrittenCard = {
@@ -79,13 +80,7 @@ export function ReviewsBody({ written }: { written: WrittenCard[] }) {
     <div>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-12 pb-6">
-        <button
-          onClick={() => router.back()}
-          className="size-9 rounded-xl bg-surface-page grid place-items-center hover:bg-green-soft transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="w-4 h-4 text-ink" />
-        </button>
+        <BackButton onClick={() => router.back()} />
         <h1 className="text-xl font-bold text-ink">Reviews</h1>
       </div>
 

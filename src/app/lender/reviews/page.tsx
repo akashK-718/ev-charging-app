@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
+import { BackButton } from '@/components/ui/BackButton';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 
@@ -83,13 +84,7 @@ export default async function HostReviewsPage() {
     <main className="max-w-lg mx-auto px-4 pt-12 pb-16">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <Link
-          href="/lender/dashboard"
-          className="size-9 rounded-xl bg-surface-page grid place-items-center hover:bg-green-soft transition-colors"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft className="w-4 h-4 text-ink" />
-        </Link>
+        <BackButton href="/lender/dashboard" aria-label="Back to dashboard" />
         <h1 className="text-xl font-bold text-ink">Host Reviews</h1>
       </div>
 
