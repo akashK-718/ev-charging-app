@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import { BackButton } from '@/components/ui/BackButton';
 
 const APP_VERSION = '0.1.0';
 
@@ -7,13 +8,7 @@ export default function AboutKirinPage() {
   return (
     <main className="max-w-lg mx-auto px-4 pt-12 pb-16">
       <div className="flex items-center gap-3 mb-8">
-        <Link
-          href="/profile"
-          className="size-9 rounded-xl bg-surface-page grid place-items-center hover:bg-green-soft transition-colors"
-          aria-label="Back to profile"
-        >
-          <ArrowLeft className="w-4 h-4 text-ink" />
-        </Link>
+        <BackButton href="/profile" aria-label="Back to profile" />
         <h1 className="text-xl font-bold text-ink">About Kirin</h1>
       </div>
 

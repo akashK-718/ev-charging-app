@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+import { BackButton } from '@/components/ui/BackButton';
 
 interface FaqItem {
   q: string;
@@ -81,13 +82,7 @@ export default function HelpPage() {
       <div className="max-w-2xl mx-auto px-4 pt-6 pb-8">
 
         {/* Back nav */}
-        <Link
-          href="/profile"
-          className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink transition-colors mb-6"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Profile
-        </Link>
+        <BackButton href="/profile" className="mb-3" />
 
         <h1 className="text-2xl font-bold text-ink mb-1">Help and support</h1>
         <p className="text-sm text-muted mb-8">
