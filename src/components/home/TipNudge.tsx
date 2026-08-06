@@ -48,42 +48,59 @@ export function TipNudge({ userId, eligibleTips }: Props) {
     purgeLegacyKey(STORAGE_BASE);
     const key = userKey(STORAGE_BASE, userId);
 
-    let stored: StoredTip | null = null;
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) stored = JSON.parse(raw) as StoredTip;
-    } catch {}
+    // evaluate() runs the selection logic and returns the number of ms until
+    // the current window expires (so the caller can schedule the next check).
+    // This is extracted so it can be re-called by the timer without remounting.
+    function evaluate(): number {
+      let stored: StoredTip | null = null;
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw) stored = JSON.parse(raw) as StoredTip;
+      } catch {}
 
-    const now = Date.now();
+      const now = Date.now();
 
-    // Check whether the stored tip is still eligible and within the 6-hour window.
-    if (stored) {
-      const storedTip = eligibleTips.find(t => t.id === stored!.id);
-      if (storedTip && now - stored.firstShown < WINDOW_MS) {
-        // Still valid — keep showing it without touching storage.
-        setActiveTip(storedTip);
-        return;
+      // Check whether the stored tip is still eligible and within the 6-hour window.
+      if (stored) {
+        const storedTip = eligibleTips.find(t => t.id === stored!.id);
+        if (storedTip && now - stored.firstShown < WINDOW_MS) {
+          // Still valid — keep showing it without touching storage.
+          setActiveTip(storedTip);
+          return WINDOW_MS - (now - stored.firstShown);
+        }
       }
+
+      // The window elapsed, the tip became ineligible, or there was nothing stored.
+      // Pick the next tip, excluding the just-shown one when the pool has > 1 option.
+      const excludeId = stored?.id;
+      const candidates =
+        eligibleTips.length > 1 && excludeId
+          ? eligibleTips.filter(t => t.id !== excludeId)
+          : eligibleTips;
+
+      // Deterministic selection: rotate by 6-hour window index so the same tip
+      // is always shown for a given window, not a new random one on each page load.
+      const windowIdx = Math.floor(now / WINDOW_MS);
+      const next = candidates[windowIdx % candidates.length];
+
+      try {
+        localStorage.setItem(key, JSON.stringify({ id: next.id, firstShown: now } satisfies StoredTip));
+      } catch {}
+
+      setActiveTip(next);
+      return WINDOW_MS;
     }
 
-    // The window elapsed, the tip became ineligible, or there was nothing stored.
-    // Pick the next tip, excluding the just-shown one when the pool has > 1 option.
-    const excludeId = stored?.id;
-    const candidates =
-      eligibleTips.length > 1 && excludeId
-        ? eligibleTips.filter(t => t.id !== excludeId)
-        : eligibleTips;
-
-    // Deterministic selection: rotate by 6-hour window index so the same tip
-    // is always shown for a given window, not a new random one on each page load.
-    const windowIdx = Math.floor(now / WINDOW_MS);
-    const next = candidates[windowIdx % candidates.length];
-
-    try {
-      localStorage.setItem(key, JSON.stringify({ id: next.id, firstShown: now } satisfies StoredTip));
-    } catch {}
-
-    setActiveTip(next);
+    // Run immediately, then re-schedule at each window boundary so the tip
+    // rotates even when the component stays mounted (PWA background, router
+    // cache keeping the React tree alive across soft-navigations).
+    let timer: ReturnType<typeof setTimeout>;
+    function scheduleNext() {
+      const msUntilExpiry = evaluate();
+      timer = setTimeout(scheduleNext, msUntilExpiry);
+    }
+    scheduleNext();
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, tipPoolKey]);
 
