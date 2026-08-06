@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Plus, ListChecks, BookOpen, IndianRupee, AlertCircle, Clock, Zap, FileText, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Plus, ListChecks, BookOpen, IndianRupee, AlertCircle, Clock, Zap, FileText, ChevronRight, Star } from 'lucide-react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 
@@ -78,7 +78,20 @@ async function getOverviewData(userId: string) {
     charger_title: chargerMap.get(b.charger_id) ?? null,
   }));
 
-  return { liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings };
+  // Lender ratings (review_type='lender', reviewee_id=userId)
+  const { data: ratingRows } = await adminSupabase
+    .from('reviews')
+    .select('rating')
+    .eq('reviewee_id', userId)
+    .eq('review_type', 'lender');
+
+  const ratings = (ratingRows ?? []) as Array<{ rating: number }>;
+  const reviewCount = ratings.length;
+  const hostAvgRating = reviewCount > 0
+    ? ratings.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+    : null;
+
+  return { liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings, reviewCount, hostAvgRating };
 }
 
 export default async function HostingOverviewPage() {
@@ -86,7 +99,7 @@ export default async function HostingOverviewPage() {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect('/auth');
 
-  const { liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings } =
+  const { liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings, reviewCount, hostAvgRating } =
     await getOverviewData(user.id);
 
   const hasAttention = pendingCount > 0 || pausedCount > 0;
@@ -224,6 +237,43 @@ export default async function HostingOverviewPage() {
             <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
           </Link>
         </div>
+      </section>
+
+      {/* ── Host rating summary ──────────────────────────────────────────────── */}
+      <section className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Your rating</p>
+        <Link
+          href="/lender/reviews"
+          className="tap-light flex items-center gap-4 bg-white rounded-2xl border border-border p-4 hover:bg-surface-page transition-colors"
+        >
+          {hostAvgRating !== null ? (
+            <>
+              <div className="size-10 rounded-xl bg-green-soft grid place-items-center shrink-0">
+                <Star className="size-5 fill-[#10d96a] text-[#10d96a]" aria-hidden />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xl font-bold text-ink leading-none">{hostAvgRating.toFixed(1)}</p>
+                <p className="text-xs text-muted mt-0.5">
+                  {reviewCount} {reviewCount === 1 ? 'review' : 'reviews'} as host
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="size-10 rounded-xl bg-surface-page grid place-items-center shrink-0">
+                <Star className="size-5 text-muted" aria-hidden />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-ink">No reviews yet</p>
+                <p className="text-xs text-muted">Ratings appear after drivers complete sessions</p>
+              </div>
+            </>
+          )}
+          <div className="flex items-center gap-1 text-xs font-semibold text-green shrink-0">
+            View all
+            <ChevronRight className="size-3.5" aria-hidden />
+          </div>
+        </Link>
       </section>
 
       {recentBookings.length > 0 && (

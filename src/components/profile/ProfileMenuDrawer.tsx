@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MoreVertical, LogOut, Shield, FileText } from 'lucide-react';
+import { MoreVertical, LogOut, Shield, FileText, Info, Smartphone } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { createClient } from '@/lib/supabase/client';
 import { clearExploreSession } from '@/lib/user-storage';
+import { readPwaDismissal, clearPwaDismissal } from '@/lib/pwa';
 import { cn } from '@/lib/utils';
 
 interface ProfileMenuDrawerProps {
@@ -14,6 +15,12 @@ interface ProfileMenuDrawerProps {
 
 export function ProfileMenuDrawer({ isAdmin }: ProfileMenuDrawerProps) {
   const [open, setOpen] = useState(false);
+  const [isPermanentlyDismissed, setIsPermanentlyDismissed] = useState(false);
+  const [installResetDone, setInstallResetDone] = useState(false);
+
+  useEffect(() => {
+    setIsPermanentlyDismissed(readPwaDismissal()?.mode === 'never');
+  }, []);
 
   async function handleSignOut() {
     clearExploreSession();
@@ -22,8 +29,15 @@ export function ProfileMenuDrawer({ isAdmin }: ProfileMenuDrawerProps) {
     window.location.href = '/';
   }
 
+  function handleInstallReset() {
+    clearPwaDismissal();
+    setInstallResetDone(true);
+  }
+
   const itemClass =
     'flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-ink-soft hover:text-ink hover:bg-surface-page transition-colors w-full text-left';
+
+  const showInstallReset = isPermanentlyDismissed && !installResetDone;
 
   return (
     <>
@@ -43,6 +57,21 @@ export function ProfileMenuDrawer({ isAdmin }: ProfileMenuDrawerProps) {
               <Shield className="w-4 h-4 text-muted shrink-0" />
               Admin panel
             </Link>
+          )}
+
+          <Link href="/profile/about" onClick={() => setOpen(false)} className={itemClass}>
+            <Info className="w-4 h-4 text-muted shrink-0" />
+            About Kirin
+          </Link>
+
+          {showInstallReset && (
+            <button
+              onClick={() => { handleInstallReset(); setOpen(false); }}
+              className={itemClass}
+            >
+              <Smartphone className="w-4 h-4 text-muted shrink-0" />
+              Restore install prompt
+            </button>
           )}
 
           <Link href="/terms" onClick={() => setOpen(false)} className={itemClass}>
