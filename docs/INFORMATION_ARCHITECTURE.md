@@ -231,12 +231,19 @@ Both the featured card and every compact row render the role-specific component.
 
 Answers: "What belongs to me?" Nothing here changes minute to minute. Pure identity and configuration, never operational workflows.
 
-- **Account** — avatar, name, phone, role
-- **Verification** — not started / pending / approved / rejected
-- **Vehicles**
-- **Payment Methods**
-- **Preferences** — notification preferences (`/profile/notifications`), theme (future), language (future), permissions
-- **Hosting** — hosting enabled toggle, live chargers count, "Open Hosting Workspace →" link (a pointer into the workspace, not the operational tools themselves). The Host Dashboard card and any other entry point into the Hosting Workspace **must always navigate to Hosting Workspace → Overview (`/lender/dashboard`), never directly to Chargers, Bookings, or any other sub-section**. My Chargers is one branch of hosting and does not fulfil what the Host Dashboard card promises.
+**Authorship rule**: Content a user has authored (e.g. reviews they wrote) belongs on Profile. Reputation others have assigned them as a host (received reviews, star ratings) belongs on Hosting Workspace / Host Dashboard as a performance metric, alongside earnings and bookings.
+
+Profile is organised into labeled subsections, in this order:
+
+1. **Hosting** — hosting promo card / setup card / Host Dashboard card + Pause/Resume listing row (shown only when hosting is enabled; see hosting states below)
+2. **Identity Verification** — not started / pending / approved / rejected (shown only when hosting is started)
+3. **Account** — Name (editable inline), Phone (read-only with contact support link), My vehicle (coming soon), Payment methods (coming soon)
+4. **Preferences** — Notifications (`/profile/notifications`)
+5. **Your Activity** — Reviews (`/profile/reviews`) — written reviews only; see authorship rule above
+6. **Support** — Help & support
+7. **Danger Zone** — Stop Hosting row (shown only when `hostingState === 'active'`)
+
+**Hosting** — the Host Dashboard card and any other entry point into the Hosting Workspace **must always navigate to Hosting Workspace → Overview (`/lender/dashboard`), never directly to Chargers, Bookings, or any other sub-section**. My Chargers is one branch of hosting and does not fulfil what the Host Dashboard card promises.
 
 ### Notification Preferences (`/profile/notifications`)
 
@@ -255,19 +262,23 @@ Push notification opt-out by category. This is **preferences only** — it contr
 
 Preferences are stored server-side in `notification_preferences` (one row per user, lazily created on first toggle). Every `sendPushNotification` call passes a `category` and checks the user's stored preference before sending — toggling a category off immediately suppresses that category's pushes across all devices.
 
-### My Reviews (`/profile/reviews`)
+### Reviews (`/profile/reviews`)
 
-Archive of reviews the user has written, plus a Received section for lenders.
+Archive of reviews the user has **written** — no received reviews appear here (see authorship rule above).
 
-**Written** (all users): one card per completed booking showing:
-- Driver users: Charger rating + Host rating (both submitted together) and optional review text
-- Lender users: Driver rating
+One card per completed booking:
+- Driver users: Charger rating + Host rating (submitted together) and optional review text
+- Lender users: Driver rating per booking
 
-**Received** (lenders only): reviews of type `lender` where `reviewee_id = current user`, showing the driver's name, charger, date, and star rating. Fetched server-side via admin client (RLS only allows selecting own-written reviews).
+Tapping a card links to the booking detail (`/bookings/{id}`).
 
-Tapping any card links to the booking detail (`/bookings/{id}` for drivers, the same for received since lenders share the booking).
+### About Kirin (`/profile/about`)
 
-**Overflow menu** (⋮ icon, top-right, Profile screen only, Instagram-style, not global): Help, Terms, Admin (conditional on `is_admin`), Sign Out. Contact us is not a separate item, it lives inside the Help page itself.
+Static app information screen: app version and build, contact link (→ /help), terms of service (→ /terms), privacy policy (placeholder until /privacy is built), copyright line. Release notes are future scope — the item is visible but disabled. No auth required.
+
+Accessible via the three-dot overflow menu on Profile.
+
+**Overflow menu** (⋮ icon, top-right, Profile screen only, not global): About Kirin, Restore install prompt (conditional — shown only if the PWA install prompt was permanently dismissed), Terms and privacy, Sign out. Admin panel appears above About Kirin only for admin accounts. Contact us is not a separate overflow item — it lives inside Help & support and About Kirin.
 
 Sign out always redirects to `/` (the public landing page), never to an authenticated route.
 
@@ -289,7 +300,8 @@ A standalone pre-decision educational screen. It does not fit the Hosting Worksp
 
 A unified surface for all lender operations. Reached via "Open Hosting Workspace →" from Home's Hosting Preview or Profile's Hosting section. Explicitly not a bottom nav tab, this avoids giving pure drivers a dead tab and keeps the main nav role-agnostic.
 
-- **Overview** — weekly earnings, active chargers, draft chargers, recent bookings, quick actions
+- **Overview** — today's earnings, upcoming bookings, live chargers, draft chargers, quick actions, recent activity, and a **host rating summary** (average star rating from driver reviews, total review count, "View all →" link to Host Reviews). The rating summary is always present for lenders — shows empty state if no reviews yet.
+- **Host Reviews** (`/lender/reviews`) — overall star average, star-distribution breakdown (5★ through 1★ with proportional bars), and a chronological list of reviews received from drivers. Each row links to the corresponding booking detail. Non-lenders who visit this route are redirected to `/profile`.
 - **Chargers** — all / live / paused / draft / suspended, plus charger detail
 - **Bookings** — active / past / cancelled, plus detail
 

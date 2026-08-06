@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Pencil, ShieldCheck, ShieldX, Clock, ShieldAlert,
   Camera, ImageIcon, ShieldQuestion, Trash2,
-  Smartphone, Home, Car, CreditCard,
+  Home, Car, CreditCard,
   ChevronRight, Bell, LayoutDashboard, TrendingUp,
   PauseCircle, Star, HelpCircle, LogOut,
 } from 'lucide-react';
@@ -16,7 +16,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Sheet } from '@/components/ui/Sheet';
 import { uploadImage } from '@/lib/cloudinary';
 import { ImageCropper } from '@/components/ui/ImageCropper';
-import { clearPwaDismissal } from '@/lib/pwa';
 import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -48,7 +47,6 @@ interface ProfileBodyProps {
   showSubmittedBanner: boolean;
   initialAvatarUrl: string | null;
   lifetimeEarningsPaise: number;
-  avgRating: number | null;
 }
 
 function formatDate(iso: string) {
@@ -130,7 +128,6 @@ export function ProfileBody({
   showSubmittedBanner,
   initialAvatarUrl,
   lifetimeEarningsPaise,
-  avgRating,
 }: ProfileBodyProps) {
   const router = useRouter();
 
@@ -152,9 +149,6 @@ export function ProfileBody({
 
   // ── Display name (reactive header) ───────────────────────────────────────────
   const [displayName, setDisplayName] = useState<string | null>(initialName);
-
-  // ── Preferences state ─────────────────────────────────────────────────────────
-  const [installResetDone, setInstallResetDone] = useState(false);
 
   const hostingStarted = hostingState !== 'not_enabled';
 
@@ -615,8 +609,6 @@ export function ProfileBody({
         <div className="px-4 mt-6">
           <SectionLabel>Account</SectionLabel>
           <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
-
-            {/* Name editor as first row */}
             <div className="px-4 py-3.5">
               <NameEditor
                 initialName={initialName}
@@ -624,12 +616,9 @@ export function ProfileBody({
                 onNameChange={setDisplayName}
               />
             </div>
-
-            {/* Phone (read-only) */}
             <div className="px-4 py-3.5">
               <p className="text-xs text-muted mb-0.5">Phone</p>
               <p className="text-sm font-semibold text-ink">{maskPhone(phone)}</p>
-              {/* TODO: Implement phone change flow in future PR */}
               <p className="text-xs text-muted mt-0.5">
                 To change your phone number,{' '}
                 <Link href="/help" className="text-green font-medium underline underline-offset-2 hover:text-green-deep transition-colors">
@@ -637,58 +626,60 @@ export function ProfileBody({
                 </Link>
               </p>
             </div>
-
-            <ProfileRow
-              icon={<CreditCard className="size-4" />}
-              label="Payment methods"
-              value="Coming soon"
-            />
             <ProfileRow
               icon={<Car className="size-4" />}
               label="My vehicle"
               value="Coming soon"
             />
             <ProfileRow
+              icon={<CreditCard className="size-4" />}
+              label="Payment methods"
+              value="Coming soon"
+            />
+          </div>
+        </div>
+
+        {/* ── Preferences ─────────────────────────────────────────────────────── */}
+        <div className="px-4 mt-6">
+          <SectionLabel>Preferences</SectionLabel>
+          <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
+            <ProfileRow
               icon={<Bell className="size-4" />}
               label="Notifications"
               href="/profile/notifications"
             />
+          </div>
+        </div>
+
+        {/* ── Your Activity ────────────────────────────────────────────────────── */}
+        <div className="px-4 mt-6">
+          <SectionLabel>Your Activity</SectionLabel>
+          <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
             <ProfileRow
               icon={<Star className="size-4" />}
-              label="My reviews"
+              label="Reviews"
               href="/profile/reviews"
             />
+          </div>
+        </div>
+
+        {/* ── Support ─────────────────────────────────────────────────────────── */}
+        <div className="px-4 mt-6">
+          <SectionLabel>Support</SectionLabel>
+          <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
             <ProfileRow
               icon={<HelpCircle className="size-4" />}
               label="Help & support"
               href="/help"
             />
+          </div>
+        </div>
 
-            {/* App install prompt */}
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-2xl bg-surface-page grid place-items-center shrink-0 text-muted">
-                  <Smartphone className="size-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink">App install prompt</p>
-                  <p className="text-xs text-muted">
-                    {installResetDone ? 'Will appear on next Home visit' : 'Restore if dismissed'}
-                  </p>
-                </div>
-              </div>
-              {!installResetDone && (
-                <button
-                  type="button"
-                  onClick={() => { clearPwaDismissal(); setInstallResetDone(true); }}
-                  className="shrink-0 text-xs font-semibold text-copper hover:underline underline-offset-2 transition-colors"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-
-            {hostingState === 'active' && (
+        {/* ── Danger Zone (hosting-active accounts only) ───────────────────────── */}
+        {hostingState === 'active' && (
+          <div className="px-4 mt-6">
+            <SectionLabel>Danger Zone</SectionLabel>
+            <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
               <ProfileRow
                 icon={<LogOut className="size-4" />}
                 label="Stop hosting"
@@ -696,9 +687,9 @@ export function ProfileBody({
                 onClick={() => setPauseSheetOpen(true)}
                 danger
               />
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Footer tagline ───────────────────────────────────────────────────── */}
         <p className="text-center text-[10px] text-muted mt-6 leading-relaxed px-8">

@@ -11,7 +11,7 @@ async function getProfileData(userId: string) {
   const [userResult, submissionResult, chargersResult, lenderBookingsResult] = await Promise.all([
     adminSupabase
       .from('users')
-      .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused, hosting_setup_deferred, avg_rating')
+      .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused, hosting_setup_deferred')
       .eq('id', userId)
       .single(),
 
@@ -62,7 +62,7 @@ async function getProfileData(userId: string) {
       id: string; name: string | null; phone: string;
       role: string; kyc_status: string; created_at: string;
       avatar_url: string | null; hosting_paused: boolean;
-      hosting_setup_deferred: boolean; avg_rating: number | null;
+      hosting_setup_deferred: boolean;
     } | null,
     userError: userResult.error,
     submission: submissionResult.data as {
@@ -129,7 +129,6 @@ export default async function ProfilePage({
           showSubmittedBanner={searchParams.verified === 'submitted'}
           initialAvatarUrl={profile.avatar_url}
           lifetimeEarningsPaise={lifetimeEarningsPaise}
-          avgRating={profile.avg_rating}
         />
       </main>
       <PullToRefresh />
