@@ -117,40 +117,42 @@ export default async function HostingOverviewPage() {
 
       <section className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Today</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl border border-border p-4">
-            <div className="size-9 rounded-xl bg-green-soft grid place-items-center mb-3">
-              <IndianRupee className="size-4 text-green" aria-hidden />
+        {/* Three equal-width cards in one row. max-w-sm prevents excessive stretch on wide viewports. */}
+        <div className="grid grid-cols-3 gap-2 max-w-sm">
+          <div className="bg-white rounded-2xl border border-border p-3 flex flex-col items-center text-center">
+            <div className="size-8 rounded-xl bg-green-soft grid place-items-center mb-2">
+              <IndianRupee className="size-3.5 text-green" aria-hidden />
             </div>
-            <p className="font-display font-bold text-xl text-ink">{'₹'}{(todayEarnings / 100).toFixed(0)}</p>
-            <p className="text-xs text-muted mt-0.5">Earned today</p>
+            <p className="font-display font-bold text-base text-ink leading-tight">{'₹'}{(todayEarnings / 100).toFixed(0)}</p>
+            <p className="text-[10px] text-muted mt-0.5 leading-tight">Earned today</p>
           </div>
-          <div className="bg-white rounded-2xl border border-border p-4">
-            <div className="size-9 rounded-xl bg-blue-50 grid place-items-center mb-3">
-              <Clock className="size-4 text-blue-600" aria-hidden />
+          <div className="bg-white rounded-2xl border border-border p-3 flex flex-col items-center text-center">
+            <div className="size-8 rounded-xl bg-blue-50 grid place-items-center mb-2">
+              <Clock className="size-3.5 text-blue-600" aria-hidden />
             </div>
-            <p className="font-display font-bold text-xl text-ink">
-              {upcomingCount}
-            </p>
-            <p className="text-xs text-muted mt-0.5">Upcoming {upcomingCount === 1 ? 'booking' : 'bookings'}</p>
+            <p className="font-display font-bold text-base text-ink leading-tight">{upcomingCount}</p>
+            <p className="text-[10px] text-muted mt-0.5 leading-tight">Upcoming {upcomingCount === 1 ? 'booking' : 'bookings'}</p>
           </div>
-          <div className="bg-white rounded-2xl border border-border p-4">
-            <div className="size-9 rounded-xl bg-green-soft grid place-items-center mb-3">
-              <Zap className="size-4 text-green" aria-hidden />
+          <div className="bg-white rounded-2xl border border-border p-3 flex flex-col items-center text-center">
+            <div className="size-8 rounded-xl bg-green-soft grid place-items-center mb-2">
+              <Zap className="size-3.5 text-green" aria-hidden />
             </div>
-            <p className="font-display font-bold text-xl text-ink">{liveCount}</p>
-            <p className="text-xs text-muted mt-0.5">Live chargers</p>
+            <p className="font-display font-bold text-base text-ink leading-tight">{liveCount}</p>
+            <p className="text-[10px] text-muted mt-0.5 leading-tight">Live chargers</p>
           </div>
-          {draftCount > 0 && (
-            <div className="bg-white rounded-2xl border border-border p-4">
-              <div className="size-9 rounded-xl bg-gray-100 grid place-items-center mb-3">
-                <FileText className="size-4 text-muted" aria-hidden />
-              </div>
-              <p className="font-display font-bold text-xl text-ink">{draftCount}</p>
-              <p className="text-xs text-muted mt-0.5">Drafts</p>
-            </div>
-          )}
         </div>
+        {/* Drafts shown below the three-card row when present — not a "today" metric */}
+        {draftCount > 0 && (
+          <div className="bg-white rounded-2xl border border-border px-4 py-3 flex items-center gap-3 max-w-sm">
+            <div className="size-8 rounded-xl bg-gray-100 grid place-items-center shrink-0">
+              <FileText className="size-3.5 text-muted" aria-hidden />
+            </div>
+            <div>
+              <p className="font-display font-bold text-base text-ink leading-tight">{draftCount}</p>
+              <p className="text-[10px] text-muted leading-tight">{draftCount === 1 ? 'Draft' : 'Drafts'}</p>
+            </div>
+          </div>
+        )}
       </section>
 
       {hasAttention && (
