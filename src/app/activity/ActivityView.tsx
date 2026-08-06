@@ -716,6 +716,7 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
   const amountText  = driverAmountDisplay(item);
   const kind        = historyItemKind(item);
   const cfg         = KIND_ICON[kind];
+  const showRate     = item.status === 'completed' && !item.hasRated;
   const showBookAgain = item.status === 'completed';
   const isTerminal  = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
 
@@ -752,7 +753,15 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
             {statusLabel}
           </span>
         )}
-        {showBookAgain ? (
+        {showRate ? (
+          <Link
+            href={detailHref}
+            className="flex items-center gap-1 px-2.5 min-h-[44px] rounded-lg bg-green text-white text-[11px] font-semibold whitespace-nowrap transition-colors hover:bg-green-deep"
+          >
+            <Star className="w-3 h-3 shrink-0 fill-white" aria-hidden />
+            Rate
+          </Link>
+        ) : showBookAgain ? (
           <Link
             href={`/explore/${item.chargerId}`}
             className="flex items-center gap-1 px-2.5 min-h-[44px] rounded-lg border border-green/25 bg-green-soft text-green text-[11px] font-semibold whitespace-nowrap transition-colors hover:bg-green-soft/80"

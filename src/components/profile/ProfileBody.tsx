@@ -656,7 +656,7 @@ export function ProfileBody({
             <ProfileRow
               icon={<Star className="size-4" />}
               label="My reviews"
-              value={avgRating != null ? `${avgRating.toFixed(1)} as a guest` : 'No reviews yet'}
+              href="/profile/reviews"
             />
             <ProfileRow
               icon={<HelpCircle className="size-4" />}
