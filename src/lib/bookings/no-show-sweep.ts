@@ -39,6 +39,7 @@ export async function runNoShowWarningSweep(adminSupabase: AdminClient): Promise
         title: "Driver hasn't arrived",
         body: `Auto-cancel in ${minutesLeft} minutes.`,
         url: `/lender/bookings/${booking.id}`,
+        category: 'hosting_activity',
         actions: [
           { action: 'keep_waiting', title: 'Keep Waiting' },
           { action: 'mark_no_show', title: 'Mark No-show' },
@@ -75,6 +76,7 @@ export async function runNoShowWarningSweep(adminSupabase: AdminClient): Promise
         title: "Extension ending soon",
         body: `Auto-cancel in ${NOSHOW_EXTENSION_WARN_BEFORE_MINUTES} minutes — no further extensions.`,
         url: `/lender/bookings/${booking.id}`,
+        category: 'hosting_activity',
         tag: `noshow-ext-warning-${booking.id}`,
       });
     }
@@ -151,12 +153,14 @@ export async function runNoShowTimeoutSweep(adminSupabase: AdminClient): Promise
         title: 'Booking closed',
         body: "Your booking was marked as a no-show — you didn't confirm the session start in time.",
         url: `/bookings/${booking.id}`,
+        category: 'booking_updates',
       }),
       sendPushNotification({
         userId: booking.lender_id,
         title: "Driver didn't arrive",
         body: 'The booking has been closed. The slot is now available again.',
         url: `/lender/bookings/${booking.id}`,
+        category: 'hosting_activity',
       }),
     ]);
   }

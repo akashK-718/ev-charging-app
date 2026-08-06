@@ -235,8 +235,25 @@ Answers: "What belongs to me?" Nothing here changes minute to minute. Pure ident
 - **Verification** — not started / pending / approved / rejected
 - **Vehicles**
 - **Payment Methods**
-- **Preferences** — notifications toggle, theme (future), language (future), permissions
+- **Preferences** — notification preferences (`/profile/notifications`), theme (future), language (future), permissions
 - **Hosting** — hosting enabled toggle, live chargers count, "Open Hosting Workspace →" link (a pointer into the workspace, not the operational tools themselves). The Host Dashboard card and any other entry point into the Hosting Workspace **must always navigate to Hosting Workspace → Overview (`/lender/dashboard`), never directly to Chargers, Bookings, or any other sub-section**. My Chargers is one branch of hosting and does not fulfil what the Host Dashboard card promises.
+
+### Notification Preferences (`/profile/notifications`)
+
+Push notification opt-out by category. This is **preferences only** — it controls which FCM pushes are delivered. It is not a notification inbox; that lives in Activity → Updates.
+
+| Category | Default | Notes |
+|---|---|---|
+| Booking updates | On | Confirmations, rejections, cancellations, session completions (driver-side) |
+| Charging reminders | On | Session start/end confirmation prompts (driver-side) |
+| Hosting activity | On | New requests, session events, no-show warnings (lender-side) |
+| KYC updates | On | Verification approved/rejected/resubmission required |
+| Payments & payouts | On | Payout processed notifications |
+| Security alerts | Always on | Non-toggleable — required for account security |
+| Product announcements | On | New features and platform updates |
+| Promotions & offers | Off | Discounts and limited-time offers — defaults off per product convention |
+
+Preferences are stored server-side in `notification_preferences` (one row per user, lazily created on first toggle). Every `sendPushNotification` call passes a `category` and checks the user's stored preference before sending — toggling a category off immediately suppresses that category's pushes across all devices.
 
 **Overflow menu** (⋮ icon, top-right, Profile screen only, Instagram-style, not global): Help, Terms, Admin (conditional on `is_admin`), Sign Out. Contact us is not a separate item, it lives inside the Help page itself.
 

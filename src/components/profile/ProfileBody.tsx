@@ -651,7 +651,7 @@ export function ProfileBody({
             <ProfileRow
               icon={<Bell className="size-4" />}
               label="Notifications"
-              value="Coming soon"
+              href="/profile/notifications"
             />
             <ProfileRow
               icon={<Star className="size-4" />}

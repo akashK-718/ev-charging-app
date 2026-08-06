@@ -100,6 +100,7 @@ export async function POST(
         title: 'Booking cancelled by host',
         body: `Your booking at ${chargerName} was cancelled. Full refund issued.`,
         url: `/bookings/${params.id}`,
+        category: 'booking_updates',
       });
     })();
 
@@ -167,6 +168,7 @@ export async function POST(
     title: 'Booking cancelled',
     body: `${driverName} cancelled their booking for ${when}`,
     url: `/lender/bookings/${params.id}`,
+    category: 'hosting_activity',
   });
 
   return NextResponse.json({ ok: true, refunded: refundAmount > 0 });

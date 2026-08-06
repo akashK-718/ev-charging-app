@@ -84,6 +84,7 @@ export async function POST(
       title: 'Booking closed',
       body: 'Your booking was marked as a no-show by the host.',
       url: `/bookings/${params.id}`,
+      category: 'booking_updates',
     });
 
     return NextResponse.json({ ok: true, status: 'no_show' });

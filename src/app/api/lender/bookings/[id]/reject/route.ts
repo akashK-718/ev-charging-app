@@ -80,6 +80,7 @@ export async function POST(
       title: 'Booking not accepted',
       body: `${chargerName} couldn't accept your booking. Try another charger.`,
       url: `/bookings/${params.id}`,
+      category: 'booking_updates',
     });
   })();
 

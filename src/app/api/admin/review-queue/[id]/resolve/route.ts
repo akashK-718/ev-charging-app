@@ -129,12 +129,14 @@ export async function POST(
         title: 'Session complete',
         body: 'Your charging session has been marked as complete.',
         url: `/bookings/${bookingId}`,
+        category: 'booking_updates',
       }),
       sendPushNotification({
         userId: b.lender_id,
         title: 'Session complete',
         body: 'Session marked as complete — payout in 24h.',
         url: `/lender/bookings/${bookingId}`,
+        category: 'hosting_activity',
       }),
     ]);
   } else {

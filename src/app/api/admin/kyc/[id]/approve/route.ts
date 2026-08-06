@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { getAdminUser, logAdminAction } from '@/lib/admin';
 
 export async function POST(
@@ -75,6 +76,13 @@ export async function POST(
   await Promise.all([
     notify(sub.user_id, 'kyc_approved', { submission_id: params.id }),
     logAdminAction(adminUser.id, 'kyc_approved', sub.user_id, { submission_id: params.id }),
+    sendPushNotification({
+      userId: sub.user_id,
+      title: 'Identity verified',
+      body: 'Your verification was approved. You can now publish chargers and receive payouts.',
+      url: '/profile',
+      category: 'kyc_updates',
+    }),
   ]);
 
   return NextResponse.json({ ok: true });
