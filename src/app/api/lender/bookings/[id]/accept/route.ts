@@ -69,6 +69,7 @@ export async function POST(
       title: 'Booking confirmed!',
       body: `${chargerName} on ${when} is confirmed`,
       url: `/bookings/${params.id}`,
+      category: 'booking_updates',
     });
   })();
 

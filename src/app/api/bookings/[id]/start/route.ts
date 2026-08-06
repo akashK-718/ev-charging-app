@@ -82,6 +82,7 @@ export async function POST(
         title: 'Start your charging session',
         body: `${lenderName} is ready — confirm to start charging at ${chargerName}`,
         url: `/bookings/${params.id}`,
+        category: 'charging_reminders',
       });
     })();
     return NextResponse.json({ ok: true });
@@ -172,6 +173,7 @@ export async function POST(
     title: 'Session started',
     body: `${driverName} confirmed — session at ${chargerName} is now active`,
     url: `/lender/bookings/${params.id}`,
+    category: 'hosting_activity',
   });
   return NextResponse.json({ ok: true });
 }

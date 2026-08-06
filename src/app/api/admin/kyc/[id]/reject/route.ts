@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { getAdminUser, logAdminAction } from '@/lib/admin';
 
 export async function POST(
@@ -68,6 +69,13 @@ export async function POST(
     logAdminAction(adminUser.id, 'kyc_rejected', sub.user_id, {
       submission_id: params.id,
       reason: b.reason.trim(),
+    }),
+    sendPushNotification({
+      userId: sub.user_id,
+      title: 'Verification not approved',
+      body: 'Your verification was not approved. Open the app to see the reason and resubmit.',
+      url: '/profile',
+      category: 'kyc_updates',
     }),
   ]);
 

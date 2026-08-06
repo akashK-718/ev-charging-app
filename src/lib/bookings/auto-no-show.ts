@@ -50,12 +50,14 @@ export async function runAutoNoShowSweep(adminSupabase: AdminClient): Promise<vo
         title: 'Booking closed',
         body: "Your booking was closed because the session was never started.",
         url: `/bookings/${booking.id}`,
+        category: 'booking_updates',
       }),
       sendPushNotification({
         userId: booking.lender_id,
         title: 'Booking closed',
         body: "The booking was closed — the slot ended without a session starting.",
         url: `/lender/bookings/${booking.id}`,
+        category: 'hosting_activity',
       }),
     ]);
   }

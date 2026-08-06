@@ -70,6 +70,7 @@ export async function POST(
       title: 'Confirm session end',
       body: `${lenderName} wants to end the session — tap to confirm`,
       url: `/bookings/${params.id}`,
+      category: 'charging_reminders',
     });
 
     return NextResponse.json({ ok: true, status: 'awaiting_end_confirmation' });
@@ -125,12 +126,14 @@ export async function POST(
         title: 'Session complete',
         body: `Your session at ${chargerName} is complete`,
         url: `/bookings/${params.id}`,
+        category: 'booking_updates',
       }),
       sendPushNotification({
         userId: booking.lender_id,
         title: 'Session complete',
         body: `${driverName}'s session at ${chargerName} is complete — payout in 24h`,
         url: `/lender/bookings/${params.id}`,
+        category: 'hosting_activity',
       }),
     ]);
 

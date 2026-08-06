@@ -49,12 +49,14 @@ export async function runFlagForReviewSweep(adminSupabase: AdminClient): Promise
         title: 'Session under review',
         body: "Your charging session is being reviewed. We'll update you shortly.",
         url: `/bookings/${booking.id}`,
+        category: 'booking_updates',
       }),
       sendPushNotification({
         userId: booking.lender_id,
         title: 'Session awaiting review',
         body: 'The session end is pending manual review. We\'ll update you shortly.',
         url: `/lender/bookings/${booking.id}`,
+        category: 'hosting_activity',
       }),
     ]);
   }

@@ -142,6 +142,7 @@ export async function POST(request: NextRequest) {
       title: 'New booking request',
       body: `${driverName} wants to charge at ${chargerName}`,
       url: `/lender/bookings/${bookingId}`,
+      category: 'hosting_activity',
     });
   })();
 

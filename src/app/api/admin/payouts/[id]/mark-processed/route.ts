@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { notify } from '@/lib/notifications';
+import { sendPushNotification } from '@/lib/notifications/push';
 import { getAdminUser, logAdminAction } from '@/lib/admin';
 import { readKillSwitch } from '@/lib/app-settings';
 
@@ -59,6 +60,7 @@ export async function POST(
       .in('booking_id', p.booking_ids);
   }
 
+  const amountRupees = Math.round(p.amount_paise / 100).toLocaleString('en-IN');
   await Promise.all([
     notify(p.user_id, 'payout_processed', {
       payout_id: params.id,
@@ -68,6 +70,13 @@ export async function POST(
     logAdminAction(adminUser.id, 'payout_processed', p.user_id, {
       payout_id: params.id,
       amount_paise: p.amount_paise,
+    }),
+    sendPushNotification({
+      userId: p.user_id,
+      title: 'Payout sent',
+      body: `₹${amountRupees} is on its way to your bank account.`,
+      url: '/lender/payouts',
+      category: 'payments_payouts',
     }),
   ]);
 

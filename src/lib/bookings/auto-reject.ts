@@ -42,12 +42,14 @@ export async function runAutoRejectSweep(adminSupabase: AdminClient): Promise<vo
         title: 'Booking request expired',
         body: "Your booking request expired because the host didn't respond. Payment refund is on the way.",
         url: `/bookings/${booking.id}`,
+        category: 'booking_updates',
       }),
       sendPushNotification({
         userId: booking.lender_id,
         title: 'Booking request expired',
         body: 'Booking request expired after 30 minutes without a response.',
         url: `/lender/bookings/${booking.id}`,
+        category: 'hosting_activity',
       }),
     ]);
   }
