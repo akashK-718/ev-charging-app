@@ -237,7 +237,7 @@ Profile is organised into labeled subsections, in this order:
 
 1. **Hosting** — hosting promo card / setup card / Host Dashboard card + Pause/Resume listing row (shown only when hosting is enabled; see hosting states below)
 2. **Identity Verification** — not started / pending / approved / rejected (shown only when hosting is started)
-3. **Account** — Name (editable inline), Phone (read-only with contact support link), My vehicle (coming soon), Payment methods (coming soon)
+3. **Account** — Name (editable inline), Phone (read-only with contact support link), My vehicle (coming soon), Payment methods (`/profile/payment-methods`)
 4. **Preferences** — Notifications (`/profile/notifications`)
 5. **Your Activity** — Reviews (`/profile/reviews`) — written reviews only; see authorship rule above
 6. **Support** — Help & support
@@ -261,6 +261,25 @@ Push notification opt-out by category. This is **preferences only** — it contr
 | Promotions & offers | Off | Discounts and limited-time offers — defaults off per product convention |
 
 Preferences are stored server-side in `notification_preferences` (one row per user, lazily created on first toggle). Every `sendPushNotification` call passes a `category` and checks the user's stored preference before sending — toggling a category off immediately suppresses that category's pushes across all devices.
+
+### Payment Methods (`/profile/payment-methods`)
+
+A reflection layer over Razorpay's saved-methods data — not a custom payment vault. It is not the source of truth for payment data; Razorpay is.
+
+**What it shows:**
+- **UPI** — saved UPI VPAs, in order of recency
+- **Cards** — saved cards, showing masked card number, network, expiry, and issuer
+- **Receiving Payouts** (lenders only) — payout account (bank or UPI) collected during KYC onboarding, read from `kyc_submissions`; links to `/profile/verify` to manage
+
+**How methods are saved:** Razorpay Standard Checkout has no standalone "add method without payment" flow. Methods are associated with the user's Razorpay customer record during an actual checkout when the user taps "Save for later." The screen shows an informational callout explaining this.
+
+**Mark default:** Users can designate one method as their preferred default. The preference is stored on `users.default_payment_token_id` and respected at checkout time. Razorpay has no server-side default concept for tokens.
+
+**Remove:** Calls `DELETE /customers/{id}/tokens/{tokenId}` via the Razorpay API. Clears `default_payment_token_id` if the removed method was the default.
+
+**Razorpay customer lifecycle:** A Razorpay customer (`cust_…`) is created lazily on first visit to this screen and stored on `users.razorpay_customer_id`. `fail_existing: 0` is passed to `customers.create` so re-creation on the same phone number is idempotent.
+
+**Payout detail editing:** "Manage payout details" links to `/profile/verify`, the KYC wizard where Step 4 (StepBankUpi) collects bank account / UPI for payouts. Updating payout details requires a full KYC resubmission — there is no lightweight edit flow.
 
 ### Reviews (`/profile/reviews`)
 

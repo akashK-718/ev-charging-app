@@ -634,7 +634,7 @@ export function ProfileBody({
             <ProfileRow
               icon={<CreditCard className="size-4" />}
               label="Payment methods"
-              value="Coming soon"
+              href="/profile/payment-methods"
             />
           </div>
         </div>
