@@ -255,6 +255,18 @@ Push notification opt-out by category. This is **preferences only** — it contr
 
 Preferences are stored server-side in `notification_preferences` (one row per user, lazily created on first toggle). Every `sendPushNotification` call passes a `category` and checks the user's stored preference before sending — toggling a category off immediately suppresses that category's pushes across all devices.
 
+### My Reviews (`/profile/reviews`)
+
+Archive of reviews the user has written, plus a Received section for lenders.
+
+**Written** (all users): one card per completed booking showing:
+- Driver users: Charger rating + Host rating (both submitted together) and optional review text
+- Lender users: Driver rating
+
+**Received** (lenders only): reviews of type `lender` where `reviewee_id = current user`, showing the driver's name, charger, date, and star rating. Fetched server-side via admin client (RLS only allows selecting own-written reviews).
+
+Tapping any card links to the booking detail (`/bookings/{id}` for drivers, the same for received since lenders share the booking).
+
 **Overflow menu** (⋮ icon, top-right, Profile screen only, Instagram-style, not global): Help, Terms, Admin (conditional on `is_admin`), Sign Out. Contact us is not a separate item, it lives inside the Help page itself.
 
 Sign out always redirects to `/` (the public landing page), never to an authenticated route.
