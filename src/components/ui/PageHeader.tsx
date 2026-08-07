@@ -27,7 +27,7 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-center gap-3 px-4 pt-12 pb-6', className)}>
+    <div className={cn('flex items-center gap-3 px-4 pt-6 pb-6', className)}>
       <BackButton href={href} onClick={onClick} aria-label={ariaLabel} />
       <div className="min-w-0">
         <h1 className="text-xl font-bold text-ink leading-tight">{title}</h1>
