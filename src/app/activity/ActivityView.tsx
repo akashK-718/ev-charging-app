@@ -861,7 +861,7 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
       className="min-h-screen bg-surface-page"
       style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-2xl mx-auto px-4 pt-6">
+      <div className="max-w-2xl mx-auto px-4 pt-[var(--screen-top-inset)]">
 
         {/* Header */}
         <div className="mb-5">

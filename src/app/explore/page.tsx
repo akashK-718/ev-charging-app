@@ -863,11 +863,11 @@ export default function ExplorePage() {
     <div
       className={cn(
         'flex flex-col',
-        viewMode === 'map' ? 'h-[calc(100dvh-3.5rem)]' : 'min-h-[calc(100dvh-3.5rem)]',
+        viewMode === 'map' ? 'h-dvh lg:h-[calc(100dvh-3.5rem)]' : 'min-h-dvh lg:min-h-[calc(100dvh-3.5rem)]',
       )}
     >
       {/* ── Header: segmented mode toggle + filters ────────────────────── */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 bg-white shrink-0">
+      <div className="flex items-center gap-2 px-3 pb-2.5 pt-[calc(var(--screen-top-inset)+0.625rem)] border-b border-gray-100 bg-white shrink-0">
         {featureFlags.route_planning_enabled && (
           <ModeToggle value={searchMode} onChange={handleSearchModeChange} />
         )}

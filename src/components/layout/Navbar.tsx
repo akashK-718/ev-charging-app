@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
@@ -43,33 +42,19 @@ export function Navbar() {
 
   if (loading) {
     return (
-      <header className="h-14 border-b border-border bg-surface-card sticky top-0 z-40">
-        <div className="hidden lg:flex items-center h-full px-6 gap-4">
-          <Logo />
-          <div className="flex items-center gap-2 ml-2">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="w-20 h-6 rounded bg-surface-page animate-pulse" />
-            ))}
-          </div>
-        </div>
-        {/* Mobile: just logo */}
-        <div className="flex items-center justify-center h-full px-4 lg:hidden">
-          <Logo />
+      <header className="hidden lg:flex h-14 border-b border-border bg-surface-card sticky top-0 z-40 items-center px-6 gap-4">
+        <div className="flex items-center gap-2">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="w-20 h-6 rounded bg-surface-page animate-pulse" />
+          ))}
         </div>
       </header>
     );
   }
 
   return (
-    <header className="h-14 border-b border-border bg-surface-card sticky top-0 z-40">
-      {/* ── Mobile: logo centred, no hamburger (BottomNav handles navigation) ── */}
-      <div className="flex items-center justify-center h-full px-4 lg:hidden">
-        <Logo />
-      </div>
-
-      {/* ── Desktop: logo + 5 links + sign-out + avatar ─────────────────────── */}
-      <div className="hidden lg:flex items-center h-full px-6 gap-6">
-        <Logo />
+    <header className="hidden lg:flex h-14 border-b border-border bg-surface-card sticky top-0 z-40 items-center px-6 gap-6">
+      {/* ── Desktop only: nav links + avatar, no logo ── */}
 
         {user?.onboarded && (
           <nav className="flex items-center gap-0.5 h-full" aria-label="Main navigation">
@@ -125,15 +110,6 @@ export function Navbar() {
             </Link>
           </div>
         )}
-      </div>
     </header>
-  );
-}
-
-function Logo() {
-  return (
-    <Link href="/home" prefetch={false} className="flex items-center shrink-0" aria-label="Kirin home">
-      <img src="/brand/kirin-wordmark.svg" alt="Kirin" className="h-7 w-auto" />
-    </Link>
   );
 }

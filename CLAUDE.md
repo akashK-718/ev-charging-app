@@ -34,9 +34,13 @@ See `docs/ARCHITECTURE.md` for the full rationale and swap guide.
 
 **Mandatory shared components — using a one-off implementation of either is a bug:**
 
-- **New screen with a back-navigable header** → must use `<PageHeader>` from `src/components/ui/PageHeader.tsx`. Never roll a bespoke `BackButton + h1` layout.
+- **New back-navigable screen** → must use `<BackHeader>` from `src/components/ui/PageHeader.tsx`. Never roll a bespoke `BackButton + h1` layout. (`PageHeader` is a deprecated alias that still works — new screens use `BackHeader`.)
+- **New root-tab screen with eyebrow+title** → use `<TitleHeader>` from the same file.
+- **Top padding on any screen header** → always `pt-[var(--screen-top-inset)]`. Never hardcode `pt-6`, `pt-12`, or any fixed top value — it breaks notch clearance on mobile and adds spurious spacing on desktop.
 - **New screen with a primary action button** → must use `<PrimaryButton>` from `src/components/ui/PrimaryButton.tsx`. Never use `<Button variant="secondary">` for a primary CTA.
 - **New screen whose content scrolls near the bottom nav** → must use the canonical bottom-safe-padding class on `<main>`: `pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10`. Never hardcode `pb-10`, `pb-16`, or an inline `paddingBottom` style. This has buried CTAs on Booking, Hosting Introduction, Payout Details, and multiple profile screens before being caught.
+
+**No logo in in-app screens.** The Kirin wordmark appears only on the landing page (`/`) and auth screens. The Navbar (`hidden lg:flex`) renders on desktop only, with no logo — just nav links and avatar. Mobile in-app screens have no app bar at all. Never add a logo, wordmark, or brand image to any in-app screen header.
 
 ## Stack
 
