@@ -105,13 +105,14 @@ export function PaymentMethodsBody({
   defaultTokenId,
   isLender,
   payoutDisplay,
-  hasKyc,
+  kycStatus,
 }: {
   initialMethods: SavedMethod[];
   defaultTokenId: string | null;
   isLender: boolean;
   payoutDisplay: string | null;
-  hasKyc: boolean;
+  /** Actual account-level KYC status — used to route payout CTA correctly. */
+  kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected' | null;
 }) {
   const router = useRouter();
   const [methods, setMethods] = useState<SavedMethod[]>(initialMethods);
@@ -252,11 +253,17 @@ export function PaymentMethodsBody({
                   </div>
                 </div>
               )}
+              {/*
+               * Approved users go to /profile/payout-details — a lightweight
+               * form that only updates bank/UPI without re-collecting identity
+               * documents. All other statuses go to the full KYC wizard since
+               * documents are not yet on file (or were rejected and need re-upload).
+               */}
               <Link
-                href="/profile/verify"
+                href={kycStatus === 'approved' ? '/profile/payout-details' : '/profile/verify'}
                 className="mt-3 flex items-center justify-center w-full min-h-[44px] rounded-xl border border-border text-sm font-semibold text-ink hover:bg-surface-page transition-colors"
               >
-                {hasKyc ? 'Manage payout details' : 'Set up payout account'}
+                {kycStatus === 'approved' ? 'Manage payout details' : 'Set up payout account'}
               </Link>
             </div>
           </section>
