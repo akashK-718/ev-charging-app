@@ -15,7 +15,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT: Record<Variant, string> = {
-  primary:   'bg-green text-white enabled:hover:bg-green-deep enabled:active:bg-green-deep/90 enabled:active:scale-[0.96]',
+  primary:   'bg-green text-white shadow-[0_4px_20px_-4px_rgba(28,107,71,0.35)] enabled:hover:bg-green-deep enabled:active:bg-green-deep/90 enabled:active:scale-[0.96]',
   secondary: 'bg-surface-page text-ink border border-border enabled:hover:bg-border enabled:active:bg-border/70 enabled:active:scale-[0.98]',
   ghost:     'bg-transparent text-ink enabled:hover:bg-surface-page enabled:active:bg-border enabled:active:scale-[0.98]',
   danger:    'bg-danger-soft text-danger enabled:hover:bg-danger-soft/80 enabled:active:bg-danger-soft/60 enabled:active:scale-[0.96]',

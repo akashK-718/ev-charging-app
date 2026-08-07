@@ -431,6 +431,22 @@ export default function DesignPage() {
             </div>
           </div>
           <p className="palette-note">Haptic: primary/danger → medium (25ms). secondary/ghost → light (10ms). Loading disables the button and shows a Loader2 spinner. Use <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{'size="sm"'}</code> for secondary actions; md is the default.</p>
+          <div style={{ marginTop: 20, padding: '14px 16px', background: 'var(--surface-page)', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
+              Rule — use <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>PrimaryButton</code> for every primary CTA
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 8 }}>
+              Import from <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>src/components/ui/PrimaryButton.tsx</code>.
+              It enforces <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>variant=&quot;primary&quot;</code> and inherits the green glow shadow automatically — no one-off className overrides needed.
+              A screen that rolls its own primary button styling is a bug: this recurred in the charger wizard, booking, KYC, session-controls, and rating flows before the consolidation PR (#226).
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+              <strong style={{ color: 'var(--ink)' }}>Correct usage:</strong>{' '}
+              <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{'<PrimaryButton size="lg" className="w-full" disabled={!valid}>Continue</PrimaryButton>'}</code>
+              <br />
+              <strong style={{ color: 'var(--ink)' }}>Stays secondary:</strong> Cancel, Back, Edit listing, ghost navigation buttons — anything that is not the primary forward action.
+            </p>
+          </div>
         </section>
 
         {/* ── Navigation controls ──────────────────────────────────────────── */}

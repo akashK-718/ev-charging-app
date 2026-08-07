@@ -234,7 +234,7 @@ export default function EditChargerPage() {
         <Button
           variant="primary"
           size="lg"
-          className="flex-1 shadow-[0_4px_20px_-4px_rgba(28,107,71,0.35)]"
+          className="flex-1"
           disabled={!stepValid || isSubmitting}
           onClick={isLastStep ? () => { void handleSubmit(); } : () => goToStep(step + 1)}
         >

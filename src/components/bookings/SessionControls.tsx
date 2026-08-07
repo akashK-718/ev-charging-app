@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Zap, Square, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { haptic } from '@/lib/haptics';
 import { SESSION_GRACE_MINUTES, SESSION_END_AUTO_COMPLETE_MINUTES } from '@/lib/constants';
@@ -154,16 +155,15 @@ export function SessionControls({
             <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
           )}
           {canStart ? (
-            <Button
-              variant="secondary"
+            <PrimaryButton
               size="lg"
               disabled={loading}
-              className="flex items-center gap-2 justify-center active:scale-[0.96]"
+              className="flex items-center gap-2 justify-center"
               onClick={() => { void handleAction('start'); }}
             >
               <Zap className="w-5 h-5" />
               {loading ? 'Starting…' : 'Start session'}
-            </Button>
+            </PrimaryButton>
           ) : now < windowStart ? (
             <p className="text-xs text-muted text-center">
               Start session opens {SESSION_GRACE_MINUTES} minutes before the booked time.
@@ -201,15 +201,14 @@ export function SessionControls({
           {error && (
             <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
           )}
-          <Button
-            variant="secondary"
+          <PrimaryButton
             size="lg"
             disabled={loading}
-            className="justify-center active:scale-[0.96]"
+            className="justify-center"
             onClick={() => { void handleDriverConfirm(); }}
           >
             {loading ? 'Confirming…' : 'Confirm start'}
-          </Button>
+          </PrimaryButton>
         </div>
       );
     }
@@ -246,16 +245,15 @@ export function SessionControls({
           {error && (
             <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
           )}
-          <Button
-            variant="secondary"
+          <PrimaryButton
             size="lg"
             disabled={loading}
-            className="flex items-center gap-2 justify-center active:scale-[0.96]"
+            className="flex items-center gap-2 justify-center"
             onClick={() => { void handleAction('end'); }}
           >
             <Square className="w-5 h-5" />
             {loading ? 'Requesting end…' : 'End session'}
-          </Button>
+          </PrimaryButton>
         </div>
       );
     }
@@ -296,15 +294,14 @@ export function SessionControls({
         {error && (
           <p key={errorKey} className="text-xs text-red-600 font-semibold shake-error">{error}</p>
         )}
-        <Button
-          variant="secondary"
+        <PrimaryButton
           size="lg"
           disabled={loading}
-          className="justify-center active:scale-[0.96]"
+          className="justify-center"
           onClick={() => { void handleAction('end'); }}
         >
           {loading ? 'Confirming…' : 'Confirm end'}
-        </Button>
+        </PrimaryButton>
       </div>
     );
   }

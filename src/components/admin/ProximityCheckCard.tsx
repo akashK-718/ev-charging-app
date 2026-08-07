@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { PROXIMITY_RADIUS_STEPS } from '@/lib/constants';
 
 interface Props {
@@ -106,14 +107,13 @@ export function ProximityCheckCard({ initialEnabled, initialRadiusKm }: Props) {
       )}
 
       {/* Save */}
-      <Button
-        variant="secondary"
+      <PrimaryButton
         size="md"
         disabled={!isDirty || saving}
         onClick={() => { void handleSave(); }}
       >
         {saving ? 'Saving…' : 'Save'}
-      </Button>
+      </PrimaryButton>
     </div>
   );
 }

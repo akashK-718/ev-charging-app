@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Phone, MapPin, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { MilestoneParticles } from '@/components/ui/MilestoneParticles';
 import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
@@ -405,8 +406,7 @@ export default function LenderBookingDetailPage() {
 
       {isPending && !showRejectForm && (
         <div className="space-y-2">
-          <Button
-            variant="secondary"
+          <PrimaryButton
             size="lg"
             disabled={actionLoading || remaining === 0}
             className="flex items-center gap-2 justify-center"
@@ -414,7 +414,7 @@ export default function LenderBookingDetailPage() {
           >
             <CheckCircle2 className="w-5 h-5" />
             {actionLoading ? 'Accepting…' : 'Accept booking'}
-          </Button>
+          </PrimaryButton>
           <button
             type="button"
             disabled={actionLoading}
