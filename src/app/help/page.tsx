@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 interface FaqItem {
   q: string;
@@ -79,18 +79,16 @@ export default function HelpPage() {
       className="min-h-screen bg-surface-page"
       style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-2xl mx-auto px-4 pt-6 pb-8">
+      <div className="max-w-2xl mx-auto pb-8">
 
-        {/* Back nav */}
-        <BackButton href="/profile" className="mb-3" />
-
-        <h1 className="text-2xl font-bold text-ink mb-1">Help and support</h1>
-        <p className="text-sm text-muted mb-8">
-          Answers to common questions. Can't find what you need? Contact us below.
-        </p>
+        <PageHeader
+          title="Help and support"
+          subtitle="Answers to common questions. Can't find what you need? Contact us below."
+          href="/profile"
+        />
 
         {/* FAQ sections */}
-        <div className="flex flex-col gap-8">
+        <div className="px-4 flex flex-col gap-8">
           {FAQ.map(({ section, items }) => (
             <section key={section}>
               <p className="text-xs font-mono font-semibold tracking-widest uppercase text-muted mb-3">
@@ -112,7 +110,7 @@ export default function HelpPage() {
         </div>
 
         {/* Contact us */}
-        <section className="mt-10">
+        <section className="mt-10 px-4">
           <p className="text-xs font-mono font-semibold tracking-widest uppercase text-muted mb-3">
             Contact us
           </p>

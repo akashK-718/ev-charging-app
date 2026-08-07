@@ -6,7 +6,7 @@ import {
   CalendarCheck, BatteryCharging,
   Home, ShieldCheck, Wallet, Megaphone, Tag, Lock,
 } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { cn } from '@/lib/utils';
 
 type Prefs = {
@@ -138,14 +138,11 @@ export function NotificationsBody({ initialPrefs }: { initialPrefs: Prefs }) {
   return (
     <div className="pb-8">
 
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-6 pb-5">
-        <BackButton onClick={() => router.back()} />
-        <div>
-          <h1 className="text-xl font-bold text-ink">Notifications</h1>
-          <p className="text-xs text-muted mt-0.5">Choose what you want to be notified about</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Notifications"
+        subtitle="Choose what you want to be notified about"
+        onClick={() => router.back()}
+      />
 
       {error && (
         <p className="mx-4 mb-3 text-xs text-danger font-medium">{error}</p>

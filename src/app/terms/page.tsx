@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export const metadata: Metadata = {
   title: 'Terms and Privacy — Kirin',
@@ -7,13 +7,10 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8 pb-24">
-      <BackButton href="/profile" className="mb-3" />
+    <main className="max-w-2xl mx-auto pb-24">
+      <PageHeader title="Terms and Privacy" subtitle="Last updated: July 2026" href="/profile" />
 
-      <h1 className="text-2xl font-semibold text-ink mb-2">Terms and Privacy</h1>
-      <p className="text-sm text-muted mb-8">Last updated: July 2026</p>
-
-      <div className="space-y-8 text-sm text-ink leading-relaxed">
+      <div className="px-4 space-y-8 text-sm text-ink leading-relaxed">
         <section>
           <h2 className="font-semibold text-base mb-2">Terms of Service</h2>
           <p className="text-muted">

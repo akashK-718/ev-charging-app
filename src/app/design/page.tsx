@@ -494,6 +494,56 @@ export default function DesignPage() {
           </div>
         </section>
 
+        {/* ── PageHeader component ─────────────────────────────────────────── */}
+        <section className="block" id="page-header">
+          <div className="head-c">
+            <span className="ctag">layout</span>
+            <h2>PageHeader</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
+            Every back-navigable screen must use <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>PageHeader</code> — a one-off layout is a bug. It wraps <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>BackButton</code> (Bucket 1) with a title and optional subtitle, with fixed self-contained spacing (<code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>px-4 pt-12 pb-6</code>). Screens using ContainedBackButton (photo/map overlay) are explicitly excluded.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <span className="lbl" style={{ marginBottom: 8, display: 'block' }}>Title only</span>
+              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '48px 16px 24px' }}>
+                  <BackButton onClick={() => {}} />
+                  <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2, margin: 0 }}>Payment Methods</h1>
+                </div>
+              </div>
+            </div>
+            <div>
+              <span className="lbl" style={{ marginBottom: 8, display: 'block' }}>Title + subtitle</span>
+              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '48px 16px 24px' }}>
+                  <BackButton onClick={() => {}} />
+                  <div>
+                    <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2, margin: 0 }}>Notifications</h1>
+                    <p style={{ fontSize: 14, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4, marginBottom: 0 }}>Choose what you want to be notified about</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: 16, background: 'var(--surface-page)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+            <p style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600, marginBottom: 6 }}>Props</p>
+            <table style={{ fontSize: 12, color: 'var(--muted)', borderCollapse: 'collapse', width: '100%' }}>
+              <tbody>
+                <tr><td style={{ paddingBottom: 4, paddingRight: 16, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>title</td><td style={{ paddingBottom: 4, paddingRight: 16 }}>string</td><td style={{ paddingBottom: 4 }}>Required. Rendered as h1.</td></tr>
+                <tr><td style={{ paddingBottom: 4, paddingRight: 16, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>subtitle</td><td style={{ paddingBottom: 4, paddingRight: 16 }}>string?</td><td style={{ paddingBottom: 4 }}>Optional. Rendered below title in muted text.</td></tr>
+                <tr><td style={{ paddingBottom: 4, paddingRight: 16, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>href</td><td style={{ paddingBottom: 4, paddingRight: 16 }}>string?</td><td style={{ paddingBottom: 4 }}>Link destination for the back arrow. Use for static destinations (e.g. /profile).</td></tr>
+                <tr><td style={{ paddingBottom: 4, paddingRight: 16, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>onClick</td><td style={{ paddingBottom: 4, paddingRight: 16 }}>() =&gt; void?</td><td style={{ paddingBottom: 4 }}>Click handler for back arrow. Use when destination is dynamic (e.g. router.back()).</td></tr>
+                <tr><td style={{ paddingBottom: 4, paddingRight: 16, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>aria-label</td><td style={{ paddingBottom: 4, paddingRight: 16 }}>string?</td><td style={{ paddingBottom: 4 }}>Override accessible label on the back button. Defaults to &quot;Go back&quot;.</td></tr>
+                <tr><td style={{ paddingRight: 16, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>className</td><td style={{ paddingRight: 16 }}>string?</td><td>Appended to the root div — for one-off spacing overrides only.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="palette-note" style={{ marginTop: 14 }}>
+            Source: <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>src/components/ui/PageHeader.tsx</code>. Screens on solid/light backgrounds only — ContainedBackButton screens (charger detail hero, map editor, charger map) are Bucket 2 and excluded.
+          </p>
+        </section>
+
         {/* ── Tap feedback tiers ───────────────────────────────────────────── */}
         <section className="block" id="tap-feedback">
           <div className="head-c">
