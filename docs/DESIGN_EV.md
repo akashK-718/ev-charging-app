@@ -86,6 +86,33 @@ does not shift between loading and idle states.
 
 ---
 
+### F2 — PrimaryButton — the single canonical primary CTA
+
+**Rule**: every primary action button in the app must use `<PrimaryButton>` from
+`src/components/ui/PrimaryButton.tsx`. A screen implementing its own one-off
+primary button styling is a bug — this class has already recurred in the charger
+wizard, KYC/verify, session controls, rating submit, and booking flows before the
+consolidation in PR #226.
+
+```tsx
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
+
+<PrimaryButton size="lg" className="w-full" disabled={!isValid} loading={saving}>
+  Continue
+</PrimaryButton>
+```
+
+`PrimaryButton` is a thin wrapper over `<Button variant="primary">`. It:
+- Always renders filled green (`bg-green text-white`)
+- Always carries the green glow shadow (`shadow-[0_4px_20px_-4px_rgba(28,107,71,0.35)]`)
+- Disables with `opacity-40` + `cursor-not-allowed` automatically
+- Fires a medium haptic on tap
+- Shows a `Loader2` spinner when `loading={true}`
+
+**What stays secondary/ghost**: Cancel, Back, Edit listing, secondary navigation — anything that is not the primary forward action on a screen.
+
+---
+
 ### G — Input error states
 
 **Colors**: use design-token classes, never raw Tailwind red/gray:

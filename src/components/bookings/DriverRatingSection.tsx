@@ -5,6 +5,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { haptic } from '@/lib/haptics';
 import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 
 interface ExistingReview {
   review_type: string;
@@ -230,15 +231,14 @@ export function DriverRatingSection({
   const isEditing = state.kind === 'editing';
 
   const submitButton = (
-    <Button
-      variant="secondary"
+    <PrimaryButton
       size="lg"
       disabled={chargerRating === 0 || lenderRating === 0 || submitting}
       className={skipProminent ? '' : 'flex-1'}
       onClick={() => { void handleSubmit(); }}
     >
       {submitting ? 'Submitting…' : isEditing ? 'Update review' : 'Submit rating'}
-    </Button>
+    </PrimaryButton>
   );
 
   const skipButton = (

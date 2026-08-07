@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { createClient } from '@/lib/supabase/client';
 import { clearExploreSession } from '@/lib/user-storage';
 
@@ -125,14 +126,14 @@ export function WelcomeNameForm({ initialName, intent }: { initialName: string; 
       </div>
 
       <div className="mt-8">
-        <Button
+        <PrimaryButton
           onClick={() => { void handleContinue(); }}
-          variant="secondary"
           size="lg"
+          className="w-full"
           disabled={!nameValid || loading}
         >
           {loading ? 'Saving…' : 'Continue'}
-        </Button>
+        </PrimaryButton>
       </div>
     </main>
   );

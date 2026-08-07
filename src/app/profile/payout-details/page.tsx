@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, CreditCard } from 'lucide-react';
 import { BackButton } from '@/components/ui/BackButton';
-import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { cn } from '@/lib/utils';
 
 type PaymentMethod = 'bank' | 'upi';
@@ -150,15 +150,14 @@ export default function PayoutDetailsPage() {
       </div>
 
       <div className="mt-8">
-        <Button
-          variant="secondary"
+        <PrimaryButton
           size="lg"
           className="w-full"
           disabled={!isValid || isSubmitting}
           onClick={() => { void handleSubmit(); }}
         >
           {isSubmitting ? 'Saving…' : 'Save payout details'}
-        </Button>
+        </PrimaryButton>
       </div>
     </main>
   );

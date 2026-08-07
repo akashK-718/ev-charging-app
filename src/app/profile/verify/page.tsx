@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Camera, CreditCard, User, Building2, Upload, X } from 'lucide-react';
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Sheet } from '@/components/ui/Sheet';
 import { cn } from '@/lib/utils';
 
@@ -486,15 +487,14 @@ function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
             Back
           </Button>
         )}
-        <Button
-          variant="secondary"
+        <PrimaryButton
           size="lg"
           className="flex-1"
           disabled={!stepValid || isSubmitting}
           onClick={isLastStep ? () => { void handleSubmit(); } : () => goToStep(step + 1)}
         >
           {isLastStep ? (isSubmitting ? 'Submitting…' : 'Submit for verification') : 'Next'}
-        </Button>
+        </PrimaryButton>
       </div>
 
       {isOnboarding && (

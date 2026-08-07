@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ExternalLink, CheckCircle2, XCircle, RefreshCw, X } from 'lucide-react';
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import { Button } from '@/components/ui/Button';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 
@@ -322,8 +323,7 @@ export default function AdminKycDetailPage() {
 
         {actionMode === 'idle' && isPending && (
           <div className="space-y-2 pb-6">
-            <Button
-              variant="secondary"
+            <PrimaryButton
               size="lg"
               disabled={actionLoading}
               className="flex items-center gap-2 justify-center"
@@ -331,7 +331,7 @@ export default function AdminKycDetailPage() {
             >
               <CheckCircle2 className="w-5 h-5" />
               {actionLoading ? 'Approving…' : 'Approve KYC'}
-            </Button>
+            </PrimaryButton>
             <button
               type="button"
               disabled={actionLoading}
