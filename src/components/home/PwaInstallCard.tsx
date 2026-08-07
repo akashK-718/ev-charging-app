@@ -43,22 +43,21 @@ export function PwaInstallCard() {
       return;
     }
 
+    // beforeinstallprompt fires asynchronously — Chrome checks engagement heuristics
+    // and installability criteria after page load, often 1-3 seconds in. No timeout:
+    // 'pending' already renders null, so the card is invisible until the event arrives.
+    // If the event never fires (already installed, browser doesn't support it, etc.)
+    // the card simply stays hidden — which is correct, not an error state.
     const handler = (e: Event) => {
       e.preventDefault();
       promptRef.current = e as BeforeInstallPromptEvent;
       w.__pwaPrompt = e as BeforeInstallPromptEvent;
-      clearTimeout(fallback);
       setPhase('install-chromium');
     };
     window.addEventListener('beforeinstallprompt', handler);
-    const fallback = setTimeout(() => {
-      window.removeEventListener('beforeinstallprompt', handler);
-      setPhase('hidden');
-    }, 300);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
-      clearTimeout(fallback);
     };
   }, []);
 
