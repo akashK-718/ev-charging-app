@@ -129,6 +129,9 @@ export default async function PaymentMethodsPage() {
     admin,
   );
 
+  const kycStatus = (kyc?.status ?? 'not_started') as
+    'not_started' | 'pending' | 'approved' | 'rejected';
+
   return (
     <main
       className="max-w-lg mx-auto"
@@ -139,7 +142,7 @@ export default async function PaymentMethodsPage() {
         defaultTokenId={profile.default_payment_token_id}
         isLender={isLender}
         payoutDisplay={isLender ? buildPayoutDisplay(kyc) : null}
-        hasKyc={isLender && kyc !== null}
+        kycStatus={isLender ? kycStatus : null}
       />
     </main>
   );
