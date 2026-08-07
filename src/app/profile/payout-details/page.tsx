@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, CreditCard } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { cn } from '@/lib/utils';
 
@@ -55,14 +55,11 @@ export default function PayoutDetailsPage() {
 
   return (
     <main
-      className="max-w-lg mx-auto min-h-screen flex flex-col px-6 pt-12 pb-10"
+      className="max-w-lg mx-auto min-h-screen flex flex-col pb-10"
     >
-      <div className="flex items-center gap-3 mb-8">
-        <BackButton onClick={() => router.back()} />
-        <h1 className="text-xl font-bold text-ink">Payout details</h1>
-      </div>
+      <PageHeader title="Payout details" onClick={() => router.back()} />
 
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-6 px-4">
         <p className="text-sm text-muted">
           Choose how you want to receive your earnings. This updates your payout account
           without affecting your verified identity documents.
@@ -149,7 +146,7 @@ export default function PayoutDetailsPage() {
         )}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 px-4">
         <PrimaryButton
           size="lg"
           className="w-full"

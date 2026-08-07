@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CreditCard, Smartphone, Info, Banknote, CheckCircle2, Trash2, Star } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { cn } from '@/lib/utils';
 import type { SavedMethod } from '@/app/api/payments/saved-methods/route';
 
@@ -154,11 +154,7 @@ export function PaymentMethodsBody({
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-12 pb-6">
-        <BackButton onClick={() => router.back()} />
-        <h1 className="text-xl font-bold text-ink">Payment Methods</h1>
-      </div>
+      <PageHeader title="Payment Methods" onClick={() => router.back()} />
 
       <div className="space-y-6 px-4">
 

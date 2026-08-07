@@ -1,18 +1,15 @@
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const APP_VERSION = '0.1.0';
 
 export default function AboutKirinPage() {
   return (
-    <main className="max-w-lg mx-auto px-4 pt-12 pb-16">
-      <div className="flex items-center gap-3 mb-8">
-        <BackButton href="/profile" aria-label="Back to profile" />
-        <h1 className="text-xl font-bold text-ink">About Kirin</h1>
-      </div>
+    <main className="max-w-lg mx-auto pb-16">
+      <PageHeader title="About Kirin" href="/profile" aria-label="Back to profile" />
 
-      <div className="space-y-6">
+      <div className="px-4 space-y-6">
         {/* App identity */}
         <div className="bg-white border border-border rounded-3xl p-5">
           <div className="flex items-center gap-4 mb-5">

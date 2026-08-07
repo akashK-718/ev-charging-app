@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Star, Zap, User } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { cn } from '@/lib/utils';
 
 export type WrittenCard = {
@@ -78,11 +78,7 @@ export function ReviewsBody({ written }: { written: WrittenCard[] }) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-12 pb-6">
-        <BackButton onClick={() => router.back()} />
-        <h1 className="text-xl font-bold text-ink">Reviews</h1>
-      </div>
+      <PageHeader title="Reviews" onClick={() => router.back()} />
 
       <div className="px-4 pb-4">
         <p className="text-[10px] font-semibold tracking-wider uppercase text-muted mb-3">

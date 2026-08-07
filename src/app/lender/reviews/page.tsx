@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
-import { BackButton } from '@/components/ui/BackButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 
@@ -81,15 +81,11 @@ export default async function HostReviewsPage() {
   for (const r of reviews) dist[Math.min(5, Math.max(1, r.rating))]++;
 
   return (
-    <main className="max-w-lg mx-auto px-4 pt-12 pb-16">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <BackButton href="/lender/dashboard" aria-label="Back to dashboard" />
-        <h1 className="text-xl font-bold text-ink">Host Reviews</h1>
-      </div>
+    <main className="max-w-lg mx-auto pb-16">
+      <PageHeader title="Host Reviews" href="/lender/dashboard" aria-label="Back to dashboard" />
 
       {totalCount === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16">
+        <div className="flex flex-col items-center gap-3 py-16 px-4">
           <div className="size-14 rounded-2xl bg-green-soft text-green-deep grid place-items-center">
             <Star className="w-6 h-6" />
           </div>
@@ -98,7 +94,7 @@ export default async function HostReviewsPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6 px-4">
           {/* Summary card */}
           <div className="bg-white border border-border rounded-3xl p-6">
             <div className="flex items-center gap-5 mb-5">
