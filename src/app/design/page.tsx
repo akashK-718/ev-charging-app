@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import { BackButton, ContainedBackButton } from '@/components/ui/BackButton';
 
 type PayState    = 'idle' | 'pending' | 'paid';
 type DeleteState = 'idle' | 'armed'   | 'done';
@@ -41,6 +43,7 @@ function SvgCheck({ className, style }: { className?: string; style?: React.CSSP
 
 export default function DesignPage() {
   const [sheetOpen, setSheetOpen]       = useState(false);
+  const [btnLoading, setBtnLoading]     = useState(false);
   const [payState, setPayState]         = useState<PayState>('idle');
   const [deleteState, setDeleteState]   = useState<DeleteState>('idle');
   const [deleteLabel, setDeleteLabel]   = useState('Remove charger');
@@ -69,6 +72,12 @@ export default function DesignPage() {
     const t = setTimeout(() => setResendSeconds(s => s - 1), 1000);
     return () => clearTimeout(t);
   }, [resendSeconds]);
+
+  // Button loading demo
+  function runBtnLoading() {
+    setBtnLoading(true);
+    setTimeout(() => setBtnLoading(false), 1500);
+  }
 
   // Pay state machine
   function runPay() {
@@ -132,7 +141,7 @@ export default function DesignPage() {
         <div className="navrow">
           <div className="logo">
             <span className="logo-mark" />
-            EV-Charge
+            Kirin
           </div>
           <a className="navlink" href="/explore">Back to app</a>
         </div>
@@ -167,8 +176,8 @@ export default function DesignPage() {
               { name: 'copper',       hex: '#b5642f', bg: '#b5642f' },
               { name: 'copper-soft',  hex: '#f9ece1', bg: '#f9ece1' },
               { name: 'danger',       hex: '#b3261e', bg: '#b3261e' },
-              { name: 'border',       hex: '#d5e0d8', bg: '#d5e0d8' },
-              { name: 'surface-page', hex: '#f5faf6', bg: '#f5faf6' },
+              { name: 'border',       hex: '#e3e0d6', bg: '#e3e0d6' },
+              { name: 'surface-page', hex: '#faf9f5', bg: '#faf9f5' },
               { name: 'surface-card', hex: '#ffffff',  bg: '#ffffff', border: true },
             ].map(s => (
               <div key={s.name} className="swatch">
@@ -374,6 +383,125 @@ export default function DesignPage() {
               </button>
             </div>
           </div>
+        </section>
+
+        {/* ── Button component ────────────────────────────────────────────── */}
+        <section className="block" id="button-component">
+          <div className="head-c">
+            <span className="ctag">component</span>
+            <h2>Button component</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, maxWidth: 560, lineHeight: 1.6 }}>
+            Import from <code style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>src/components/ui/Button.tsx</code>. Handles haptic, disabled state, and loading spinner automatically. Pass <code style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>{'loading'}</code> prop to show spinner; pass <code style={{ fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>{'w-full'}</code> to stretch to container width.
+          </p>
+          <div className="btn-grid">
+            <div className="btn-cell">
+              <span className="lbl">variant="primary" (default)</span>
+              <Button>Find a charger</Button>
+            </div>
+            <div className="btn-cell">
+              <span className="lbl">variant="secondary"</span>
+              <Button variant="secondary">Earn with your charger</Button>
+            </div>
+            <div className="btn-cell">
+              <span className="lbl">variant="ghost"</span>
+              <Button variant="ghost">Cancel</Button>
+            </div>
+            <div className="btn-cell">
+              <span className="lbl">variant="danger"</span>
+              <Button variant="danger">Remove charger</Button>
+            </div>
+            <div className="btn-cell">
+              <span className="lbl">disabled (any variant)</span>
+              <Button disabled>Find a charger</Button>
+            </div>
+            <div className="btn-cell">
+              <span className="lbl">loading — tap to demo</span>
+              <Button loading={btnLoading} onClick={runBtnLoading}>
+                {!btnLoading && 'Continue'}
+              </Button>
+            </div>
+            <div className="btn-cell">
+              <span className="lbl">size="sm"</span>
+              <Button size="sm">Save changes</Button>
+            </div>
+            <div className="btn-cell" style={{ gridColumn: '1/-1' }}>
+              <span className="lbl">full width (w-full className)</span>
+              <Button className="w-full">Confirm booking</Button>
+            </div>
+          </div>
+          <p className="palette-note">Haptic: primary/danger → medium (25ms). secondary/ghost → light (10ms). Loading disables the button and shows a Loader2 spinner. Use <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{'size="sm"'}</code> for secondary actions; md is the default.</p>
+        </section>
+
+        {/* ── Navigation controls ──────────────────────────────────────────── */}
+        <section className="block" id="nav-controls">
+          <div className="head-c">
+            <span className="ctag">navigation</span>
+            <h2>Navigation controls</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
+            Choose the control based on what is behind it, not the screen name. There are three buckets — the rule is structural.
+          </p>
+          <div className="nav-ctrl-grid">
+            <div className="nav-ctrl-cell">
+              <span className="lbl">Bucket 1 — solid/light background</span>
+              <div className="nav-ctrl-demo-light">
+                <BackButton onClick={() => {}} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>BackButton</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>44dp transparent tap target, opacity-shift on press. No background, border, shadow, or scale. Use on: Notifications, Reviews, Help, Terms, About.</div>
+                </div>
+              </div>
+            </div>
+            <div className="nav-ctrl-cell">
+              <span className="lbl">Bucket 2 — photo/map/variable background</span>
+              <div className="nav-ctrl-demo-photo">
+                <ContainedBackButton onClick={() => {}} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>ContainedBackButton</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)' }}>40dp white/90 circle, backdrop blur, shadow. Legible over any photo or map tile. Use on: charger detail hero, map editor.</div>
+                </div>
+              </div>
+            </div>
+            <div className="nav-ctrl-cell">
+              <span className="lbl">Bucket 3 — modal / bottom sheet</span>
+              <div className="nav-ctrl-demo-modal">
+                <button className="modal-x-btn" aria-label="Close">
+                  <svg viewBox="0 0 24 24" width={16} height={16} stroke="currentColor" strokeWidth={2} strokeLinecap="round" fill="none"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>X dismiss button</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>Never a back arrow inside a modal or sheet. Dismissing an overlay is not the same interaction as navigating back. The shared Sheet component handles this automatically.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Tap feedback tiers ───────────────────────────────────────────── */}
+        <section className="block" id="tap-feedback">
+          <div className="head-c">
+            <span className="ctag">interaction</span>
+            <h2>Tap feedback tiers</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
+            Every tap must produce visible feedback within ~100ms. Use CSS <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>:active</code> — it fires within one frame, before any JS executes. Tap the elements below to see each tier.
+          </p>
+          <div className="tap-demo-grid">
+            <div className="tap-demo-cell">
+              <span className="lbl">tap-light · scale 0.98 · nav tabs, cards, chips, icon buttons</span>
+              <div className="tap-swatch tap-light">Tap me</div>
+            </div>
+            <div className="tap-demo-cell">
+              <span className="lbl">tap-medium · scale 0.96 · primary CTAs, dialog confirm</span>
+              <div className="tap-swatch tap-medium">Tap me</div>
+            </div>
+            <div className="tap-demo-cell">
+              <span className="lbl">tap-opacity · fade to 0.6 · back/dismiss/secondary text actions</span>
+              <div className="tap-swatch tap-opacity">Tap me</div>
+            </div>
+          </div>
+          <p className="palette-note" style={{ marginTop: 14 }}>All tap classes are suppressed under <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>prefers-reduced-motion: reduce</code>. The <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>Button</code> component applies tap-medium automatically for primary/danger and tap-light for secondary/ghost.</p>
         </section>
 
         {/* ── Tags & badges — treatment C ─────────────────────────────────── */}
@@ -724,6 +852,126 @@ export default function DesignPage() {
           </div>
         </section>
 
+        {/* ── Animation tokens ─────────────────────────────────────────────── */}
+        <section className="block" id="animation-tokens">
+          <div className="head-c">
+            <span className="ctag">motion</span>
+            <h2>Animation tokens</h2>
+          </div>
+          <div className="anim-table">
+            {([
+              { cls: '.animate-page-in',    dur: '120ms (--dur-fast)',       spec: 'opacity + translateY 8px→0',       use: 'Full-route page loads — applied by PageTransition wrapper automatically' },
+              { cls: '.animate-step-in',    dur: '150ms',                    spec: 'opacity only',                     use: 'Wizard step transitions. User-initiated only — never on programmatic redirects. Trigger via key change.' },
+              { cls: '.splash-bolt-pulse',  dur: '300ms, delay 200ms, once', spec: 'brightness 1→1.1→1 (filter)',      use: 'Branded intro — bolt accent single restrained pulse' },
+              { cls: '.splash-text-in',     dur: '180ms, delay 500ms',       spec: 'opacity 0→1 only',                 use: 'Branded intro — KIRIN wordmark fade-in' },
+              { cls: '.shake-error',        dur: '400ms',                    spec: 'translateX oscillation',           use: 'Input error. Apply to the container (not input itself). Re-trigger by changing key prop.' },
+              { cls: '.animate-check-pop',  dur: '220ms cubic',              spec: 'scale 0→1 spring',                 use: 'RoutineSuccess checkmark. Use for confirmations that happen multiple times per day.' },
+            ] as Array<{ cls: string; dur: string; spec: string; use: string }>).map(a => (
+              <div key={a.cls} className="anim-row">
+                <code className="anim-cls">{a.cls}</code>
+                <span className="anim-dur">{a.dur}</span>
+                <span className="anim-spec">{a.spec}</span>
+                <span className="anim-use">{a.use}</span>
+              </div>
+            ))}
+          </div>
+          <p className="palette-note" style={{ marginTop: 14 }}>Duration variables: <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>--dur-fast: 120ms</code> · <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>--dur-normal: 200ms</code> · <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>--ease-out: cubic-bezier(0,0,0.2,1)</code>. All keyframes defined in <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>src/app/globals.css</code>.</p>
+        </section>
+
+        {/* ── Haptic tiers ──────────────────────────────────────────────────── */}
+        <section className="block" id="haptics">
+          <div className="head-c">
+            <span className="ctag">haptics</span>
+            <h2>Haptic feedback tiers</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, maxWidth: 560, lineHeight: 1.6 }}>
+            Use <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>haptic(tier)</code> from <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>src/lib/haptics.ts</code> in onClick handlers, before the action fires. Haptics are a bonus layer only — iOS receives none (Vibration API is Android-only by platform design). Visual feedback must communicate fully on its own.
+          </p>
+          <div className="haptic-table">
+            {([
+              { call: "haptic('light')",  ms: '10ms',         use: 'Nav tabs, cards, list rows, chips, icon buttons, toggles, checkboxes' },
+              { call: "haptic('medium')", ms: '25ms',         use: 'Primary CTAs (Find Charger, Continue, Save), dialog confirm, pay, verify' },
+              { call: "haptic('heavy')",  ms: '40ms',         use: 'Start/end session, accept booking, cancel booking (destructive confirms requiring sheet)' },
+              { call: "haptic('error')",  ms: '[40, 30, 40]', use: 'OTP failures, form validation errors, payment declined — double-thud pattern' },
+            ] as Array<{ call: string; ms: string; use: string }>).map(h => (
+              <div key={h.call} className="haptic-row">
+                <code className="haptic-call">{h.call}</code>
+                <span className="haptic-ms">{h.ms}</span>
+                <span className="haptic-use">{h.use}</span>
+              </div>
+            ))}
+          </div>
+          <p className="palette-note" style={{ marginTop: 14 }}>The <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>Button</code> component calls haptic automatically: primary/danger → medium, secondary/ghost → light. Only call <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>haptic()</code> manually for elements that are not a <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>Button</code>.</p>
+        </section>
+
+        {/* ── Splash intro sequence ─────────────────────────────────────────── */}
+        <section className="block" id="splash-intro">
+          <div className="head-c">
+            <span className="ctag">branded intro</span>
+            <h2>Splash intro sequence</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16, maxWidth: 580, lineHeight: 1.6 }}>
+            Cold-start only. Skipped instantly on return visits via <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>sessionStorage['kirin_intro_done']</code>. Implemented in <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>src/components/ui/SplashIntro.tsx</code>.
+          </p>
+          <div className="splash-timeline">
+            {([
+              { t: '0ms',    event: 'Logo fully visible — rings static, matches OS native splash background (no drawing, no slide)' },
+              { t: '200ms',  event: 'Bolt single brightness pulse: 1.0 → 1.1 → 1.0, 300ms, once (.splash-bolt-pulse)' },
+              { t: '500ms',  event: '"KIRIN" wordmark fades in: opacity 0→1, 180ms, no translateY (.splash-text-in)' },
+              { t: '800ms',  event: 'Hold' },
+              { t: '1000ms', event: 'Overlay cross-fade begins: opacity 1→0, 350ms ease-out (setPhase fading)' },
+              { t: '1350ms', event: 'Component unmounts; kirin_intro_done written to sessionStorage' },
+            ] as Array<{ t: string; event: string }>).map(row => (
+              <div key={row.t} className="splash-row">
+                <span className="splash-t">{row.t}</span>
+                <span className="splash-event">{row.event}</span>
+              </div>
+            ))}
+          </div>
+          <p className="palette-note" style={{ marginTop: 14 }}>Background CSS variables: <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>--splash-bg</code> (page bg), <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>--splash-ring</code> (ring stroke), <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>--splash-detail</code> (notch dashes), <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>--splash-text</code>. Both light and dark values defined; iOS startup images match via <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>prefers-color-scheme</code> media queries.</p>
+        </section>
+
+        {/* ── Icon conventions ──────────────────────────────────────────────── */}
+        <section className="block" id="icons">
+          <div className="head-c">
+            <span className="ctag">icons</span>
+            <h2>Icon conventions</h2>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
+            All icons use <strong>Lucide React</strong> (<code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>lucide-react</code>). Always pass <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>aria-hidden</code> on decorative icons. Size convention: <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>size-4</code> (16px) in buttons · <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>size-5</code> (20px) in nav/headers · <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>size-6</code> (24px) standalone feature icons.
+          </p>
+          <div className="icon-grid">
+            {([
+              { label: 'ChevronLeft', d: 'M15 18l-6-6 6-6', note: 'BackButton / nav back' },
+              { label: 'X', d: 'M18 6L6 18M6 6l12 12', note: 'Modal dismiss (Bucket 3)' },
+              { label: 'Loader2', d: 'M21 12a9 9 0 1 1-6.2-8.6', note: 'Button loading spinner (animated)' },
+              { label: 'Sunrise', d: 'M12 2v2M4.93 4.93l1.41 1.41M20 12h2M19.07 4.93l-1.41 1.41M17 12A5 5 0 0 0 7 12M3 20h18M5 20a7 7 0 0 1 14 0', note: 'Morning greeting' },
+              { label: 'Sun', d: 'M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z', note: 'Afternoon greeting' },
+              { label: 'Sunset', d: 'M17 18A5 5 0 0 0 7 18M3 18h18M12 2v8M4.93 10.93l1.41 1.41M19.07 10.93l-1.41 1.41', note: 'Evening greeting' },
+              { label: 'Moon', d: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z', note: 'Night greeting' },
+              { label: 'MapPin', d: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 7a3 3 0 1 1 0 6 3 3 0 0 1 0-6z', note: 'Location / charger pin' },
+              { label: 'Zap', d: 'M13 2 5 12h5l-1 8 8-10h-5l1-8z', filled: true, note: 'EV / charging / bolt (filled)' },
+              { label: 'Star', d: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z', note: 'Rating stars' },
+              { label: 'Shield', d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', note: 'Verified host badge' },
+              { label: 'Bell', d: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0', note: 'Notifications (badge on Activity tab, not standalone)' },
+            ] as Array<{ label: string; d: string; filled?: boolean; note: string }>).map(ic => (
+              <div key={ic.label} className="icon-cell">
+                <div className="icon-preview">
+                  <svg viewBox="0 0 24 24" width={22} height={22} stroke="var(--ink-soft)" fill={ic.filled ? 'var(--ink-soft)' : 'none'} strokeWidth={ic.filled ? 0 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+                    {ic.d.split(' M').map((seg, i) => (
+                      <path key={i} d={i === 0 ? seg : 'M' + seg} />
+                    ))}
+                  </svg>
+                </div>
+                <div className="icon-meta">
+                  <div className="icon-name">{ic.label}</div>
+                  <div className="icon-note">{ic.note}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── Info rows — treatment C ──────────────────────────────────────── */}
         <section className="block" id="info">
           <div className="head-c">
@@ -790,9 +1038,9 @@ export default function DesignPage() {
             Cards separate from the page through a 1px border and a tonal step (<b>surface-page</b> to <b>surface-card</b>), not a shadow. The bottom sheet is the one exception: it's genuinely floating over the page, so a shadow there is honest, not decorative.
           </p>
           <div className="sr-grid">
-            <div className="sr-cell"><div className="box r-sm" /><div className="lbl">radius-sm · 10px, inputs</div></div>
-            <div className="sr-cell"><div className="box r-base" /><div className="lbl">radius · 16px, buttons and tiles</div></div>
-            <div className="sr-cell"><div className="box r-lg" /><div className="lbl">radius-lg · 24px, cards and sheets</div></div>
+            <div className="sr-cell"><div className="box r-sm" /><div className="lbl">radius-sm · 6px, inputs</div></div>
+            <div className="sr-cell"><div className="box r-base" /><div className="lbl">radius · 10px, buttons</div></div>
+            <div className="sr-cell"><div className="box r-lg" /><div className="lbl">radius-lg · 14px, cards and sheets</div></div>
             <div className="sr-cell"><div className="box r-pill" /><div className="lbl">radius-pill · status chips only</div></div>
           </div>
           <div className="compare-grid">
@@ -817,7 +1065,7 @@ export default function DesignPage() {
           <div className="foot-inner">
             <div className="foot-left">
               <span className="logo-mark" style={{ width: 16, height: 16, display: 'inline-block' }} />
-              EV-Charge, Design Foundation V3
+              Kirin, Design Foundation V3
             </div>
             <div className="foot-links">
               {['Terms', 'Privacy', 'Contact'].map(l => (
@@ -1136,6 +1384,60 @@ export default function DesignPage() {
         .tile-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; }
         .tile-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
 
+        /* navigation controls */
+        .nav-ctrl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+        .nav-ctrl-cell { background: var(--surface-card); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .nav-ctrl-cell .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+        .nav-ctrl-demo-light { display: flex; align-items: flex-start; gap: 10px; background: var(--surface-page); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+        .nav-ctrl-demo-photo { display: flex; align-items: flex-start; gap: 10px; background: linear-gradient(135deg, #3a4139 0%, #1a1f1c 100%); border-radius: var(--radius); padding: 14px; }
+        .nav-ctrl-demo-modal { display: flex; align-items: flex-start; gap: 10px; background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; position: relative; }
+        .modal-x-btn { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-page); border: 1px solid var(--border); color: var(--ink-soft); cursor: pointer; display: grid; place-items: center; flex: none; }
+
+        /* tap feedback demo */
+        .tap-demo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+        .tap-demo-cell { background: var(--surface-card); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .tap-demo-cell .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+        .tap-swatch { padding: 12px 20px; border-radius: var(--radius); background: var(--surface-page); border: 1px solid var(--border); color: var(--ink-soft); font-weight: 600; font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; user-select: none; }
+        .tap-light:active { transform: scale(0.98); transition: transform 80ms ease-out; }
+        .tap-medium:active { transform: scale(0.96); transition: transform 80ms ease-out; }
+        .tap-opacity:active { opacity: 0.6; transition: opacity 80ms ease-out; }
+        @media (prefers-reduced-motion: reduce) {
+          .tap-light:active, .tap-medium:active { transform: none; }
+          .tap-opacity:active { opacity: 1; }
+        }
+
+        /* animation tokens */
+        .anim-table { border: 1px solid var(--border); }
+        .anim-row { display: grid; grid-template-columns: 1fr 1fr 1fr 2fr; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); align-items: baseline; }
+        .anim-row:last-child { border-bottom: none; }
+        .anim-cls { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--green); }
+        .anim-dur { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+        .anim-spec { font-size: 12px; color: var(--ink-soft); }
+        .anim-use { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+        /* haptic tiers */
+        .haptic-table { border: 1px solid var(--border); }
+        .haptic-row { display: grid; grid-template-columns: 1fr 100px 2fr; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); align-items: baseline; }
+        .haptic-row:last-child { border-bottom: none; }
+        .haptic-call { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--green); }
+        .haptic-ms { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+        .haptic-use { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+        /* splash timeline */
+        .splash-timeline { border: 1px solid var(--border); }
+        .splash-row { display: grid; grid-template-columns: 80px 1fr; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--border); align-items: baseline; }
+        .splash-row:last-child { border-bottom: none; }
+        .splash-t { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--green); }
+        .splash-event { font-size: 13px; color: var(--ink-soft); line-height: 1.55; }
+
+        /* icon conventions */
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+        .icon-cell { background: var(--surface-card); padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+        .icon-preview { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--surface-page); display: grid; place-items: center; flex: none; }
+        .icon-meta { flex: 1; min-width: 0; }
+        .icon-name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink); }
+        .icon-note { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
         @media (max-width: 720px) {
           .wrap { padding: 0 18px; }
           .navrow { padding: 14px 18px; }
@@ -1144,6 +1446,12 @@ export default function DesignPage() {
           .compare-grid { grid-template-columns: 1fr; }
           .copy-row { grid-template-columns: 1fr; gap: 4px; }
           .accent-grid { grid-template-columns: 1fr; }
+          .nav-ctrl-grid { grid-template-columns: 1fr; }
+          .anim-row { grid-template-columns: 1fr 1fr; }
+          .anim-spec, .anim-use { grid-column: 1/-1; }
+          .haptic-row { grid-template-columns: 1fr 80px; }
+          .haptic-use { grid-column: 1/-1; }
+          .splash-row { grid-template-columns: 60px 1fr; }
         }
       `}</style>
 

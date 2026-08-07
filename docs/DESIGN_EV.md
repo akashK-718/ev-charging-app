@@ -1,6 +1,7 @@
 # EV App — Interaction & Motion Baseline
 
-Design tokens and component inventory live in `DESIGN_GreenPath.md` (shared file).
+> **`/design` is the canonical source of truth** for all visual tokens (colors, radius, shadows), component variants, tap-feedback tiers, haptic tiers, animation tokens, and the splash intro sequence. Do not duplicate those values here. This document covers only the behavioural rules and implementation constraints that cannot be expressed as a live visual demo.
+
 This document covers **interaction patterns and motion rules** specific to this app.
 
 ---
