@@ -78,6 +78,18 @@
 
   /* Bottom nav height — used to clear fixed BottomNav on mobile (lg:hidden) */
   --bottom-nav-h: 4.5rem;
+
+  /* Top safe-area inset for in-app screens (mobile only — desktop Navbar handles spacing).
+     Applied to every screen header so content clears the status bar / notch.
+     At least 16px on non-notch devices; respects the notch on iPhone. */
+  --screen-top-inset: max(env(safe-area-inset-top), 16px);
+}
+
+@media (min-width: 1024px) {
+  :root {
+    /* Desktop Navbar (h-14) handles top spacing — no inset needed from content. */
+    --screen-top-inset: 0px;
+  }
 }
 
 body {

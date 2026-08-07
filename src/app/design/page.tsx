@@ -494,29 +494,32 @@ export default function DesignPage() {
           </div>
         </section>
 
-        {/* ── PageHeader component ─────────────────────────────────────────── */}
+        {/* ── Screen header system ──────────────────────────────────────────── */}
         <section className="block" id="page-header">
           <div className="head-c">
             <span className="ctag">layout</span>
-            <h2>PageHeader</h2>
+            <h2>Screen header system</h2>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20, maxWidth: 580, lineHeight: 1.6 }}>
-            Every back-navigable screen must use <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>PageHeader</code> — a one-off layout is a bug. It wraps <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>BackButton</code> (Bucket 1) with a title and optional subtitle, with fixed self-contained spacing (<code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>px-4 pt-12 pb-6</code>). Screens using ContainedBackButton (photo/map overlay) are explicitly excluded.
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12, maxWidth: 580, lineHeight: 1.6 }}>
+            Three variants, all from <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>src/components/ui/PageHeader.tsx</code>. Top padding is always <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--surface-page)', padding: '1px 4px', borderRadius: 4 }}>var(--screen-top-inset)</code> — never hardcode a fixed top value. The logo is not part of any in-app header; it appears only on the landing page and auth screens.
           </p>
+          <div style={{ background: 'var(--surface-page)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, fontSize: 12, color: 'var(--muted)' }}>
+            <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink)', fontWeight: 600 }}>--screen-top-inset</code>{' '}= <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>max(env(safe-area-inset-top), 16px)</code> on mobile · <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>0px</code> on desktop (Navbar handles it). Applied via <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>pt-[var(--screen-top-inset)]</code>.
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <span className="lbl" style={{ marginBottom: 8, display: 'block' }}>Title only</span>
+              <span className="lbl" style={{ marginBottom: 8, display: 'block' }}>BackHeader — back arrow + title (back-navigable screens)</span>
               <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '48px 16px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 16px 24px' }}>
                   <BackButton onClick={() => {}} />
                   <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2, margin: 0 }}>Payment Methods</h1>
                 </div>
               </div>
             </div>
             <div>
-              <span className="lbl" style={{ marginBottom: 8, display: 'block' }}>Title + subtitle</span>
+              <span className="lbl" style={{ marginBottom: 8, display: 'block' }}>BackHeader — with subtitle</span>
               <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '48px 16px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 16px 24px' }}>
                   <BackButton onClick={() => {}} />
                   <div>
                     <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2, margin: 0 }}>Notifications</h1>
@@ -525,9 +528,18 @@ export default function DesignPage() {
                 </div>
               </div>
             </div>
+            <div>
+              <span className="lbl" style={{ marginBottom: 8, display: 'block' }}>TitleHeader — eyebrow + title (root tab screens)</span>
+              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 16px 24px' }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--green)', marginBottom: 4, marginTop: 0 }}>Hosting</p>
+                  <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.2, margin: 0 }}>Overview</h1>
+                </div>
+              </div>
+            </div>
           </div>
           <div style={{ marginTop: 16, background: 'var(--surface-page)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
-            <p style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600, marginBottom: 6 }}>Props</p>
+            <p style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600, marginBottom: 6 }}>BackHeader props</p>
             <table style={{ fontSize: 12, color: 'var(--muted)', borderCollapse: 'collapse', width: '100%' }}>
               <tbody>
                 <tr><td style={{ paddingBottom: 4, paddingRight: 16, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>title</td><td style={{ paddingBottom: 4, paddingRight: 16 }}>string</td><td style={{ paddingBottom: 4 }}>Required. Rendered as h1.</td></tr>
@@ -540,7 +552,7 @@ export default function DesignPage() {
             </table>
           </div>
           <p className="palette-note" style={{ marginTop: 14 }}>
-            Source: <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>src/components/ui/PageHeader.tsx</code>. Screens on solid/light backgrounds only — ContainedBackButton screens (charger detail hero, map editor, charger map) are Bucket 2 and excluded.
+            ContainedBackButton screens (charger detail hero, map editor, charger map) are Bucket 2 and use neither variant. <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>PageHeader</code> is a deprecated alias for <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>BackHeader</code> — existing consumers still work but new screens should use the named exports.
           </p>
         </section>
 

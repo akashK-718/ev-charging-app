@@ -344,7 +344,7 @@ export function ProfileBody({
       <div className="pb-8">
 
         {/* ── Header ──────────────────────────────────────────────────────────── */}
-        <div className="px-4 pt-6 pb-5 flex items-center gap-4">
+        <div className="px-4 pt-[var(--screen-top-inset)] pb-5 flex items-center gap-4">
           <button
             type="button"
             onClick={() => setAvatarSheetOpen(true)}

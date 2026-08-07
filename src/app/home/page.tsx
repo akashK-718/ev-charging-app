@@ -425,7 +425,7 @@ export default async function HomePage() {
       className="min-h-screen bg-surface-page"
       style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-2xl mx-auto px-4 pt-5 pb-4 space-y-3">
+      <div className="max-w-2xl mx-auto px-4 pt-[var(--screen-top-inset)] pb-4 space-y-3">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <GreetingHeader firstName={firstName} avatarInitials={avatarInitials} />
