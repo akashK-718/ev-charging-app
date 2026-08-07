@@ -55,7 +55,7 @@ export default function PayoutDetailsPage() {
 
   return (
     <main
-      className="max-w-lg mx-auto min-h-screen flex flex-col pb-10"
+      className="max-w-lg mx-auto min-h-screen flex flex-col pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10"
     >
       <PageHeader title="Payout details" onClick={() => router.back()} />
 

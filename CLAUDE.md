@@ -32,6 +32,12 @@ See `docs/ARCHITECTURE.md` for the full rationale and swap guide.
 
 **When introducing a new pattern** (a new button variant, a new motion timing, a new interaction state) in any PR: add it to `/design` in that same PR. Do not leave it undocumented for a future cleanup pass — that is how the scattering happened in the first place.
 
+**Mandatory shared components — using a one-off implementation of either is a bug:**
+
+- **New screen with a back-navigable header** → must use `<PageHeader>` from `src/components/ui/PageHeader.tsx`. Never roll a bespoke `BackButton + h1` layout.
+- **New screen with a primary action button** → must use `<PrimaryButton>` from `src/components/ui/PrimaryButton.tsx`. Never use `<Button variant="secondary">` for a primary CTA.
+- **New screen whose content scrolls near the bottom nav** → must use the canonical bottom-safe-padding class on `<main>`: `pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10`. Never hardcode `pb-10`, `pb-16`, or an inline `paddingBottom` style. This has buried CTAs on Booking, Hosting Introduction, Payout Details, and multiple profile screens before being caught.
+
 ## Stack
 
 Next.js 14 App Router · Supabase (PostgreSQL + Auth) · Razorpay · MSG91 · Cloudinary · Mapbox
