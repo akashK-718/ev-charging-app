@@ -8,7 +8,7 @@ type HostingState = 'not_enabled' | 'setup_in_progress' | 'setup_deferred' | 'ac
 async function getProfileData(userId: string) {
   const adminSupabase = createAdminClient();
 
-  const [userResult, submissionResult, chargersResult, lenderBookingsResult] = await Promise.all([
+  const [userResult, submissionResult, chargersResult, lenderBookingsResult, defaultVehicleResult] = await Promise.all([
     adminSupabase
       .from('users')
       .select('id, name, phone, role, kyc_status, created_at, avatar_url, hosting_paused, hosting_setup_deferred')
@@ -34,6 +34,14 @@ async function getProfileData(userId: string) {
       .select('id')
       .eq('lender_id', userId)
       .eq('status', 'completed'),
+
+    adminSupabase
+      .from('vehicles')
+      .select('nickname, make, model')
+      .eq('user_id', userId)
+      .eq('is_default', true)
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const chargers = (chargersResult.data ?? []) as { status: string }[];
@@ -57,6 +65,11 @@ async function getProfileData(userId: string) {
     );
   }
 
+  const dv = defaultVehicleResult.data as { nickname: string | null; make: string; model: string } | null;
+  const defaultVehicleLabel = dv
+    ? (dv.nickname ?? `${dv.make} ${dv.model}`)
+    : null;
+
   return {
     user: userResult.data as {
       id: string; name: string | null; phone: string;
@@ -70,6 +83,7 @@ async function getProfileData(userId: string) {
     } | null,
     chargerStats,
     lifetimeEarningsPaise,
+    defaultVehicleLabel,
   };
 }
 
@@ -86,7 +100,7 @@ export default async function ProfilePage({
 
   const {
     user: profile, userError, submission,
-    chargerStats, lifetimeEarningsPaise,
+    chargerStats, lifetimeEarningsPaise, defaultVehicleLabel,
   } = await getProfileData(user.id);
 
   // DB query error — don't redirect to /login since the user IS authenticated
@@ -129,6 +143,7 @@ export default async function ProfilePage({
           showSubmittedBanner={searchParams.verified === 'submitted'}
           initialAvatarUrl={profile.avatar_url}
           lifetimeEarningsPaise={lifetimeEarningsPaise}
+          defaultVehicleLabel={defaultVehicleLabel}
         />
       </main>
       <PullToRefresh />

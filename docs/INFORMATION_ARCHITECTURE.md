@@ -189,6 +189,20 @@ Discovery only. Nothing about history, bookings, or configuration lives here.
 
 Lenders can also view their own charger(s) on the map here and check listing visibility. No separate map tab exists outside Explore.
 
+### Connector suggestion chip
+
+When the user has a **default vehicle** with connector type(s) set (see [My Vehicles](#my-vehicles-profilevehicles)), and **no connector filter is currently active**, Explore shows a small dismissible suggestion chip below the mode-toggle / Filters row:
+
+> "Show chargers for My Nexon (Type 2)"  ×
+
+**Rules:**
+- Tapping the chip applies the connector filter via Explore's existing `selectedConnectors` filter mechanism — identical to selecting connectors manually in the Filter sheet.
+- Tapping **×** dismisses the chip for the current session only (stored in `sessionStorage` under `kirin:explore:connector-suggestion-dismissed`, cleared by `clearExploreSession()` on sign-out). The chip reappears on a fresh session.
+- The chip is **never auto-applied** — the filter is only applied when the user explicitly taps it.
+- If the user has no default vehicle, or their default vehicle has no connector type, **no chip renders** — no empty-state placeholder.
+- Once a connector filter is active (whether from the chip or the Filter sheet), the chip hides automatically (`selectedConnectors.size > 0`).
+- Explore owns no vehicle data or editing capability. It only reads the default vehicle's connector types from `GET /api/users/vehicles?default_only=true`. Vehicle management lives entirely in Profile → My Vehicles.
+
 ## Activity
 
 History and Updates, as two sub-views within one tab, not two separate tabs.
@@ -237,13 +251,32 @@ Profile is organised into labeled subsections, in this order:
 
 1. **Hosting** — hosting promo card / setup card / Host Dashboard card + Pause/Resume listing row (shown only when hosting is enabled; see hosting states below)
 2. **Identity Verification** — not started / pending / approved / rejected (shown only when hosting is started)
-3. **Account** — Name (editable inline), Phone (read-only with contact support link), My vehicle (coming soon), Payment methods (`/profile/payment-methods`)
+3. **Account** — Name (editable inline), Phone (read-only with contact support link), My Vehicles (`/profile/vehicles`), Payment methods (`/profile/payment-methods`)
 4. **Preferences** — Notifications (`/profile/notifications`)
 5. **Your Activity** — Reviews (`/profile/reviews`) — written reviews only; see authorship rule above
 6. **Support** — Help & support
 7. **Danger Zone** — Stop Hosting row (shown only when `hostingState === 'active'`)
 
 **Hosting** — the Host Dashboard card and any other entry point into the Hosting Workspace **must always navigate to Hosting Workspace → Overview (`/lender/dashboard`), never directly to Chargers, Bookings, or any other sub-section**. My Chargers is one branch of hosting and does not fulfil what the Host Dashboard card promises.
+
+### My Vehicles (`/profile/vehicles`)
+
+A per-user garage. Multiple vehicles can be registered; exactly one is the **default vehicle** at any time.
+
+**Data model (`vehicles` table):**
+- `id`, `user_id` (FK → `users`), `nickname` (optional), `make`, `model`
+- `connector_types text[]` — one or more values from `['Type2','BharatAC','CCS2','CHAdeMO','Type1']` (same enum as the charger Add-wizard; never a separate list)
+- `battery_capacity_kwh` (optional), `license_plate` (optional)
+- `is_default boolean` — exactly one vehicle per user holds `true` at a time
+
+**Default-vehicle mechanics:**
+- Adding a user's **first** vehicle automatically sets it as default.
+- Deleting the current default vehicle **automatically promotes** the oldest remaining vehicle to default (handled by a DB trigger). If the user has no other vehicles, no default exists.
+- Setting a different vehicle as default clears the previous default atomically.
+
+**Screen:** list view of cards — nickname / make / model, connector badge(s), "Default" indicator. Each card has an Edit button (opens the same form sheet pre-filled), a "Set as default" action (visible only on non-default cards), and a delete action with a confirmation sheet. A "+ Add vehicle" affordance opens the form sheet in add mode.
+
+**Cross-reference:** Explore reads the default vehicle's connector types to power a dismissible filter suggestion — see [Explore](#explore) below.
 
 ### Notification Preferences (`/profile/notifications`)
 

@@ -47,6 +47,7 @@ interface ProfileBodyProps {
   showSubmittedBanner: boolean;
   initialAvatarUrl: string | null;
   lifetimeEarningsPaise: number;
+  defaultVehicleLabel: string | null;
 }
 
 function formatDate(iso: string) {
@@ -128,6 +129,7 @@ export function ProfileBody({
   showSubmittedBanner,
   initialAvatarUrl,
   lifetimeEarningsPaise,
+  defaultVehicleLabel,
 }: ProfileBodyProps) {
   const router = useRouter();
 
@@ -365,7 +367,7 @@ export function ProfileBody({
             <h1 className="text-xl font-bold text-ink truncate">{displayName ?? 'Your name'}</h1>
             <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
               <Car className="size-3 shrink-0" />
-              <span>No vehicle added</span>
+              <span>{defaultVehicleLabel ?? 'No vehicle added'}</span>
             </p>
             <p className="text-xs text-muted mt-0.5">Member since {formatDate(createdAt)}</p>
           </div>
@@ -628,8 +630,8 @@ export function ProfileBody({
             </div>
             <ProfileRow
               icon={<Car className="size-4" />}
-              label="My vehicle"
-              value="Coming soon"
+              label="My Vehicles"
+              href="/profile/vehicles"
             />
             <ProfileRow
               icon={<CreditCard className="size-4" />}

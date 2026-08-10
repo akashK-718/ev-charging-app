@@ -38,6 +38,14 @@ export const CONNECTOR_TYPES = [
 
 export type ConnectorType = (typeof CONNECTOR_TYPES)[number];
 
+export const CONNECTOR_LABELS: Record<ConnectorType, string> = {
+  Type2: 'Type 2',
+  BharatAC: 'Bharat AC',
+  CCS2: 'CCS2',
+  CHAdeMO: 'CHAdeMO',
+  Type1: 'Type 1',
+};
+
 // Charger power categories
 export const CHARGER_TYPES = [
   { value: 'AC_3.3kW', label: '3.3 kW \u00B7 AC' },
