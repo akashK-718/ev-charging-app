@@ -11,10 +11,11 @@
  * | User-level    | User ID    | kirin:milestones:{userId}                  | NOT cleared —       |
  * |               |            | lender:new-charger:draft:{userId}          | persists for that   |
  * |               |            |                                            | user on next login  |
- * | Session-level | Auth token | Supabase access/refresh tokens, OTP state  | Cleared by          |
- * |               |            | kirin:explore:mode (sessionStorage)        | supabase.signOut()  |
- * |               |            | kirin:explore:near_me (sessionStorage)     | + clearExploreSession() |
- * |               |            | kirin:explore:along_route (sessionStorage) |                     |
+ * | Session-level | Auth token | Supabase access/refresh tokens, OTP state               | Cleared by          |
+ * |               |            | kirin:explore:mode (sessionStorage)                     | supabase.signOut()  |
+ * |               |            | kirin:explore:near_me (sessionStorage)                  | + clearExploreSession() |
+ * |               |            | kirin:explore:along_route (sessionStorage)               |                     |
+ * |               |            | kirin:explore:connector-suggestion-dismissed (sessionStorage) |              |
  *
  * User-level keys use the pattern `{base}:{userId}` via `userKey()`.
  * On first load, call `purgeLegacyKey(base)` for any key that was previously
@@ -51,5 +52,6 @@ export function clearExploreSession(): void {
     sessionStorage.removeItem('kirin:explore:mode');
     sessionStorage.removeItem('kirin:explore:near_me');
     sessionStorage.removeItem('kirin:explore:along_route');
+    sessionStorage.removeItem('kirin:explore:connector-suggestion-dismissed');
   } catch {}
 }

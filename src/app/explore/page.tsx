@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FeatureFlags } from '@/lib/edge-config';
 import dynamic from 'next/dynamic';
-import { Filter, LocateFixed } from 'lucide-react';
+import { Filter, LocateFixed, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { purgeLegacyKey } from '@/lib/user-storage';
+import { CONNECTOR_LABELS } from '@/lib/constants';
+import type { ConnectorType } from '@/lib/constants';
 import { maps } from '@/lib/maps/provider';
 import { haversineKm } from '@/lib/haversine';
 import { cn } from '@/lib/utils';
@@ -70,10 +72,17 @@ const LEGACY_STORAGE_KEY = 'chargers_map_state_v2';
 const SESSION_KEY_MODE        = 'kirin:explore:mode';
 const SESSION_KEY_NEAR_ME     = 'kirin:explore:near_me';
 const SESSION_KEY_ALONG_ROUTE = 'kirin:explore:along_route';
+const SESSION_KEY_CONNECTOR_SUGGESTION_DISMISSED = 'kirin:explore:connector-suggestion-dismissed';
 
 // ── Session state types ───────────────────────────────────────────────────────
 
 type SearchMode = 'near_me' | 'along_route';
+
+interface DefaultVehicle {
+  id: string;
+  nickname: string | null;
+  connector_types: string[];
+}
 type RouteCharger = ChargerRow & { distance_from_route_m: number };
 
 type NearMeSession = {
@@ -186,6 +195,13 @@ export default function ExplorePage() {
   const [availability, setAvailability] = useState<Availability>('any');
   const [powerFilter, setPowerFilter] = useState<PowerFilter>('any');
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // ── Connector suggestion (default vehicle, session-dismissed) ─────────────
+  const [defaultVehicle, setDefaultVehicle] = useState<DefaultVehicle | null>(null);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(() => {
+    try { return sessionStorage.getItem(SESSION_KEY_CONNECTOR_SUGGESTION_DISMISSED) === '1'; }
+    catch { return false; }
+  });
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const [selectedCharger, setSelectedCharger] = useState<ChargerRow | null>(null);
@@ -394,6 +410,23 @@ export default function ExplorePage() {
       clearTimeout(toastTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Fetch default vehicle for connector suggestion ────────────────────────
+  // Runs once after auth resolves. Session-dismissed state is read synchronously
+  // from sessionStorage in the useState initialiser above, so we only fetch
+  // when there is still a chance to show the chip.
+
+  useEffect(() => {
+    if (suggestionDismissed) return;
+    fetch('/api/users/vehicles?default_only=true')
+      .then(r => r.ok ? r.json() as Promise<{ vehicles: DefaultVehicle[] }> : null)
+      .then(data => {
+        const v = data?.vehicles?.[0] ?? null;
+        if (v && v.connector_types.length > 0) setDefaultVehicle(v);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Near-me: fetch on centre / radius / mode change ───────────────────────
@@ -772,6 +805,16 @@ export default function ExplorePage() {
     setPowerFilter('any');
   }
 
+  function applyVehicleSuggestion() {
+    if (!defaultVehicle) return;
+    setSelectedConnectors(new Set(defaultVehicle.connector_types));
+  }
+
+  function dismissVehicleSuggestion() {
+    setSuggestionDismissed(true);
+    try { sessionStorage.setItem(SESSION_KEY_CONNECTOR_SUGGESTION_DISMISSED, '1'); } catch {}
+  }
+
   function toggleConnector(ct: string) {
     setSelectedConnectors(prev => {
       const next = new Set(prev);
@@ -789,6 +832,14 @@ export default function ExplorePage() {
   // ── Derived values ────────────────────────────────────────────────────────
 
   const isRouteMode = searchMode === 'along_route';
+
+  // Show the suggestion chip only when: a default vehicle with connector types
+  // exists, no connector filter is already active, and the chip hasn't been
+  // dismissed this session. Never auto-applies the filter.
+  const showConnectorSuggestion =
+    defaultVehicle !== null &&
+    selectedConnectors.size === 0 &&
+    !suggestionDismissed;
 
   const visibleChargers = chargers.filter(c => {
     if (selectedConnectors.size > 0) {
@@ -867,23 +918,46 @@ export default function ExplorePage() {
       )}
     >
       {/* ── Header: segmented mode toggle + filters ────────────────────── */}
-      <div className="flex items-center gap-2 px-3 pb-2.5 pt-[calc(var(--screen-top-inset)+0.625rem)] border-b border-gray-100 bg-white shrink-0">
-        {featureFlags.route_planning_enabled && (
-          <ModeToggle value={searchMode} onChange={handleSearchModeChange} />
-        )}
-        <div className="flex-1" />
-        <button
-          onClick={() => setFiltersOpen(true)}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
-            activeFilterCount > 0
-              ? 'bg-ink text-white border-ink'
-              : 'bg-gray-100 text-muted border-gray-200 hover:text-ink hover:bg-gray-200',
+      <div className="border-b border-gray-100 bg-white shrink-0">
+        <div className="flex items-center gap-2 px-3 pb-2.5 pt-[calc(var(--screen-top-inset)+0.625rem)]">
+          {featureFlags.route_planning_enabled && (
+            <ModeToggle value={searchMode} onChange={handleSearchModeChange} />
           )}
-        >
-          <Filter className="w-3.5 h-3.5" />
-          {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
-        </button>
+          <div className="flex-1" />
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors',
+              activeFilterCount > 0
+                ? 'bg-ink text-white border-ink'
+                : 'bg-gray-100 text-muted border-gray-200 hover:text-ink hover:bg-gray-200',
+            )}
+          >
+            <Filter className="w-3.5 h-3.5" />
+            {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
+          </button>
+        </div>
+
+        {/* ── Connector suggestion chip ──────────────────────────────────── */}
+        {showConnectorSuggestion && defaultVehicle && (
+          <div className="flex items-center gap-2 px-3 pb-2.5">
+            <button
+              type="button"
+              onClick={applyVehicleSuggestion}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-soft border border-green/30 text-xs font-semibold text-green-deep hover:bg-green/20 transition-colors"
+            >
+              {`Show chargers for ${defaultVehicle.nickname ?? 'your vehicle'} (${defaultVehicle.connector_types.map(ct => CONNECTOR_LABELS[ct as ConnectorType] ?? ct).join(', ')})`}
+            </button>
+            <button
+              type="button"
+              onClick={dismissVehicleSuggestion}
+              aria-label="Dismiss suggestion"
+              className="shrink-0 size-5 rounded-full bg-gray-100 hover:bg-gray-200 grid place-items-center transition-colors text-muted hover:text-ink"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Map view ──────────────────────────────────────────────────────── */}

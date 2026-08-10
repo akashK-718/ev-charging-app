@@ -380,6 +380,34 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['session_review_queue']['Insert']>;
         Relationships: [];
       };
+      vehicles: {
+        Row: {
+          id: string;
+          user_id: string;
+          nickname: string | null;
+          make: string;
+          model: string;
+          connector_types: string[];
+          battery_capacity_kwh: number | null;
+          license_plate: string | null;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          nickname?: string | null;
+          make: string;
+          model: string;
+          connector_types: string[];
+          battery_capacity_kwh?: number | null;
+          license_plate?: string | null;
+          is_default?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['vehicles']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
