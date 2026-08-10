@@ -68,7 +68,16 @@ CREATE TRIGGER vehicles_promote_default_after_delete
   AFTER DELETE ON public.vehicles
   FOR EACH ROW EXECUTE FUNCTION public.vehicles_promote_default_on_delete();
 
--- updated_at auto-maintenance (reuses the function defined in migration 011)
+-- updated_at auto-maintenance.
+-- CREATE OR REPLACE is idempotent: safe if migration 011 already defined this function.
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS vehicles_updated_at ON public.vehicles;
 CREATE TRIGGER vehicles_updated_at
   BEFORE UPDATE ON public.vehicles
