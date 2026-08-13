@@ -18,6 +18,21 @@ const INTERNAL_SECRET = process.env.LIFECYCLE_SWEEP_SECRET;
  * 4. Flag sessions stuck in awaiting_end_confirmation for admin review.
  *
  * Authenticated via x-internal-secret header — not exposed to users.
+ *
+ * ── KNOWN LIFECYCLE GAP ────────────────────────────────────────────────────────
+ * None of the four sweeps handles a booking stuck in `confirmed` status whose
+ * scheduled window has fully elapsed with zero host action (host accepted the
+ * request but never tapped Start). The no-show flow only begins after the host
+ * taps Start (confirmed → awaiting_driver_confirmation); if the host never
+ * starts, the booking remains `confirmed` indefinitely.
+ *
+ * This is an unresolved product question, not a code bug. Options being evaluated:
+ *   a. Auto-transition to `no_show` (treats host abandonment like driver no-show)
+ *   b. Auto-transition to `cancelled` with a full driver refund (neutral outcome)
+ *   c. Flag for admin review (matches the awaiting_end_confirmation approach)
+ *
+ * Pending decision tracked at: fix/stale-confirmed-booking-lifecycle-gap
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-internal-secret');
