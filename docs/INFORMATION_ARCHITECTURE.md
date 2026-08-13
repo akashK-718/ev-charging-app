@@ -198,19 +198,55 @@ When a driver has a default vehicle with connector types set, a **compatibility 
 
 Both use the same logic: compatible if any of the vehicle's `connector_types` intersects the charger's `connector_types`. Advisory only — never gates access.
 
-### Connector suggestion chip
+### Compatibility dimension and filter chips
 
-When the user has a **default vehicle** with connector type(s) set (see [My Vehicles](#my-vehicles-profilevehicles)), and **no connector filter is currently active**, Explore shows a small dismissible suggestion chip below the mode-toggle / Filters row:
+Explore has a single **Compatibility** filter dimension with three mutually exclusive states:
 
-> "Show chargers for My Nexon (Type 2)"  ×
+| State | Meaning |
+|---|---|
+| `none` | No compatibility filter active — "Any vehicle" |
+| `vehicle` | Chargers filtered to those matching a specific saved vehicle's connectors |
+| `manual` | User explicitly picked individual connector types from the Filter sheet |
+
+`vehicle` and `manual` are never both active. Selecting a vehicle preset clears any manual connector selection; tapping a connector chip while a vehicle is active switches to manual mode, starting from scratch (not from the vehicle's connectors).
+
+**Two distinct chip states** appear below the mode toggle / Filters row — never both at the same time:
+
+1. **Suggestion chip** (`showSuggestionChip`) — shown when:
+   - The user's default vehicle has connector types set, AND
+   - The current mode's Compatibility is `none`, AND
+   - The suggestion has not been dismissed this session
+   - Text: "Show chargers for [nickname]". Tapping → applies `vehicle` preset for the default vehicle. **×** → dismisses for the session only (stored in `sessionStorage` under `kirin:explore:suggestion-dismissed:{near_me|along_route}`, cleared by `clearExploreSession()` on sign-out).
+
+2. **Active vehicle filter chip** (`showVehicleFilterChip`) — shown when Compatibility state is `vehicle` (set via Filters sheet or by accepting the suggestion):
+   - Text: "[nickname] · Compatible". Style: solid green (active state).
+   - Tapping the chip (not an ×) calls `clearCompatibility()` to reset Compatibility to `none`.
 
 **Rules:**
-- Tapping the chip applies the connector filter via Explore's existing `selectedConnectors` filter mechanism — identical to selecting connectors manually in the Filter sheet.
-- Tapping **×** dismisses the chip for the current session only (stored in `sessionStorage` under `kirin:explore:connector-suggestion-dismissed`, cleared by `clearExploreSession()` on sign-out). The chip reappears on a fresh session.
-- The chip is **never auto-applied** — the filter is only applied when the user explicitly taps it.
-- If the user has no default vehicle, or their default vehicle has no connector type, **no chip renders** — no empty-state placeholder.
-- Once a connector filter is active (whether from the chip or the Filter sheet), the chip hides automatically (`selectedConnectors.size > 0`).
-- Explore owns no vehicle data or editing capability. It only reads the default vehicle's connector types from `GET /api/users/vehicles?default_only=true`. Vehicle management lives entirely in Profile → My Vehicles.
+- The suggestion chip is **never auto-applied** — the filter is only active when the user explicitly taps it.
+- If the user has no default vehicle or their default vehicle has no connector type, no chip renders.
+- Explore reads all vehicles (not just default) from `GET /api/users/vehicles` for the Filter sheet. Vehicle management lives in Profile → My Vehicles.
+
+### Filters badge counting
+
+The Filters button badge counts **filter dimensions** that deviate from "any", maximum 4:
+
+| Dimension | Counts as 1 when… |
+|---|---|
+| Compatibility | state is `vehicle` or `manual` (regardless of how many connectors are selected) |
+| Availability | not "any" |
+| Power | not "any" |
+| Max price | below the maximum (₹50/kWh) |
+
+Multiple manually-selected connector types within a single `manual` Compatibility state count as one, not N.
+
+### Per-mode filter isolation
+
+Near Me and Along Route maintain **completely independent filter state**. Applying, changing, or resetting filters in one mode has no effect on the other mode's filters. The suggestion-dismissed flag is also per-mode. Switching modes loads that mode's own stored filter state without clobbering the other.
+
+### Along Route: filters never trigger route recompute
+
+Filter changes (including Compatibility, price, power, availability) do **not** trigger route recalculation. Route recomputation is triggered only by changes to `routeFrom`, `routeTo`, or the buffer radius — never by filter state.
 
 ## Activity
 
@@ -593,13 +629,13 @@ Any feature that persists state in the browser MUST classify its storage key int
 |---|---|---|---|
 | **Device-level** | Device | Fine as a flat key — not tied to any user | `pwa_install_nudge_v1`, `kirin_intro_done` (sessionStorage) |
 | **User-level** | Authenticated user ID | Key MUST use `{base}:{userId}` pattern via `userKey()` in `src/lib/user-storage.ts`. NOT cleared on logout — persists for that user on next login. Legacy flat key MUST be purged on init via `purgeLegacyKey()`. | `kirin:milestones:{userId}`, `lender:new-charger:draft:{userId}` |
-| **Session-level** | Auth token lifetime | Must be fully cleared when `supabase.signOut()` is called. Supabase handles its own tokens; OTP and in-progress booking/payment state fall here. App code uses `clearExploreSession()` from `src/lib/user-storage.ts`. | Supabase access/refresh tokens, OTP flow state, `kirin:explore:mode`, `kirin:explore:near_me`, `kirin:explore:along_route` |
+| **Session-level** | Auth token lifetime | Must be fully cleared when `supabase.signOut()` is called. Supabase handles its own tokens; OTP and in-progress booking/payment state fall here. App code uses `clearExploreSession()` from `src/lib/user-storage.ts`. | Supabase access/refresh tokens, OTP flow state, `kirin:explore:mode`, `kirin:explore:near_me`, `kirin:explore:along_route`, `kirin:explore:suggestion-dismissed:near_me`, `kirin:explore:suggestion-dismissed:along_route` |
 
 **Why this matters:** a flat User-level key written by User A remains visible to User B who logs in on the same device after User A logs out. Route searches include real coordinates and are personal data — this is a privacy bug, not just a UX issue. The `{base}:{userId}` pattern ensures each user reads and writes only their own state.
 
 **On logout:** Supabase `signOut()` clears Session-level tokens. App code must call `clearExploreSession()` (already wired into all four signOut handlers) to clear Explore's sessionStorage keys — sessionStorage survives same-origin navigation. User-level scoped keys are intentionally *not* cleared — the point is that User A's saved state is still there if User A logs back in later. Device-level keys are never touched by login/logout.
 
-**Explore storage scoping note (2026-07):** `chargers_map_state_v2:{userId}` was previously classified as User-level (localStorage, 24h expiry, user-scoped). It has been replaced by the three `kirin:explore:*` sessionStorage keys above. The earlier decision correctly fixed a cross-user privacy bug (unscoped key visible to any user on shared device). This change is a separate product decision: searches represent ephemeral intent, not durable user data, so they should not persist across sessions even for the same user. The scoping mechanism (`{key}:{userId}`) is retired in favour of sessionStorage's natural per-tab isolation, plus explicit `clearExploreSession()` on signOut.
+**Explore storage scoping note (2026-07):** `chargers_map_state_v2:{userId}` was previously classified as User-level (localStorage, 24h expiry, user-scoped). It has been replaced by the `kirin:explore:*` sessionStorage keys (mode, per-mode filter state, per-mode suggestion-dismissed). The earlier decision correctly fixed a cross-user privacy bug (unscoped key visible to any user on shared device). This change is a separate product decision: searches represent ephemeral intent, not durable user data, so they should not persist across sessions even for the same user. The scoping mechanism (`{key}:{userId}`) is retired in favour of sessionStorage's natural per-tab isolation, plus explicit `clearExploreSession()` on signOut.
 
 ## PWA Update Paths
 

@@ -20,7 +20,13 @@ import { RouteCompactSummary } from '@/components/chargers/RouteCompactSummary';
 import { ChargerBottomSheet } from '@/components/chargers/ChargerBottomSheet';
 import { ChargerListView } from '@/components/chargers/ChargerListView';
 import { FilterSheet } from '@/components/chargers/FilterSheet';
-import type { Availability, PowerFilter } from '@/components/chargers/FilterSheet';
+import type {
+  Availability,
+  PowerFilter,
+  CompatibilityState,
+  ExploreFilterState,
+  FilterVehicle,
+} from '@/components/chargers/FilterSheet';
 import type { ChargerRow } from '@/components/chargers/ChargerCard';
 import type { Coords, RouteResult } from '@/lib/maps/types';
 import type { ChargerMarkerData } from '@/components/maps/MapView';
@@ -72,17 +78,24 @@ const LEGACY_STORAGE_KEY = 'chargers_map_state_v2';
 const SESSION_KEY_MODE        = 'kirin:explore:mode';
 const SESSION_KEY_NEAR_ME     = 'kirin:explore:near_me';
 const SESSION_KEY_ALONG_ROUTE = 'kirin:explore:along_route';
-const SESSION_KEY_CONNECTOR_SUGGESTION_DISMISSED = 'kirin:explore:connector-suggestion-dismissed';
+// Per-mode suggestion dismissal — each mode tracks independently.
+const SESSION_KEY_SUGGESTION_DISMISSED_NEAR_ME = 'kirin:explore:suggestion-dismissed:near_me';
+const SESSION_KEY_SUGGESTION_DISMISSED_ROUTE   = 'kirin:explore:suggestion-dismissed:along_route';
 
 // ── Session state types ───────────────────────────────────────────────────────
 
 type SearchMode = 'near_me' | 'along_route';
 
-interface DefaultVehicle {
-  id: string;
-  nickname: string | null;
-  connector_types: string[];
-}
+// FilterVehicle is the vehicle shape used by both FilterSheet and this page.
+type Vehicle = FilterVehicle;
+
+const DEFAULT_FILTER_STATE: ExploreFilterState = {
+  compatibility: { type: 'none' },
+  availability:  'any',
+  powerFilter:   'any',
+  maxPrice:      MAX_PRICE,
+};
+
 type RouteCharger = ChargerRow & { distance_from_route_m: number };
 
 type NearMeSession = {
@@ -189,17 +202,21 @@ export default function ExplorePage() {
   /** Brief animation flag for the From/To swap — fades fields out, swaps, fades back. */
   const [isSwapping, setIsSwapping] = useState(false);
 
-  // ── Shared filters ────────────────────────────────────────────────────────
-  const [selectedConnectors, setSelectedConnectors] = useState<Set<string>>(new Set());
-  const [maxPrice, setMaxPrice] = useState(MAX_PRICE);
-  const [availability, setAvailability] = useState<Availability>('any');
-  const [powerFilter, setPowerFilter] = useState<PowerFilter>('any');
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  // ── Per-mode filter state (Near Me and Along Route are fully independent) ──
+  const [nearMeFilters,    setNearMeFilters]    = useState<ExploreFilterState>(DEFAULT_FILTER_STATE);
+  const [routeFilters,     setRouteFilters]     = useState<ExploreFilterState>(DEFAULT_FILTER_STATE);
+  const [filtersOpen,      setFiltersOpen]      = useState(false);
 
-  // ── Connector suggestion (default vehicle, session-dismissed) ─────────────
-  const [defaultVehicle, setDefaultVehicle] = useState<DefaultVehicle | null>(null);
-  const [suggestionDismissed, setSuggestionDismissed] = useState(() => {
-    try { return sessionStorage.getItem(SESSION_KEY_CONNECTOR_SUGGESTION_DISMISSED) === '1'; }
+  // ── Vehicles (fetched once; used by FilterSheet Vehicle section + chip) ───
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+  // ── Per-mode suggestion dismissal (session-scoped) ────────────────────────
+  const [nearMeSuggestionDismissed, setNearMeSuggestionDismissed] = useState(() => {
+    try { return sessionStorage.getItem(SESSION_KEY_SUGGESTION_DISMISSED_NEAR_ME) === '1'; }
+    catch { return false; }
+  });
+  const [routeSuggestionDismissed, setRouteSuggestionDismissed] = useState(() => {
+    try { return sessionStorage.getItem(SESSION_KEY_SUGGESTION_DISMISSED_ROUTE) === '1'; }
     catch { return false; }
   });
 
@@ -412,19 +429,14 @@ export default function ExplorePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Fetch default vehicle for connector suggestion ────────────────────────
-  // Runs once after auth resolves. Session-dismissed state is read synchronously
-  // from sessionStorage in the useState initialiser above, so we only fetch
-  // when there is still a chance to show the chip.
-
+  // ── Fetch vehicles (for FilterSheet Vehicle section + suggestion chip) ─────
+  // Fetches all of the user's vehicles once on mount.  The default vehicle is
+  // derived from the list so the same data feeds both the Filters sheet and
+  // the suggestion chip without a second request.
   useEffect(() => {
-    if (suggestionDismissed) return;
-    fetch('/api/users/vehicles?default_only=true')
-      .then(r => r.ok ? r.json() as Promise<{ vehicles: DefaultVehicle[] }> : null)
-      .then(data => {
-        const v = data?.vehicles?.[0] ?? null;
-        if (v && v.connector_types.length > 0) setDefaultVehicle(v);
-      })
+    fetch('/api/users/vehicles')
+      .then(r => r.ok ? r.json() as Promise<{ vehicles: Vehicle[] }> : null)
+      .then(data => { if (data?.vehicles) setVehicles(data.vehicles); })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -781,46 +793,60 @@ export default function ExplorePage() {
     }, 120);
   }
 
-  function handleApplyFilters({
-    connectors,
-    maxPrice: mp,
-    availability: av,
-    powerFilter: pf,
-  }: {
-    connectors: Set<string>;
-    maxPrice: number;
-    availability: Availability;
-    powerFilter: PowerFilter;
-  }) {
-    setSelectedConnectors(connectors);
-    setMaxPrice(mp);
-    setAvailability(av);
-    setPowerFilter(pf);
+  // ── Per-mode filter helpers ───────────────────────────────────────────────
+
+  function setActiveFilters(updater: ExploreFilterState | ((prev: ExploreFilterState) => ExploreFilterState)) {
+    if (isRouteMode) setRouteFilters(updater);
+    else setNearMeFilters(updater);
   }
 
-  function clearFilters() {
-    setSelectedConnectors(new Set());
-    setMaxPrice(MAX_PRICE);
-    setAvailability('any');
-    setPowerFilter('any');
+  function handleApplyFilters(filters: ExploreFilterState) {
+    setActiveFilters(filters);
+  }
+
+  function resetFilters() {
+    setActiveFilters(DEFAULT_FILTER_STATE);
   }
 
   function applyVehicleSuggestion() {
     if (!defaultVehicle) return;
-    setSelectedConnectors(new Set(defaultVehicle.connector_types));
+    setActiveFilters(prev => ({
+      ...prev,
+      compatibility: { type: 'vehicle', vehicleId: defaultVehicle.id, connectorTypes: defaultVehicle.connector_types },
+    }));
   }
 
   function dismissVehicleSuggestion() {
-    setSuggestionDismissed(true);
-    try { sessionStorage.setItem(SESSION_KEY_CONNECTOR_SUGGESTION_DISMISSED, '1'); } catch {}
+    if (isRouteMode) {
+      setRouteSuggestionDismissed(true);
+      try { sessionStorage.setItem(SESSION_KEY_SUGGESTION_DISMISSED_ROUTE, '1'); } catch {}
+    } else {
+      setNearMeSuggestionDismissed(true);
+      try { sessionStorage.setItem(SESSION_KEY_SUGGESTION_DISMISSED_NEAR_ME, '1'); } catch {}
+    }
   }
 
+  function clearCompatibility() {
+    setActiveFilters(prev => ({ ...prev, compatibility: { type: 'none' } }));
+  }
+
+  // Used by ChargerListView's inline connector toggles (manual mode).
   function toggleConnector(ct: string) {
-    setSelectedConnectors(prev => {
-      const next = new Set(prev);
-      next.has(ct) ? next.delete(ct) : next.add(ct);
-      return next;
+    setActiveFilters(prev => {
+      const currentSet = prev.compatibility.type === 'manual'
+        ? new Set(prev.compatibility.connectors)
+        : new Set<string>();
+      currentSet.has(ct) ? currentSet.delete(ct) : currentSet.add(ct);
+      const newCompat: CompatibilityState = currentSet.size === 0
+        ? { type: 'none' }
+        : { type: 'manual', connectors: currentSet };
+      return { ...prev, compatibility: newCompat };
     });
+  }
+
+  // Used by ChargerListView's inline price slider.
+  function handleMaxPriceChange(price: number) {
+    setActiveFilters(prev => ({ ...prev, maxPrice: price }));
   }
 
   function bumpRadius() {
@@ -831,33 +857,49 @@ export default function ExplorePage() {
 
   // ── Derived values ────────────────────────────────────────────────────────
 
-  const isRouteMode = searchMode === 'along_route';
+  const isRouteMode    = searchMode === 'along_route';
+  const activeFilters  = isRouteMode ? routeFilters  : nearMeFilters;
+  const suggestionDismissed = isRouteMode ? routeSuggestionDismissed : nearMeSuggestionDismissed;
 
-  // Show the suggestion chip only when: a default vehicle with connector types
-  // exists, no connector filter is already active, and the chip hasn't been
-  // dismissed this session. Never auto-applies the filter.
-  const showConnectorSuggestion =
+  // The default vehicle is the vehicle with is_default=true, used for the suggestion chip.
+  const defaultVehicle = vehicles.find(v => v.is_default) ?? null;
+
+  // Resolve which connector set is currently active for charger filtering.
+  const activeConnectors: Set<string> | null = (() => {
+    const c = activeFilters.compatibility;
+    if (c.type === 'vehicle') return new Set(c.connectorTypes);
+    if (c.type === 'manual' && c.connectors.size > 0) return c.connectors;
+    return null;
+  })();
+
+  // Suggestion chip: Compatibility = none, default vehicle with connectors exists, not dismissed.
+  const showSuggestionChip =
     defaultVehicle !== null &&
-    selectedConnectors.size === 0 &&
+    defaultVehicle.connector_types.length > 0 &&
+    activeFilters.compatibility.type === 'none' &&
     !suggestionDismissed;
 
+  // Active vehicle filter chip: Compatibility = vehicle (suggestion was accepted or set via Filters).
+  const showVehicleFilterChip = activeFilters.compatibility.type === 'vehicle';
+
+  function applyConnectorFilter(c: ChargerRow): boolean {
+    if (!activeConnectors) return true;
+    return (c.connector_types as string[]).some(ct => activeConnectors.has(ct));
+  }
+
   const visibleChargers = chargers.filter(c => {
-    if (selectedConnectors.size > 0) {
-      if (!(c.connector_types as string[]).some(ct => selectedConnectors.has(ct))) return false;
-    }
-    if (maxPrice < MAX_PRICE && Number(c.price_per_kwh) > maxPrice) return false;
-    if (availability !== 'any' && c.status !== 'active') return false;
-    if (powerFilter !== 'any' && c.charger_type !== powerFilter) return false;
+    if (!applyConnectorFilter(c)) return false;
+    if (activeFilters.maxPrice < MAX_PRICE && Number(c.price_per_kwh) > activeFilters.maxPrice) return false;
+    if (activeFilters.availability !== 'any' && c.status !== 'active') return false;
+    if (activeFilters.powerFilter !== 'any' && c.charger_type !== activeFilters.powerFilter) return false;
     return true;
   });
 
   const visibleRouteChargers = routeChargers.filter(c => {
-    if (selectedConnectors.size > 0) {
-      if (!(c.connector_types as string[]).some(ct => selectedConnectors.has(ct))) return false;
-    }
-    if (maxPrice < MAX_PRICE && Number(c.price_per_kwh) > maxPrice) return false;
-    if (availability !== 'any' && c.status !== 'active') return false;
-    if (powerFilter !== 'any' && c.charger_type !== powerFilter) return false;
+    if (!applyConnectorFilter(c)) return false;
+    if (activeFilters.maxPrice < MAX_PRICE && Number(c.price_per_kwh) > activeFilters.maxPrice) return false;
+    if (activeFilters.availability !== 'any' && c.status !== 'active') return false;
+    if (activeFilters.powerFilter !== 'any' && c.charger_type !== activeFilters.powerFilter) return false;
     return true;
   });
 
@@ -865,10 +907,19 @@ export default function ExplorePage() {
     ? routeChargers.length - visibleRouteChargers.length
     : chargers.length - visibleChargers.length;
 
-  const activeFilterCount = selectedConnectors.size
-    + (maxPrice < MAX_PRICE ? 1 : 0)
-    + (availability !== 'any' ? 1 : 0)
-    + (powerFilter !== 'any' ? 1 : 0);
+  // Badge counts ONE per filter DIMENSION deviating from Any — max 4.
+  // Multiple manual connector chips still count as 1 (it's one Compatibility dimension).
+  const activeFilterCount =
+    (activeFilters.compatibility.type !== 'none' ? 1 : 0) +
+    (activeFilters.maxPrice < MAX_PRICE ? 1 : 0) +
+    (activeFilters.availability !== 'any' ? 1 : 0) +
+    (activeFilters.powerFilter !== 'any' ? 1 : 0);
+  const compatState = activeFilters.compatibility;
+  const activeVehicle: FilterVehicle | null =
+    compatState.type === 'vehicle'
+      ? (vehicles.find(v => v.id === compatState.vehicleId) ?? null)
+      : null;
+
   const activeFetchLoading = isRouteMode ? routeFetchLoading : fetchLoading;
 
   const radiusKm = isFinite(radius) ? radius / 1000 : 0;
@@ -938,15 +989,15 @@ export default function ExplorePage() {
           </button>
         </div>
 
-        {/* ── Connector suggestion chip ──────────────────────────────────── */}
-        {showConnectorSuggestion && defaultVehicle && (
+        {/* ── Vehicle compatibility chips ────────────────────────────────── */}
+        {showSuggestionChip && defaultVehicle && (
           <div className="flex items-center gap-2 px-3 pb-2.5">
             <button
               type="button"
               onClick={applyVehicleSuggestion}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-soft border border-green/30 text-xs font-semibold text-green-deep hover:bg-green/20 transition-colors"
             >
-              {`Show chargers for ${defaultVehicle.nickname ?? 'your vehicle'} (${defaultVehicle.connector_types.map(ct => CONNECTOR_LABELS[ct as ConnectorType] ?? ct).join(', ')})`}
+              {`Show chargers for ${defaultVehicle.nickname ?? 'your vehicle'}`}
             </button>
             <button
               type="button"
@@ -954,6 +1005,18 @@ export default function ExplorePage() {
               aria-label="Dismiss suggestion"
               className="shrink-0 size-5 rounded-full bg-gray-100 hover:bg-gray-200 grid place-items-center transition-colors text-muted hover:text-ink"
             >
+              <X className="size-3" />
+            </button>
+          </div>
+        )}
+        {showVehicleFilterChip && (
+          <div className="flex items-center gap-2 px-3 pb-2.5">
+            <button
+              type="button"
+              onClick={clearCompatibility}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green text-white border border-green text-xs font-semibold hover:bg-green/90 transition-colors"
+            >
+              {`${activeVehicle?.nickname ?? 'Your vehicle'} · Compatible`}
               <X className="size-3" />
             </button>
           </div>
@@ -1112,7 +1175,7 @@ export default function ExplorePage() {
                   <>
                     <p className="font-semibold text-ink text-sm">No chargers along this route</p>
                     {activeFilterCount > 0 ? (
-                      <button onClick={clearFilters} className="mt-2 text-xs font-semibold text-volt-deep underline">
+                      <button onClick={resetFilters} className="mt-2 text-xs font-semibold text-volt-deep underline">
                         Clear filters
                       </button>
                     ) : (
@@ -1127,7 +1190,7 @@ export default function ExplorePage() {
                         : `No chargers within ${radiusKm % 1 === 0 ? radiusKm : radiusKm.toFixed(1)} km`}
                     </p>
                     {activeFilterCount > 0 ? (
-                      <button onClick={clearFilters} className="mt-2 text-xs font-semibold text-volt-deep underline">
+                      <button onClick={resetFilters} className="mt-2 text-xs font-semibold text-volt-deep underline">
                         Clear filters
                       </button>
                     ) : !allIndiaMode ? (
@@ -1250,11 +1313,11 @@ export default function ExplorePage() {
             chargers={isRouteMode ? (routeChargers as ChargerRow[]) : chargers}
             loading={activeFetchLoading || locationLoading}
             userCoords={searchCenter ?? undefined}
-            selectedConnectors={selectedConnectors}
-            maxPrice={maxPrice}
+            selectedConnectors={activeConnectors ?? new Set()}
+            maxPrice={activeFilters.maxPrice}
             onConnectorToggle={toggleConnector}
-            onMaxPriceChange={setMaxPrice}
-            onClearFilters={clearFilters}
+            onMaxPriceChange={handleMaxPriceChange}
+            onClearFilters={resetFilters}
           />
         </div>
       )}
@@ -1267,10 +1330,8 @@ export default function ExplorePage() {
       {/* Filter sheet */}
       <FilterSheet
         isOpen={filtersOpen}
-        selectedConnectors={selectedConnectors}
-        maxPrice={maxPrice}
-        availability={availability}
-        powerFilter={powerFilter}
+        filters={activeFilters}
+        vehicles={vehicles}
         onApply={handleApplyFilters}
         onClose={() => setFiltersOpen(false)}
       />

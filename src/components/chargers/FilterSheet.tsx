@@ -2,58 +2,88 @@
 
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { CONNECTOR_TYPES, CHARGER_TYPES } from '@/lib/constants';
+import { CONNECTOR_TYPES, CONNECTOR_LABELS } from '@/lib/constants';
+import type { ConnectorType } from '@/lib/constants';
+import { CHARGER_TYPES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
+
+// ── Exported types ────────────────────────────────────────────────────────────
 
 export type Availability = 'any' | 'now' | 'next_2h';
 export type PowerFilter  = 'any' | string;
 
-interface FilterSheetProps {
-  isOpen: boolean;
-  selectedConnectors: Set<string>;
-  maxPrice: number;
+/**
+ * Compatibility is a single mutually-exclusive dimension with three states:
+ * - none        → no compatibility filter active ("Any vehicle")
+ * - vehicle     → filter by the connector types of a specific saved vehicle
+ * - manual      → user has explicitly picked individual connector types
+ *
+ * vehicle and manual are never both active at the same time. Selecting a vehicle
+ * clears any manual selection; tapping a connector chip while vehicle is active
+ * switches to manual (starting from scratch, not from the vehicle's connectors).
+ */
+export type CompatibilityState =
+  | { type: 'none' }
+  | { type: 'vehicle'; vehicleId: string; connectorTypes: string[] }
+  | { type: 'manual'; connectors: Set<string> };
+
+export interface FilterVehicle {
+  id: string;
+  nickname: string | null;
+  make: string;
+  model: string;
+  connector_types: string[];
+  is_default: boolean;
+}
+
+export type ExploreFilterState = {
+  compatibility: CompatibilityState;
   availability: Availability;
   powerFilter: PowerFilter;
-  onApply: (filters: {
-    connectors: Set<string>;
-    maxPrice: number;
-    availability: Availability;
-    powerFilter: PowerFilter;
-  }) => void;
-  onClose: () => void;
-}
+  maxPrice: number;
+};
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const PRICE_MIN = 6;
 const PRICE_MAX = 50;
 
 const AVAILABILITY_OPTIONS: { value: Availability; label: string }[] = [
-  { value: 'any',    label: 'Any' },
-  { value: 'now',    label: 'Available now' },
+  { value: 'any',     label: 'Any' },
+  { value: 'now',     label: 'Available now' },
   { value: 'next_2h', label: 'Available in next 2 hours' },
 ];
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
+interface FilterSheetProps {
+  isOpen: boolean;
+  filters: ExploreFilterState;
+  vehicles: FilterVehicle[];
+  onApply: (filters: ExploreFilterState) => void;
+  onClose: () => void;
+}
+
 export function FilterSheet({
   isOpen,
-  selectedConnectors,
-  maxPrice,
-  availability,
-  powerFilter,
+  filters,
+  vehicles,
   onApply,
   onClose,
 }: FilterSheetProps) {
-  const [draftConnectors,  setDraftConnectors]  = useState(new Set(selectedConnectors));
-  const [draftMaxPrice,    setDraftMaxPrice]    = useState(maxPrice);
-  const [draftAvailability, setDraftAvailability] = useState<Availability>(availability);
-  const [draftPowerFilter, setDraftPowerFilter] = useState<PowerFilter>(powerFilter);
+  const [draftCompat,       setDraftCompat]       = useState<CompatibilityState>(filters.compatibility);
+  const [draftMaxPrice,     setDraftMaxPrice]     = useState(filters.maxPrice);
+  const [draftAvailability, setDraftAvailability] = useState<Availability>(filters.availability);
+  const [draftPowerFilter,  setDraftPowerFilter]  = useState<PowerFilter>(filters.powerFilter);
 
-  // Sync draft to applied values each time the sheet opens
+  // Sync draft from applied values each time the sheet opens.
   useEffect(() => {
     if (!isOpen) return;
-    setDraftConnectors(new Set(selectedConnectors));
-    setDraftMaxPrice(maxPrice);
-    setDraftAvailability(availability);
-    setDraftPowerFilter(powerFilter);
+    setDraftCompat(filters.compatibility);
+    setDraftMaxPrice(filters.maxPrice);
+    setDraftAvailability(filters.availability);
+    setDraftPowerFilter(filters.powerFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -64,16 +94,20 @@ export function FilterSheet({
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
+  // Tapping a connector chip always operates in manual mode.
+  // Selecting a vehicle preset (radio) clears any manual connector selection.
   function toggleConnector(ct: string) {
-    setDraftConnectors(prev => {
-      const next = new Set(prev);
-      next.has(ct) ? next.delete(ct) : next.add(ct);
-      return next;
+    setDraftCompat(prev => {
+      const currentSet = prev.type === 'manual' ? new Set(prev.connectors) : new Set<string>();
+      currentSet.has(ct) ? currentSet.delete(ct) : currentSet.add(ct);
+      return currentSet.size === 0
+        ? { type: 'none' }
+        : { type: 'manual', connectors: currentSet };
     });
   }
 
-  function handleClear() {
-    setDraftConnectors(new Set());
+  function handleReset() {
+    setDraftCompat({ type: 'none' });
     setDraftMaxPrice(PRICE_MAX);
     setDraftAvailability('any');
     setDraftPowerFilter('any');
@@ -81,16 +115,17 @@ export function FilterSheet({
 
   function handleApply() {
     onApply({
-      connectors: draftConnectors,
-      maxPrice: draftMaxPrice,
-      availability: draftAvailability,
-      powerFilter: draftPowerFilter,
+      compatibility: draftCompat,
+      availability:  draftAvailability,
+      powerFilter:   draftPowerFilter,
+      maxPrice:      draftMaxPrice,
     });
     onClose();
   }
 
   return (
     <>
+      {/* Scrim */}
       <div
         className={cn(
           'fixed inset-0 bg-black/40 z-40 transition-opacity duration-200',
@@ -100,6 +135,7 @@ export function FilterSheet({
         onClick={onClose}
       />
 
+      {/* Sheet */}
       <div
         className={cn(
           'fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl',
@@ -118,12 +154,71 @@ export function FilterSheet({
         {/* Header */}
         <div className="flex items-center px-4 pb-4 pt-1">
           <h2 className="font-display font-bold text-ink text-lg flex-1">Filters</h2>
-          <button onClick={() => { haptic('light'); onClose(); }} className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors tap-light" aria-label="Close">
+          <button
+            onClick={() => { haptic('light'); onClose(); }}
+            className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors tap-light"
+            aria-label="Close"
+          >
             <X className="w-4 h-4 text-muted" />
           </button>
         </div>
 
         <div className="px-4 pb-8 space-y-6 max-h-[70dvh] overflow-y-auto">
+
+          {/* ── Vehicle (Compatibility) ──────────────────────────────────── */}
+          {vehicles.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2.5">
+                Vehicle
+              </p>
+              <div className="flex flex-col gap-2.5">
+                {/* Any vehicle — checked when no specific vehicle preset is active */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="vehicle"
+                    checked={draftCompat.type !== 'vehicle'}
+                    onChange={() => setDraftCompat({ type: 'none' })}
+                    className="w-4 h-4"
+                    style={{ accentColor: 'var(--green)' }}
+                  />
+                  <span className="text-sm font-medium text-ink">Any vehicle</span>
+                </label>
+
+                {vehicles.map(v => (
+                  <label key={v.id} className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="vehicle"
+                      checked={draftCompat.type === 'vehicle' && draftCompat.vehicleId === v.id}
+                      onChange={() => setDraftCompat({
+                        type: 'vehicle',
+                        vehicleId: v.id,
+                        connectorTypes: v.connector_types,
+                      })}
+                      className="w-4 h-4 mt-0.5"
+                      style={{ accentColor: 'var(--green)' }}
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-ink">
+                        {v.nickname ?? `${v.make} ${v.model}`}
+                        {v.is_default && (
+                          <span className="ml-1.5 text-[10px] font-semibold text-green uppercase tracking-wide">
+                            Default
+                          </span>
+                        )}
+                      </span>
+                      <p className="text-xs text-muted mt-0.5">
+                        {v.connector_types
+                          .map(ct => CONNECTOR_LABELS[ct as ConnectorType] ?? ct)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Availability ─────────────────────────────────────────────── */}
           <div>
@@ -139,7 +234,7 @@ export function FilterSheet({
                     value={value}
                     checked={draftAvailability === value}
                     onChange={() => setDraftAvailability(value)}
-                    className="accent-green w-4 h-4"
+                    className="w-4 h-4"
                     style={{ accentColor: 'var(--green)' }}
                   />
                   <span className="text-sm font-medium text-ink">{label}</span>
@@ -148,21 +243,23 @@ export function FilterSheet({
             </div>
           </div>
 
-          {/* ── Connector type ───────────────────────────────────────────── */}
+          {/* ── Connector type (manual mode) ─────────────────────────────── */}
           <div>
             <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2.5">
               Connector type
             </p>
             <div className="flex flex-wrap gap-2">
               {CONNECTOR_TYPES.map(ct => {
-                const active = draftConnectors.has(ct);
+                const active = draftCompat.type === 'manual' && draftCompat.connectors.has(ct);
                 return (
                   <button
                     key={ct}
                     onClick={() => { haptic('light'); toggleConnector(ct); }}
                     className={cn(
                       'px-3.5 py-2 rounded-full text-sm font-semibold tap-light',
-                      active ? 'bg-ink text-white' : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
+                      active
+                        ? 'bg-ink text-white'
+                        : 'bg-gray-100 text-muted hover:text-ink hover:bg-gray-200',
                     )}
                   >
                     {ct}
@@ -170,6 +267,11 @@ export function FilterSheet({
                 );
               })}
             </div>
+            {draftCompat.type === 'vehicle' && (
+              <p className="text-xs text-muted mt-2">
+                Tap a connector to switch to manual selection.
+              </p>
+            )}
           </div>
 
           {/* ── Power ────────────────────────────────────────────────────── */}
@@ -231,13 +333,13 @@ export function FilterSheet({
             </div>
           </div>
 
-          {/* Actions */}
+          {/* ── Actions ──────────────────────────────────────────────────── */}
           <div className="flex gap-3 pt-1">
             <button
-              onClick={() => { haptic('light'); handleClear(); }}
+              onClick={() => { haptic('light'); handleReset(); }}
               className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-muted hover:text-ink hover:border-gray-300 transition-colors tap-light"
             >
-              Clear all
+              Reset all
             </button>
             <button
               onClick={() => { haptic('medium'); handleApply(); }}
@@ -246,6 +348,7 @@ export function FilterSheet({
               Apply
             </button>
           </div>
+
         </div>
       </div>
     </>

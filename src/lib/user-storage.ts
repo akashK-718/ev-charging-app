@@ -15,7 +15,8 @@
  * |               |            | kirin:explore:mode (sessionStorage)                     | supabase.signOut()  |
  * |               |            | kirin:explore:near_me (sessionStorage)                  | + clearExploreSession() |
  * |               |            | kirin:explore:along_route (sessionStorage)               |                     |
- * |               |            | kirin:explore:connector-suggestion-dismissed (sessionStorage) |              |
+ * |               |            | kirin:explore:suggestion-dismissed:near_me (sessionStorage)  |              |
+ * |               |            | kirin:explore:suggestion-dismissed:along_route (sessionStorage) |           |
  *
  * User-level keys use the pattern `{base}:{userId}` via `userKey()`.
  * On first load, call `purgeLegacyKey(base)` for any key that was previously
@@ -52,6 +53,7 @@ export function clearExploreSession(): void {
     sessionStorage.removeItem('kirin:explore:mode');
     sessionStorage.removeItem('kirin:explore:near_me');
     sessionStorage.removeItem('kirin:explore:along_route');
-    sessionStorage.removeItem('kirin:explore:connector-suggestion-dismissed');
+    sessionStorage.removeItem('kirin:explore:suggestion-dismissed:near_me');
+    sessionStorage.removeItem('kirin:explore:suggestion-dismissed:along_route');
   } catch {}
 }
