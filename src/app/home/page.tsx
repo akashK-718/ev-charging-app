@@ -749,55 +749,60 @@ export default async function HomePage() {
         {/* ── PWA install ────────────────────────────────────────────────── */}
         <PwaInstallCard />
 
-        {/* ── Nudge (Class A + Class B only) ──────────────────────────────── */}
-        {topNudge ? (
-          <section aria-label="Suggestion">
-            {topNudge.type === 'new-user' && (
-              <div className="rise-in flex flex-col items-center text-center py-10 px-4">
-                <div className="size-16 grid place-items-center rounded-3xl bg-green-soft text-green mb-4">
-                  <Inbox className="size-7" aria-hidden />
-                </div>
-                <p className="font-bold text-ink">All clear for now</p>
-                <p className="text-sm text-muted mt-1 leading-relaxed max-w-xs">
-                  When you have an upcoming charge, a request, or anything else that needs you, it&apos;ll show up here.
-                </p>
-                <div className="mt-5 flex gap-2 flex-wrap justify-center">
-                  <Link
-                    href="/hosting/learn"
-                    className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-white border border-border text-ink text-sm font-semibold"
-                  >
-                    Learn about hosting
-                  </Link>
-                </div>
-              </div>
-            )}
+        {/* ── Nudge + Good to know — 6px gap so they read as paired but distinct ── */}
+        <div className="flex flex-col gap-1.5">
 
-            {topNudge.type === 'resume-draft' && (
-              <Link
-                href={`/lender/chargers/${topNudge.charger.id}/edit`}
-                className="rise-in flex items-center gap-3 bg-white border border-border rounded-3xl px-4 py-4 shadow-sm active:scale-[0.98] transition-transform"
-              >
-                <div className="size-9 rounded-xl bg-copper-soft grid place-items-center shrink-0">
-                  <Zap className="size-4 text-copper" aria-hidden />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-ink">
-                    Resume charger listing{topNudge.step < 7 ? `, step ${topNudge.step} of 7` : ''}
+          {/* Nudge (Class A + Class B only) */}
+          {topNudge ? (
+            <section aria-label="Suggestion">
+              {topNudge.type === 'new-user' && (
+                <div className="rise-in flex flex-col items-center text-center py-10 px-4">
+                  <div className="size-16 grid place-items-center rounded-3xl bg-green-soft text-green mb-4">
+                    <Inbox className="size-7" aria-hidden />
+                  </div>
+                  <p className="font-bold text-ink">All clear for now</p>
+                  <p className="text-sm text-muted mt-1 leading-relaxed max-w-xs">
+                    When you have an upcoming charge, a request, or anything else that needs you, it&apos;ll show up here.
                   </p>
-                  <p className="text-xs text-muted truncate">
-                    {topNudge.charger.title || 'Untitled charger'}
-                  </p>
+                  <div className="mt-5 flex gap-2 flex-wrap justify-center">
+                    <Link
+                      href="/hosting/learn"
+                      className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-white border border-border text-ink text-sm font-semibold"
+                    >
+                      Learn about hosting
+                    </Link>
+                  </div>
                 </div>
-                <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
-              </Link>
-            )}
-          </section>
-        ) : ruleNudge ? (
-          <DynamicNudge ruleNudge={ruleNudge} />
-        ) : null}
+              )}
 
-        {/* ── Good to know (Class C, independent of Nudge) ─────────────────── */}
-        <GoodToKnow userId={user.id} eligibleTips={eligibleTips} />
+              {topNudge.type === 'resume-draft' && (
+                <Link
+                  href={`/lender/chargers/${topNudge.charger.id}/edit`}
+                  className="rise-in flex items-center gap-3 bg-white border border-border rounded-3xl px-4 py-4 shadow-sm active:scale-[0.98] transition-transform"
+                >
+                  <div className="size-9 rounded-xl bg-copper-soft grid place-items-center shrink-0">
+                    <Zap className="size-4 text-copper" aria-hidden />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-ink">
+                      Resume charger listing{topNudge.step < 7 ? `, step ${topNudge.step} of 7` : ''}
+                    </p>
+                    <p className="text-xs text-muted truncate">
+                      {topNudge.charger.title || 'Untitled charger'}
+                    </p>
+                  </div>
+                  <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+                </Link>
+              )}
+            </section>
+          ) : ruleNudge ? (
+            <DynamicNudge ruleNudge={ruleNudge} />
+          ) : null}
+
+          {/* Good to know (Class C, independent of Nudge) */}
+          <GoodToKnow userId={user.id} eligibleTips={eligibleTips} />
+
+        </div>
 
       </div>
 
