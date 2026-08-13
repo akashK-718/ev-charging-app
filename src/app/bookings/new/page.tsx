@@ -4,8 +4,9 @@ import { Suspense, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { haptic } from '@/lib/haptics';
-import { Calendar, Clock, Zap } from 'lucide-react';
+import { Calendar, Car, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { CONNECTOR_LABELS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -37,9 +38,19 @@ type Charger = {
   lender_id: string;
   title: string;
   charger_type: string;
+  connector_types: string[];
   price_per_kwh: number;
   address: string;
   status: string;
+};
+
+type Vehicle = {
+  id: string;
+  nickname: string | null;
+  make: string;
+  model: string;
+  connector_types: string[];
+  is_default: boolean;
 };
 
 function loadRazorpayScript(): Promise<boolean> {
@@ -102,6 +113,21 @@ function NewBookingContent() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/users/vehicles')
+      .then(res => res.ok ? res.json() : null)
+      .then((body: { vehicles?: Vehicle[] } | null) => {
+        if (!body?.vehicles?.length) return;
+        setVehicles(body.vehicles);
+        const def = body.vehicles.find(v => v.is_default) ?? body.vehicles[0];
+        setSelectedVehicleId(def.id);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!chargerId) { setLoadError('No charger selected'); setLoadingCharger(false); return; }
@@ -235,6 +261,7 @@ function NewBookingContent() {
           charger_id: charger.id,
           scheduled_start: scheduledStart.toISOString(),
           scheduled_end: scheduledEnd.toISOString(),
+          vehicle_id: selectedVehicleId,
         }),
       });
       const orderBody = await orderRes.json() as { data?: Record<string, unknown>; error?: string };
@@ -342,6 +369,40 @@ function NewBookingContent() {
         <p className="text-xs text-muted">{charger.address}</p>
         <p className="text-sm font-bold text-volt-deep mt-1">₹{charger.price_per_kwh}/kWh</p>
       </div>
+
+      {/* Vehicle selector — only shown when the driver has 2+ vehicles */}
+      {vehicles.length >= 2 && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+          <h2 className="font-semibold text-sm text-ink flex items-center gap-1.5">
+            <Car className="w-4 h-4 text-muted" /> Vehicle
+          </h2>
+          <div className="space-y-2">
+            {vehicles.map(v => {
+              const label = v.nickname ?? `${v.make} ${v.model}`;
+              const connectorLabel = v.connector_types
+                .map(c => CONNECTOR_LABELS[c as keyof typeof CONNECTOR_LABELS] ?? c)
+                .join(', ');
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => setSelectedVehicleId(v.id)}
+                  className={cn(
+                    'w-full text-left rounded-xl border px-3 py-2.5 transition-colors',
+                    selectedVehicleId === v.id
+                      ? 'border-volt bg-volt/10'
+                      : 'border-gray-200 hover:border-gray-300',
+                  )}
+                >
+                  <p className="text-sm font-semibold text-ink">{label}</p>
+                  {connectorLabel && (
+                    <p className="text-xs text-muted mt-0.5">{connectorLabel}</p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
         <div>
@@ -483,6 +544,19 @@ function NewBookingContent() {
           <p className="text-xs text-muted">
             Final amount may vary slightly based on actual energy delivered.
           </p>
+          {(() => {
+            const sv = vehicles.find(v => v.id === selectedVehicleId);
+            if (!sv || !charger.connector_types?.length || !sv.connector_types.length) return null;
+            const ok = sv.connector_types.some(c => charger.connector_types.includes(c));
+            const vehicleName = sv.nickname ?? `${sv.make} ${sv.model}`;
+            return (
+              <p className={cn('text-xs font-medium', ok ? 'text-green' : 'text-amber-600')}>
+                {ok
+                  ? `${vehicleName} is compatible with this charger`
+                  : `${vehicleName} may not be compatible — verify connectors before arriving`}
+              </p>
+            );
+          })()}
         </div>
       )}
 

@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
   const chargerId = b.charger_id;
   const scheduledStart = b.scheduled_start;
   const scheduledEnd = b.scheduled_end;
+  const vehicleId = typeof b.vehicle_id === 'string' ? b.vehicle_id : null;
 
   if (typeof chargerId !== 'string' || typeof scheduledStart !== 'string' || typeof scheduledEnd !== 'string') {
     return NextResponse.json({ error: 'charger_id, scheduled_start, scheduled_end are required' }, { status: 400 });
@@ -155,6 +156,7 @@ export async function POST(request: NextRequest) {
       platform_fee: platformFee,
       lender_payout: lenderPayout,
       estimated_kwh: estimatedKwh,
+      vehicle_id: vehicleId,
     },
   });
 }

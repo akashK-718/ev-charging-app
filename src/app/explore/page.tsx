@@ -1150,6 +1150,7 @@ export default function ExplorePage() {
             distanceKm={selectedDistanceKm}
             distanceSuffix={isRouteMode ? 'off your route' : 'away'}
             onClose={() => setSelectedCharger(null)}
+            defaultVehicle={defaultVehicle}
           />
         </div>
       )}

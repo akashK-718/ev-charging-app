@@ -177,6 +177,7 @@ export type Database = {
           noshow_extension_warning_sent_at: string | null;
           keep_waiting_until: string | null;
           lifecycle_reason: string | null;
+          vehicle_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -206,6 +207,7 @@ export type Database = {
           noshow_extension_warning_sent_at?: string | null;
           keep_waiting_until?: string | null;
           lifecycle_reason?: string | null;
+          vehicle_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
         Relationships: [];
@@ -440,6 +442,7 @@ export type Database = {
           p_lender_payout: number;
           p_razorpay_order_id: string;
           p_razorpay_payment_id: string;
+          p_vehicle_id?: string | null;
         };
         Returns: string; // new booking UUID
       };
