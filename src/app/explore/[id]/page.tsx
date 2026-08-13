@@ -13,9 +13,11 @@ import { Card } from '@/components/ui/Card';
 import { ActionBar } from '@/components/ui/ActionBar';
 import { Button } from '@/components/ui/Button';
 import { OwnerPreviewBanner } from '@/components/chargers/OwnerPreviewBanner';
+import { CONNECTOR_LABELS } from '@/lib/constants';
 import type { Database } from '@/lib/supabase/types';
 
 type ChargerRow = Database['public']['Tables']['chargers']['Row'];
+type ConnectorType = keyof typeof CONNECTOR_LABELS;
 
 const CHARGER_TYPE_LABEL: Record<string, string> = {
   'AC_3.3kW': '3.3 kW \u00B7 AC',
@@ -56,20 +58,45 @@ export default async function ChargerDetailPage({
   const isOwner = !!currentUser && currentUser.id === charger.lender_id;
 
   let hasConfirmedBooking = false;
+  let defaultVehicle: { nickname: string | null; connector_types: string[] } | null = null;
   if (currentUser) {
-    const { data: booking } = await adminSupabase
-      .from('bookings')
-      .select('id')
-      .eq('charger_id', params.id)
-      .eq('driver_id', currentUser.id)
-      .in('status', ['confirmed', 'awaiting_driver_confirmation', 'in_progress', 'completed'])
-      .maybeSingle();
-    hasConfirmedBooking = !!booking;
+    const [bookingResult, vehicleResult] = await Promise.all([
+      adminSupabase
+        .from('bookings')
+        .select('id')
+        .eq('charger_id', params.id)
+        .eq('driver_id', currentUser.id)
+        .in('status', ['confirmed', 'awaiting_driver_confirmation', 'in_progress', 'completed'])
+        .maybeSingle(),
+      supabase
+        .from('vehicles')
+        .select('nickname, connector_types')
+        .eq('is_default', true)
+        .maybeSingle(),
+    ]);
+    hasConfirmedBooking = !!bookingResult.data;
+    if (vehicleResult.data) {
+      defaultVehicle = vehicleResult.data as { nickname: string | null; connector_types: string[] };
+    }
   }
 
   const powerLabel      = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
   const connectorsLabel = charger.connector_types.join(' \u00B7 ');
   const isAvailable     = charger.status === 'active';
+
+  let compatibilityLine: { compatible: boolean; label: string } | null = null;
+  if (defaultVehicle && defaultVehicle.connector_types.length > 0) {
+    const compatible = defaultVehicle.connector_types.some(c =>
+      charger.connector_types.includes(c as ConnectorType),
+    );
+    const vehicleName = defaultVehicle.nickname ?? 'your vehicle';
+    compatibilityLine = {
+      compatible,
+      label: compatible
+        ? `${vehicleName} is compatible with this charger`
+        : `${vehicleName} may not be compatible \u2014 check connectors before booking`,
+    };
+  }
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -153,6 +180,18 @@ export default async function ChargerDetailPage({
                 <SpecTile label="Max power" value={powerLabel} />
               </div>
             </div>
+
+            {/* Vehicle compatibility advisory — shown only when driver has a default vehicle */}
+            {compatibilityLine && (
+              <div className="bg-surface-card md:bg-transparent px-4 md:px-0 pt-4 pb-4 md:pb-5 mt-2 md:mt-0 border-b border-border md:border-0">
+                <p className={cn(
+                  'text-sm font-medium',
+                  compatibilityLine.compatible ? 'text-green' : 'text-amber-600',
+                )}>
+                  {compatibilityLine.label}
+                </p>
+              </div>
+            )}
 
             {/* Host */}
             {lender && (

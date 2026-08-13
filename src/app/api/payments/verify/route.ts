@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     razorpay_payment_id: paymentId,
     razorpay_signature: signature,
   } = b;
+  const vehicleId = typeof b.vehicle_id === 'string' ? b.vehicle_id : null;
 
   if (
     typeof chargerId !== 'string' || typeof lenderId !== 'string' ||
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
     p_lender_payout: lenderPayout,
     p_razorpay_order_id: orderId,
     p_razorpay_payment_id: paymentId,
+    p_vehicle_id: vehicleId,
   });
 
   if (rpcError || !bookingId) {

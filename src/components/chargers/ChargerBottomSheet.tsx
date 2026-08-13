@@ -14,12 +14,18 @@ const CHARGER_TYPE_LABEL: Record<string, string> = {
   'DC_fast': 'DC Fast',
 };
 
+export interface DefaultVehiclePreview {
+  nickname: string | null;
+  connector_types: string[];
+}
+
 interface ChargerBottomSheetProps {
   charger: ChargerRow | null;
   distanceKm?: number;
   /** Replaces "away" in the distance label. Default: "away". */
   distanceSuffix?: string;
   onClose: () => void;
+  defaultVehicle?: DefaultVehiclePreview | null;
 }
 
 export function ChargerBottomSheet({
@@ -27,6 +33,7 @@ export function ChargerBottomSheet({
   distanceKm,
   distanceSuffix = 'away',
   onClose,
+  defaultVehicle,
 }: ChargerBottomSheetProps) {
   const isOpen = charger !== null;
 
@@ -66,6 +73,7 @@ export function ChargerBottomSheet({
             distanceKm={distanceKm}
             distanceSuffix={distanceSuffix}
             onClose={onClose}
+            defaultVehicle={defaultVehicle}
           />
         )}
       </div>
@@ -87,6 +95,7 @@ export function ChargerBottomSheet({
             distanceKm={distanceKm}
             distanceSuffix={distanceSuffix}
             onClose={onClose}
+            defaultVehicle={defaultVehicle}
           />
         )}
       </div>
@@ -99,11 +108,13 @@ function MobileCard({
   distanceKm,
   distanceSuffix = 'away',
   onClose,
+  defaultVehicle,
 }: {
   charger: ChargerRow;
   distanceKm?: number;
   distanceSuffix?: string;
   onClose: () => void;
+  defaultVehicle?: DefaultVehiclePreview | null;
 }) {
   const cover = charger.photos?.[0];
   const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
@@ -114,6 +125,12 @@ function MobileCard({
     : distanceKm < 1
       ? `${Math.round(distanceKm * 1000)} m ${distanceSuffix}`
       : `${distanceKm.toFixed(1)} km ${distanceSuffix}`;
+
+  const compatLine = (() => {
+    if (!defaultVehicle || defaultVehicle.connector_types.length === 0) return null;
+    const ok = defaultVehicle.connector_types.some(c => (charger.connector_types as string[]).includes(c));
+    return { ok, label: ok ? 'Compatible with your vehicle' : 'May not be compatible' };
+  })();
 
   return (
     <div>
@@ -166,6 +183,12 @@ function MobileCard({
             <p className="text-xs text-muted mt-0.5">{distLabel}</p>
           )}
 
+          {compatLine && (
+            <p className={cn('text-xs font-semibold mt-0.5', compatLine.ok ? 'text-green' : 'text-amber-600')}>
+              {compatLine.label}
+            </p>
+          )}
+
           <p className="text-xs font-semibold text-volt-deep mt-2">Tap for details →</p>
         </div>
       </Link>
@@ -178,15 +201,23 @@ function DesktopDrawer({
   distanceKm,
   distanceSuffix = 'away',
   onClose,
+  defaultVehicle,
 }: {
   charger: ChargerRow;
   distanceKm?: number;
   distanceSuffix?: string;
   onClose: () => void;
+  defaultVehicle?: DefaultVehiclePreview | null;
 }) {
   const cover = charger.photos?.[0];
   const powerLabel = CHARGER_TYPE_LABEL[charger.charger_type] ?? charger.charger_type;
   const isActive = charger.status === 'active';
+
+  const compatLine = (() => {
+    if (!defaultVehicle || defaultVehicle.connector_types.length === 0) return null;
+    const ok = defaultVehicle.connector_types.some(c => (charger.connector_types as string[]).includes(c));
+    return { ok, label: ok ? 'Compatible with your vehicle' : 'May not be compatible' };
+  })();
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -254,6 +285,12 @@ function DesktopDrawer({
             </span>
           ))}
         </div>
+
+        {compatLine && (
+          <p className={cn('text-xs font-semibold mt-2', compatLine.ok ? 'text-green' : 'text-amber-600')}>
+            {compatLine.label}
+          </p>
+        )}
 
         <div className="flex items-center justify-between mt-4">
           <span className="font-bold text-ink text-xl">₹{charger.price_per_kwh}/kWh</span>

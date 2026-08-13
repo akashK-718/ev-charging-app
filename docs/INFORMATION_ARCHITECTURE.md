@@ -184,10 +184,19 @@ Discovery only. Nothing about history, bookings, or configuration lives here.
 - **Near Me** — GPS, address search, radius, map/list toggle
 - **Along Route** — from, to, buffer, route map
 - **Filters** — connector type, price, future filters
-- **Charger Detail** — gallery, specifications, host, pricing, reviews, location, instructions, Book Now
-- **Booking Entry** — create booking flow starts here
+- **Charger Detail** — gallery, specifications, host, pricing, reviews, location, instructions, Book Now; vehicle compatibility advisory (if default vehicle set)
+- **Booking Entry** — create booking flow starts here; vehicle selector (2+ vehicles) and compatibility advisory in estimated cost summary
 
 Lenders can also view their own charger(s) on the map here and check listing visibility. No separate map tab exists outside Explore.
+
+### Vehicle compatibility advisory
+
+When a driver has a default vehicle with connector types set, a **compatibility advisory** appears in two places:
+
+1. **Charger Detail page** (`/explore/[id]`) — below the Specifications section, a single line in green ("*[vehicle] is compatible*") or amber ("*may not be compatible*"). Shown only when the driver is signed in and has a default vehicle. Never shown to owners viewing their own listing.
+2. **ChargerBottomSheet** — a compact compatibility line appears in both the mobile card (under the distance label) and the desktop drawer (under the connector chips). Driven by `defaultVehicle` prop passed from Explore.
+
+Both use the same logic: compatible if any of the vehicle's `connector_types` intersects the charger's `connector_types`. Advisory only — never gates access.
 
 ### Connector suggestion chip
 
@@ -425,6 +434,18 @@ All auth lives at `/auth` with no full-page reload between steps. The page start
 **Driver side:** Create (date, time, duration, estimate, Razorpay) → Booking Detail → Session → Rating
 
 **Lender side:** Booking Detail → Accept/Reject → Session → Complete → Rating
+
+### Vehicle selection in booking
+
+When a driver starts a booking (`/bookings/new`):
+
+- **0 vehicles** — no vehicle UI shown; `vehicle_id` is omitted from the booking record.
+- **1 vehicle** — silently pre-selects that vehicle; no selector UI shown; `vehicle_id` is attached automatically.
+- **2+ vehicles** — a vehicle selector card appears above the date picker, pre-selecting the driver's default vehicle; driver may switch before paying.
+
+In all cases, the **compatibility advisory** appears in the Estimated Cost card when a vehicle is attached and connector data is available: green if at least one of the vehicle's connector types matches the charger, amber otherwise. This is purely informational and **never blocks payment or booking**.
+
+The `vehicle_id` is stored as an optional FK on `bookings.vehicle_id` (nullable, `ON DELETE SET NULL`) for future analytics. It is not exposed anywhere in the current booking detail or admin views.
 
 ### Duration picker
 
