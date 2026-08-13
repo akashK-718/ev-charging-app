@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { runAutoRejectSweep } from '@/lib/bookings/auto-reject';
 import { runNoShowWarningSweep, runNoShowTimeoutSweep } from '@/lib/bookings/no-show-sweep';
 import { runFlagForReviewSweep } from '@/lib/bookings/flag-for-review';
+import { runStaleConfirmedSweep } from '@/lib/bookings/stale-confirmed-sweep';
 
 // Secret must match the value configured in app_settings.lifecycle_sweep.secret
 // and set as LIFECYCLE_SWEEP_SECRET in the Vercel environment.
@@ -16,6 +17,7 @@ const INTERNAL_SECRET = process.env.LIFECYCLE_SWEEP_SECRET;
  * 2. No-show warning push to host at T+25 min.
  * 3. No-show auto-transition at T+30 min (or extension expiry or T+60 hard cutoff).
  * 4. Flag sessions stuck in awaiting_end_confirmation for admin review.
+ * 5. Auto-cancel confirmed bookings whose window elapsed without session starting.
  *
  * Authenticated via x-internal-secret header — not exposed to users.
  */
@@ -32,6 +34,7 @@ export async function POST(request: NextRequest) {
     runNoShowWarningSweep(admin),
     runNoShowTimeoutSweep(admin),
     runFlagForReviewSweep(admin),
+    runStaleConfirmedSweep(admin),
   ]);
 
   const errors = results
@@ -45,6 +48,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    ran: ['auto-reject', 'noshow-warning', 'noshow-timeout', 'flag-for-review'],
+    ran: ['auto-reject', 'noshow-warning', 'noshow-timeout', 'flag-for-review', 'stale-confirmed'],
   });
 }
