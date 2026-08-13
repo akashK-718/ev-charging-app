@@ -683,6 +683,74 @@ There are two distinct kinds of PWA update. They use different mechanisms and ha
 
 **Common misread:** a user who installed the app before an icon change and reports "the icon didn't update" is experiencing Path 2, not a broken deployment. The service-worker banner (Path 1) cannot help them — they need to reinstall.
 
+## Pull-to-Refresh
+
+### Component ownership
+
+`src/components/ui/PullToRefresh.tsx` is the single shared implementation. It owns all of: gesture tracking, resistance curve, threshold, state machine, visual indicator, and browser-overscroll suppression. **No page-level gesture logic exists outside this component.**
+
+Usage is a prop-only interface:
+
+```tsx
+<PullToRefresh onRefresh={asyncCallback} />
+```
+
+The component renders nothing in the DOM when idle (`phase === 'idle'`) and does not wrap its children — it is a sibling element, not a layout wrapper.
+
+### "Data refresh, not state reset" principle
+
+Pull-to-refresh means **give me fresher data** — it must never clear or reset any existing page or session state. Specifically:
+
+- **Explore:** pulling refreshes charger/availability data only. It must never reset mode (Near Me / Along Route), search location, route (origin, destination, buffer), vehicle or connector filter state, map position, or map zoom. The mode-isolation and per-mode filter state described in [Per-mode filter isolation](#per-mode-filter-isolation) applies equally during and after a PTR refresh.
+- **Activity:** pulling refreshes whichever sub-view (Sessions or Updates) is currently selected. The selected tab, active filter, and scroll position are all preserved because `ActivityView` is a client component — `router.refresh()` re-renders the server component tree without touching client-side `useState`.
+- **Home:** pulling re-runs the server component's data queries (Attention, Nudge, Good to know, Snapshot, hosting stats). Scroll position is preserved.
+- **Profile:** pulling re-runs `getProfileData()`. No form fields or navigation state is touched.
+
+### State machine
+
+`IDLE → PULLING → READY → REFRESHING → COMPLETING → IDLE`
+
+`PULLING → IDLE` if released before the threshold.
+
+| Phase | Meaning |
+|---|---|
+| `idle` | No gesture active; indicator not rendered |
+| `pulling` | Finger down, dragging down, raw travel < 100 px; arc fills proportionally |
+| `ready` | Raw travel ≥ 100 px (~55 px visual); full green ring, container scales up |
+| `refreshing` | Released at/above threshold; `onRefresh` (or `router.refresh()`) in flight; ring spins |
+| `completing` | Refresh resolved; brief settle/fade animation; then back to `idle` |
+
+### Gesture parameters
+
+- **Resistance:** visual travel = raw travel × 0.55 (no 1:1 region; resistance applies from first pixel).
+- **Trigger threshold:** 100 px raw (≈ 55 px visible).
+- **Horizontal cancel:** aborted if `|dx| > |dy| × 0.7` and `|dx| > 10 px`.
+- **Scroll guard:** gesture only starts when `window.scrollY === 0`.
+- **Interactive element guard:** gestures originating from `canvas`, `input`, `textarea`, `select`, `[role="slider"]`, or `[data-no-ptr]` are ignored. This covers Mapbox (canvas), form fields, sliders, and any element explicitly opting out.
+- **Cooldown:** 3 000 ms minimum between network-hitting refreshes. A repeated pull within the window shows the indicator but skips the network call.
+- **In-flight guard:** a second pull while `refreshing` is a no-op.
+
+### onRefresh callback by page
+
+| Page | callback | Rationale |
+|---|---|---|
+| Home | *(none — fallback `router.refresh()`)* | Server component; all data fetched server-side via Supabase admin queries |
+| Explore | `handleRefresh` — re-calls `fetchChargers` or `fetchRouteChargers` depending on current `searchMode` | Client component; data fetched via `fetch()` to `/api/chargers`; mode/filter/route state must be untouched |
+| Activity | *(none — fallback `router.refresh()`)* | Server component; client component `ActivityView` preserves tab state through RSC re-render |
+| Profile | *(none — fallback `router.refresh()`)* | Server component; `getProfileData()` re-runs on the server |
+
+### Overscroll suppression
+
+Native browser pull-to-refresh is suppressed on two independent layers:
+1. `globals.css` sets `overscroll-behavior: none` on `html, body` (static; fires before JS hydration).
+2. `PullToRefresh` dynamically sets `document.body.style.overscrollBehaviorY = 'none'` on mount and registers `touchmove` with `{ passive: false }` + `e.preventDefault()` for belt-and-suspenders coverage.
+
+The two layers must never be removed separately — removing only the CSS would leave a hydration window where native PTR can fire; removing only the JS would leave inline-style overrides unaddressed.
+
+### Excluded screens
+
+`PullToRefresh` must **never** be attached to any form, checkout, or booking-creation flow. Adding it to these screens is a bug.
+
 ## Notes for implementation
 
 - Every screen must reference the current `/design` foundation for visual tokens (colors, fonts, radius, shadows) and `DESIGN_EV.md` for content/interaction guardrails (no em dashes, no default pill-everything, no decorative animation, varied section header treatments).

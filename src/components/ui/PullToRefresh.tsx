@@ -4,70 +4,107 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface Props {
-  /** Custom async refresh callback. If omitted, calls router.refresh(). */
+  /**
+   * Async data-refresh callback. If omitted, calls router.refresh() — correct
+   * for RSC pages (Home, Activity, Profile) whose data lives in server components.
+   *
+   * Pull-to-refresh means "give me fresher data," not "reset this screen."
+   * Callbacks must never clear or reset any UI state (tabs, filters, map position,
+   * form values). Each page owns what its callback refetches; this component owns
+   * all gesture, threshold, animation, and overscroll-suppression logic.
+   */
   onRefresh?: () => Promise<void>;
 }
 
-// Logical pixels of downward travel required to trigger a refresh on release
-const TRIGGER_PX = 72;
+// Raw finger travel (px) required to trigger a refresh.
+// Resistance makes visual travel ~55 px at this point (TRIGGER_RAW_PX × RESISTANCE).
+const TRIGGER_RAW_PX = 100;
+const RESISTANCE      = 0.55; // visual_px = raw_px × RESISTANCE (unused beyond pullPct calc)
+const COOLDOWN_MS     = 3_000; // min ms between network-hitting refreshes
+
+// IDLE → PULLING → READY → REFRESHING → COMPLETING → IDLE
+// PULLING → IDLE if released below threshold
+type Phase = 'idle' | 'pulling' | 'ready' | 'refreshing' | 'completing';
 
 export function PullToRefresh({ onRefresh }: Props) {
   const router = useRouter();
-  const [phase, setPhase] = useState<'idle' | 'pulling' | 'loading'>('idle');
-  const [pullPct, setPullPct] = useState(0); // 0..100 — drives arc rotation during pull
+  const [phase, setPhase]     = useState<Phase>('idle');
+  const [pullPct, setPullPct] = useState(0); // 0..100, drives arc rotation during pull
 
-  // Refs hold gesture state so event handlers don't capture stale closures
-  const tracking   = useRef(false);
-  const startY     = useRef(0);
-  const startX     = useRef(0);
-  const pullDist   = useRef(0);
-  const phaseRef   = useRef<'idle' | 'pulling' | 'loading'>('idle');
-  const inFlight   = useRef(false);
+  // Refs hold gesture + flight state so event handlers don't capture stale closures
+  const tracking    = useRef(false);
+  const startY      = useRef(0);
+  const startX      = useRef(0);
+  const phaseRef    = useRef<Phase>('idle');
+  const inFlight    = useRef(false);
+  const lastRefresh = useRef(0);
 
   const doRefresh = useCallback(async () => {
     if (inFlight.current) return;
-    inFlight.current = true;
-    phaseRef.current = 'loading';
-    setPhase('loading');
+    inFlight.current    = true;
+    phaseRef.current    = 'refreshing';
+    setPhase('refreshing');
+
     try {
-      if (onRefresh) {
-        await onRefresh();
+      const now = Date.now();
+      if (now - lastRefresh.current >= COOLDOWN_MS) {
+        if (onRefresh) {
+          await onRefresh();
+        } else {
+          // RSC pages: router.refresh() re-runs the server component tree and
+          // delivers fresh data while preserving all client component state.
+          router.refresh();
+          // Allow the RSC round-trip to settle before dismissing the indicator.
+          await new Promise<void>(r => setTimeout(r, 700));
+        }
+        lastRefresh.current = Date.now();
       } else {
-        router.refresh();
-        // Give the server component re-render time to settle before hiding indicator
-        await new Promise<void>(r => setTimeout(r, 700));
+        // Within cooldown window — visual feedback only, no network hit.
+        await new Promise<void>(r => setTimeout(r, 380));
       }
     } finally {
+      // Brief settle/complete animation before returning to idle.
+      phaseRef.current = 'completing';
+      setPhase('completing');
+      await new Promise<void>(r => setTimeout(r, 380));
+
       inFlight.current = false;
       phaseRef.current = 'idle';
       setPhase('idle');
       setPullPct(0);
-      pullDist.current = 0;
     }
   }, [onRefresh, router]);
 
   useEffect(() => {
-    // Belt-and-suspenders: CSS property alone prevents browser PTR in most
-    // Chromium browsers; preventDefault() in touchmove handles the rest.
+    // Belt-and-suspenders on top of the static `overscroll-behavior: none`
+    // already set on html, body in globals.css — covers inline-style overrides.
     const prevOverscroll = document.body.style.overscrollBehaviorY;
     document.body.style.overscrollBehaviorY = 'none';
 
     function reset() {
       tracking.current = false;
-      if (phaseRef.current === 'pulling') {
+      if (phaseRef.current === 'pulling' || phaseRef.current === 'ready') {
         phaseRef.current = 'idle';
         setPhase('idle');
         setPullPct(0);
-        pullDist.current = 0;
       }
+    }
+
+    function isInteractiveOrigin(target: EventTarget | null): boolean {
+      if (!(target instanceof Element)) return false;
+      // Skip maps (Mapbox canvas), form inputs, range sliders, carousels,
+      // and any element explicitly opting out with data-no-ptr.
+      return !!target.closest(
+        'canvas, input, textarea, select, [role="slider"], [data-no-ptr]',
+      );
     }
 
     function onTouchStart(e: TouchEvent) {
       if (phaseRef.current !== 'idle') return;
       if (window.scrollY > 0) return;
-      startY.current = e.touches[0].clientY;
-      startX.current = e.touches[0].clientX;
-      pullDist.current = 0;
+      if (isInteractiveOrigin(e.target)) return;
+      startY.current   = e.touches[0].clientY;
+      startX.current   = e.touches[0].clientX;
       tracking.current = true;
     }
 
@@ -77,7 +114,7 @@ export function PullToRefresh({ onRefresh }: Props) {
       const dy = e.touches[0].clientY - startY.current;
       const dx = e.touches[0].clientX - startX.current;
 
-      // Cancel if clearly horizontal (map pan, swipe navigation)
+      // Cancel on predominantly horizontal gesture (map pan, carousel, swipe-nav).
       if (Math.abs(dx) > Math.abs(dy) * 0.7 && Math.abs(dx) > 10) {
         reset();
         return;
@@ -88,35 +125,32 @@ export function PullToRefresh({ onRefresh }: Props) {
         return;
       }
 
-      // Intercept touch to prevent browser's native pull-to-refresh
+      // Block native browser pull-to-refresh at the gesture level.
       e.preventDefault();
 
-      // Apply rubber-band damping beyond the trigger point
-      const damped = dy > TRIGGER_PX
-        ? TRIGGER_PX + (dy - TRIGGER_PX) * 0.25
-        : dy;
-      pullDist.current = damped;
+      // Resistance: visual travel is meaningfully less than raw finger travel.
+      // pullPct drives the arc (clamped at 100 so arc "fills" at threshold).
+      const pct = Math.min((dy / TRIGGER_RAW_PX) * 100, 100);
+      setPullPct(pct);
 
-      if (phaseRef.current !== 'pulling') {
-        phaseRef.current = 'pulling';
-        setPhase('pulling');
+      const nextPhase: Phase = dy >= TRIGGER_RAW_PX ? 'ready' : 'pulling';
+      if (phaseRef.current !== nextPhase) {
+        phaseRef.current = nextPhase;
+        setPhase(nextPhase);
       }
-      // Clamp at 100 so the arc "fills" at the trigger point, not beyond
-      setPullPct(Math.min((dy / TRIGGER_PX) * 100, 100));
     }
 
     function onTouchEnd() {
       if (!tracking.current) return;
       tracking.current = false;
-      if (phaseRef.current !== 'pulling') return;
 
-      if (pullDist.current >= TRIGGER_PX) {
+      if (phaseRef.current === 'ready') {
         void doRefresh();
-      } else {
+      } else if (phaseRef.current === 'pulling') {
+        // Released below threshold — snap back to idle.
         phaseRef.current = 'idle';
         setPhase('idle');
         setPullPct(0);
-        pullDist.current = 0;
       }
     }
 
@@ -136,25 +170,50 @@ export function PullToRefresh({ onRefresh }: Props) {
 
   if (phase === 'idle') return null;
 
+  const isReady      = phase === 'ready';
+  const isSpinning   = phase === 'refreshing';
+  const isCompleting = phase === 'completing';
+
+  // Full green ring for ready/refreshing/completing; partial arc tracking pull for pulling.
+  const ringBorderColor = (isReady || isSpinning || isCompleting)
+    ? 'var(--green)'
+    : 'var(--border)';
+
   return (
     <div
       aria-hidden
       className="pointer-events-none fixed left-1/2 z-50"
-      style={{ top: 64, transform: 'translateX(-50%)' }}
+      style={{
+        top: 'calc(var(--screen-top-inset) + 12px)',
+        transform: 'translateX(-50%)',
+      }}
     >
-      {/* Pill backdrop keeps the spinner readable over any background */}
-      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-surface-card border border-border">
+      {/* Pill backdrop keeps the indicator readable over any background color */}
+      <div
+        className="flex items-center justify-center w-9 h-9 rounded-full bg-surface-card border border-border"
+        style={{
+          transform: isReady ? 'scale(1.1)' : 'scale(1)',
+          transition: 'transform 0.15s ease-out',
+        }}
+      >
         <div
           style={{
             width: 18,
             height: 18,
             borderRadius: '50%',
-            border: '2.5px solid var(--border)',
-            borderTopColor: 'var(--copper)',
-            // During pull: rotate proportionally to progress (0→360°)
-            // During loading: CSS animation takes over
-            transform: phase === 'pulling' ? `rotate(${pullPct * 3.6}deg)` : undefined,
-            animation: phase === 'loading' ? 'spin 0.65s linear infinite' : undefined,
+            border: '2.5px solid',
+            // Full ring (all sides green) in ready/refreshing/completing;
+            // partial arc (top green only) that tracks pull progress during pulling.
+            borderColor: ringBorderColor,
+            borderTopColor: 'var(--green)',
+            transform: isSpinning
+              ? undefined
+              : `rotate(${isCompleting ? 360 : pullPct * 3.6}deg)`,
+            animation: isSpinning
+              ? 'spin 0.65s linear infinite'
+              : isCompleting
+              ? 'ptr-complete 0.38s ease-out forwards'
+              : undefined,
           }}
         />
       </div>
