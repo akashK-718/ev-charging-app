@@ -45,7 +45,7 @@ Invalid answers: "because this page exists elsewhere," "users might want to go t
 
 ### Renderer structure
 
-Home is built from five named zones, evaluated top to bottom. A zone that has nothing to show simply does not render (no headers, no zero-states). Never show a zone with a zero-state (no "Today's Bookings: 0").
+Home is built from six named zones, evaluated top to bottom. A zone that has nothing to show simply does not render (no headers, no zero-states). Never show a zone with a zero-state (no "Today's Bookings: 0").
 
 ```
 Greeting        always          time-of-day salutation + avatar
@@ -53,10 +53,13 @@ Attention       0..N cards      the only zone that stacks; time-sensitive, sessi
 Snapshot        0..2 cards      read-only glance cards — tap to open, no action buttons
 Quick Actions   always          Find Charger, Plan Trip — navigation shortcuts only
 PWA Install     0..1 card       independent; shown only when install is eligible and not dismissed
-Nudge           0..1 card       cascade: unfinished → rule → discovery → evergreen tip
+Nudge           0..1 card       Class A + Class B only: cascade: unfinished → rule → discovery
+Good to know    0..1 card       Class C evergreen tips only; evaluated independently of Nudge
 ```
 
 **PWA Install card** sits between Quick Actions and Nudge. It is fully independent of the Nudge cascade — both the PWA card and the Nudge card can be visible simultaneously. The card renders client-side after checking: (a) not already in standalone/PWA mode, (b) user has not previously dismissed it as "never" or "later" (stored in `localStorage` via `readPwaDismissal`), (c) either a `beforeinstallprompt` event is available (Chromium) or the browser is iOS Safari (manual Add to Home Screen instructions). Implemented in `src/components/home/PwaInstallCard.tsx`.
+
+**Nudge and Good to know are independent** — both zones can render simultaneously. Nudge shows only Class A or Class B content (0 or 1 card); Good to know shows only Class C evergreen tips (0 or 1 card). This split was introduced to fix a structural starvation bug: Class B rules with no inherent expiry (e.g. "Add more photos" while a charger has fewer than 3) could indefinitely block Class C from ever being seen when they competed for the same single slot. Never merge these two zones back into a single cascade.
 
 **Quick Actions is always visible** regardless of account state. It contains only navigation shortcuts (never information cards, never summaries) and must never compete with Attention or Nudge content.
 
@@ -80,7 +83,7 @@ Used for Nudge (rule and tip variants) specifically. This deliberately avoids bu
 
 - **Class A, State Cards** — generated directly from deterministic database state (booking starts soon, resume draft, KYC rejected, charger offline, payout processed). These primarily populate Attention and Snapshot.
 - **Class B, Rule Cards** — simple boolean conditions, no ML. Example: `if charger.photos < 3` → "Listings with 3+ photos receive more bookings." `if vehicle_count == 0` → "Add your first vehicle." `if no_booking_30_days` → "Lowering your price may increase bookings." These populate Nudge (rule variant). Note: the nudge threshold (3 photos) is distinct from the upload cap (5 photos max per charger) — do not conflate them.
-- **Class C, Evergreen Tips** — lowest priority, static rotating content from `src/lib/home/tips.ts`, shown only when no Class A or Class B card exists. Rendered by `src/components/home/TipNudge.tsx` (client component). **Class A and Class B are purely state-driven and have no time component — they re-evaluate on every Home load.** Only Class C has time-based behavior.
+- **Class C, Evergreen Tips** — static rotating content from `src/lib/home/tips.ts`, shown in the **Good to know** zone regardless of whether Nudge is also showing a card. Rendered by `src/components/home/GoodToKnow.tsx` (client component). **Class A and Class B are purely state-driven and have no time component — they re-evaluate on every Home load.** Only Class C has time-based behavior.
 
   **Tip pool (12 tips):**
 
@@ -101,7 +104,7 @@ Used for Nudge (rule and tip variants) specifically. This deliberately avoids bu
 
   **Eligibility gating:** Tips tagged `hosting` are only shown to users with hosting enabled (`isHosting === true`). The `save-chargers` tip is gated behind the `saved_chargers_enabled` Vercel Edge Config flag (currently `false` — feature not yet built). Users who have never had hosting enabled will never see a hosting-tagged tip. The server computes the eligible subset and passes it to `TipNudge` as `eligibleTips: Tip[]`.
 
-  **6-hour rolling window rotation:** `TipNudge` reads `kirin:home:tip:{userId}` from localStorage (`{base}:{userId}` User-level scoped pattern via `userKey()`). If the stored tip is still in the eligible pool and fewer than 6 hours have elapsed since `firstShown`, the same tip continues to show — across multiple Home loads, app closes, and reopens within that window. After 6 hours, a new tip is selected (excluding the just-shown tip if the pool has more than one option) and `firstShown` is reset to now. Selection is deterministic by 6-hour window index (`Math.floor(Date.now() / WINDOW_MS)`), not random per load. If the stored tip becomes ineligible mid-window (e.g. hosting is disabled), re-selection happens immediately on the next load without waiting for the window to expire.
+  **6-hour rolling window rotation:** `GoodToKnow` reads `kirin:home:tip:{userId}` from localStorage (`{base}:{userId}` User-level scoped pattern via `userKey()`). If the stored tip is still in the eligible pool and fewer than 6 hours have elapsed since `firstShown`, the same tip continues to show — across multiple Home loads, app closes, and reopens within that window. After 6 hours, a new tip is selected (excluding the just-shown tip if the pool has more than one option) and `firstShown` is reset to now. Selection is deterministic by 6-hour window index (`Math.floor(Date.now() / WINDOW_MS)`), not random per load. If the stored tip becomes ineligible mid-window (e.g. hosting is disabled), re-selection happens immediately on the next load without waiting for the window to expire. A `setTimeout`-based loop re-evaluates at each window boundary so the tip rotates even when the component stays mounted (PWA background, router cache).
 
 ### KYC cards
 
@@ -167,11 +170,21 @@ There are two places in the app that can lead a user into enabling hosting. They
 
 The Home entry is in the Attention-zone `new-user` empty-state fallback — a fixed affordance that renders only when Attention has nothing else to show for a brand-new user. It is not part of the Nudge cascade. The Profile entry is a persistent gradient card always visible to non-hosting users; it is the shortcut for users who have already decided. Both are intentional: do not merge them into a single path, and do not change the Profile card to route through `/hosting/learn`.
 
+### Good to know — visual treatment
+
+The Good to know zone is intentionally lower visual weight than the Nudge zone. This is enforced in `GoodToKnow.tsx` and must not creep toward Nudge's treatment over time:
+
+- **No shadow** — Nudge actionable cards use `shadow-sm`; Good to know uses none.
+- **No chevron, no tap affordance** — the zone is purely informational. If a future tip links somewhere, build it as a separate actionable variant, not by adding a chevron to the base component.
+- **Smaller icon tile** (`size-8`) with a `Lightbulb` icon at `text-muted`, compared to Nudge's `size-9` with a saturated icon.
+- **Eyebrow label** — "GOOD TO KNOW" in `text-[11px] font-semibold uppercase tracking-widest text-muted` at the top of the card body.
+- **Same border radius and background** as other cards (`rounded-3xl bg-white border border-border`).
+
 ### Adding a new card or feature to Home
 
 Ask three questions, in order:
 
-1. Which zone does it belong to: Attention, Snapshot, or Nudge? (Quick Actions is fixed — never add data cards there.)
+1. Which zone does it belong to: Attention, Snapshot, Nudge, or Good to know? (Quick Actions is fixed — never add data cards there. Good to know is Class C only — never add actionable or state-driven content there.)
 2. Does it outrank the card(s) already in that zone?
 3. Does the zone already have its maximum card count?
 

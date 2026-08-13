@@ -13,7 +13,7 @@ import { getFeatureFlags } from '@/lib/edge-config';
 import { HomeRealtimeSync } from './HomeRealtimeSync';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
-import { TipNudge } from '@/components/home/TipNudge';
+import { GoodToKnow } from '@/components/home/GoodToKnow';
 import { PwaInstallCard } from '@/components/home/PwaInstallCard';
 import { GreetingHeader } from '@/components/home/GreetingHeader';
 
@@ -749,7 +749,7 @@ export default async function HomePage() {
         {/* ── PWA install ────────────────────────────────────────────────── */}
         <PwaInstallCard />
 
-        {/* ── Nudge ────────────────────────────────────────────────────────── */}
+        {/* ── Nudge (Class A + Class B only) ──────────────────────────────── */}
         {topNudge ? (
           <section aria-label="Suggestion">
             {topNudge.type === 'new-user' && (
@@ -794,9 +794,10 @@ export default async function HomePage() {
           </section>
         ) : ruleNudge ? (
           <DynamicNudge ruleNudge={ruleNudge} />
-        ) : (
-          <TipNudge userId={user.id} eligibleTips={eligibleTips} />
-        )}
+        ) : null}
+
+        {/* ── Good to know (Class C, independent of Nudge) ─────────────────── */}
+        <GoodToKnow userId={user.id} eligibleTips={eligibleTips} />
 
       </div>
 
