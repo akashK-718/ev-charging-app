@@ -92,14 +92,12 @@ export function GoodToKnow({ userId, eligibleTips }: Props) {
 
   return (
     <section aria-label="Good to know">
-      <div className="rise-in bg-white border border-border rounded-3xl px-4 py-4">
-        <div className="flex items-start gap-3">
-          <div className="size-8 rounded-xl bg-surface-page grid place-items-center shrink-0">
-            <Lightbulb className="size-3.5 text-muted" aria-hidden />
-          </div>
+      <div className="rise-in bg-white border border-border rounded-3xl px-4 py-3">
+        <div className="flex items-start gap-2.5">
+          <Lightbulb className="size-3 text-muted shrink-0 mt-px" aria-hidden />
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted mb-1">Good to know</p>
-            <p className="text-sm text-ink-soft leading-relaxed">{activeTip.body}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted mb-0.5">Good to know</p>
+            <p className="text-xs text-ink-soft leading-relaxed">{activeTip.body}</p>
           </div>
         </div>
       </div>
