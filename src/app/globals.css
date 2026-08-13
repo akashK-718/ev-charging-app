@@ -317,6 +317,21 @@ a, button, [role="button"] {
 }
 .pin-pop { animation: pin-pop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
 
+/* ─── Pull-to-refresh ────────────────────────────────────────────────────── */
+@keyframes ptr-complete {
+  0%   { opacity: 1; transform: rotate(360deg) scale(1);    }
+  55%  { opacity: 1; transform: rotate(360deg) scale(1.12); }
+  100% { opacity: 0; transform: rotate(360deg) scale(0.8);  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Collapse the completing animation to an immediate fade — no scale motion. */
+  @keyframes ptr-complete {
+    from { opacity: 0; }
+    to   { opacity: 0; }
+  }
+}
+
 /* ─── Splash intro animations ─────────────────────────────────────────────── */
 
 /* Bolt: single restrained brightness pulse — reads as "alive", not a spinner */
