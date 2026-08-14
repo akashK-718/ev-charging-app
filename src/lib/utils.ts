@@ -38,13 +38,20 @@ export function rupeesToPaise(rupees: number): number {
  */
 /**
  * Normalize a geocoding-derived address string.
- * Mapbox returns U+2E41 (⹁ REVERSED COMMA) as a component separator in
- * place_name for some Indian locations. Replaces it — and any surrounding
- * whitespace — with a standard ASCII ", " so addresses render correctly
- * everywhere they are displayed, including already-stored values in the DB.
+ * Mapbox uses non-ASCII punctuation as component separators in place_name/text
+ * for certain regions. Confirmed via byte-level API inspection (branch
+ * diagnose/address-comma-raw-bytes): Indian road features use U+060C ARABIC
+ * COMMA (،, bytes D8 8C). Replaces these — and any surrounding whitespace —
+ * with a standard ASCII ", " so addresses render correctly everywhere.
+ *
+ * Characters covered:
+ *   U+060C  ARABIC COMMA           (،)  — confirmed in Mapbox Indian geodata
+ *   U+2E41  REVERSED COMMA         (⹁)  — guard against other regions
+ *   U+3001  IDEOGRAPHIC COMMA      (、) — guard against East Asian geodata
+ *   U+FE50  SMALL COMMA            (﹐) — guard against compatibility variants
  */
 export function normalizeAddress(address: string): string {
-  return address.replace(/\s*⹁\s*/g, ', ');
+  return address.replace(/\s*[،⹁、﹐]\s*/g, ', ');
 }
 
 export function generateConfirmationCode(): string {
