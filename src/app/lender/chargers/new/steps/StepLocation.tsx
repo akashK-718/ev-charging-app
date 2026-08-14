@@ -7,6 +7,7 @@ import { AddressAutocomplete } from '@/components/maps/AddressAutocomplete';
 import { maps } from '@/lib/maps/provider';
 import type { NewChargerDraft } from '@/types/charger-draft';
 import type { Coords } from '@/lib/maps/types';
+import { normalizeAddress } from '@/lib/utils';
 
 const MapView = dynamic(
   () => import('@/components/maps/MapView').then(m => ({ default: m.MapView })),
@@ -154,7 +155,7 @@ export function StepLocation({ draft, onChange, onValidChange }: StepLocationPro
       {draft.address && (
         <div className="mt-3 px-4 py-2.5 bg-volt-soft rounded-xl">
           <p className="text-xs font-semibold text-ink leading-snug">
-            Selected: {draft.address}
+            Selected: {normalizeAddress(draft.address)}
           </p>
         </div>
       )}

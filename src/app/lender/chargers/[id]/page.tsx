@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { ContainedBackButton } from '@/components/ui/BackButton';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
-import { cn } from '@/lib/utils';
+import { cn, normalizeAddress } from '@/lib/utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -68,7 +68,7 @@ const CONNECTOR_LABELS: Record<string, string> = {
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function shortCity(address: string): string {
-  const parts = address.split(',').map(p => p.trim()).filter(Boolean);
+  const parts = normalizeAddress(address).split(',').map(p => p.trim()).filter(Boolean);
   if (parts.length >= 2) {
     const candidate = parts[parts.length - 2];
     return candidate.replace(/^\d{6}\s*/, '').trim() || candidate;
@@ -468,7 +468,7 @@ export default function LenderChargerDetailPage() {
 
               <div>
                 <p className="text-xs text-muted mb-1">Address</p>
-                <p className="text-sm text-ink leading-snug">{charger.address}</p>
+                <p className="text-sm text-ink leading-snug">{normalizeAddress(charger.address)}</p>
               </div>
 
               {instructions && (

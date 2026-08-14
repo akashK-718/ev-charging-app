@@ -1,4 +1,12 @@
 import type { MapProvider, PlaceSuggestion, GeocodeResult, RouteResult, Coords } from './types';
+import { normalizeAddress } from '@/lib/utils';
+
+// Mapbox uses U+2E41 (⹁ REVERSED COMMA) as a component separator in
+// place_name for some Indian addresses. Normalize it here at the API boundary
+// so the corruption never enters the address string stored in the database.
+function normalizePlaceName(s: string): string {
+  return normalizeAddress(s);
+}
 
 // ── Circle GeoJSON helper ──────────────────────────────────────────────────
 // Generates a GeoJSON Polygon approximating a geographic circle.
@@ -59,7 +67,7 @@ interface MapboxDirectionsResponse {
 const SEP = '||';
 
 function encodeId(f: MapboxFeature): string {
-  return [f.id, `${f.center[0]},${f.center[1]}`, f.place_name].join(SEP);
+  return [f.id, `${f.center[0]},${f.center[1]}`, normalizePlaceName(f.place_name)].join(SEP);
 }
 
 function decodeId(id: string): { lng: number; lat: number; placeName: string } | null {
@@ -91,14 +99,17 @@ export const mapboxProvider: MapProvider = {
     if (!res.ok) throw new Error(`Mapbox geocoding error: ${res.status}`);
     const data = (await res.json()) as MapboxGeocodingResponse;
 
-    return data.features.map((f): PlaceSuggestion => ({
-      id: encodeId(f),
-      primaryText: f.text,
-      secondaryText: f.place_name.startsWith(f.text + ', ')
-        ? f.place_name.slice(f.text.length + 2)
-        : f.place_name,
-      coords: { lat: f.center[1], lng: f.center[0] },
-    }));
+    return data.features.map((f): PlaceSuggestion => {
+      const normalized = normalizePlaceName(f.place_name);
+      return {
+        id: encodeId(f),
+        primaryText: f.text,
+        secondaryText: normalized.startsWith(f.text + ', ')
+          ? normalized.slice(f.text.length + 2)
+          : normalized,
+        coords: { lat: f.center[1], lng: f.center[0] },
+      };
+    });
   },
 
   async geocode(placeId) {
@@ -128,7 +139,7 @@ export const mapboxProvider: MapProvider = {
     if (!first) throw new Error('No results for reverse geocoding');
     return {
       coords: { lat: first.center[1], lng: first.center[0] },
-      formattedAddress: first.place_name,
+      formattedAddress: normalizePlaceName(first.place_name),
     };
   },
 

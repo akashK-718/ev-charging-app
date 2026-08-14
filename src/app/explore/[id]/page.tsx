@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { ChevronRight, MapPin, Star } from 'lucide-react';
 import { ContainedBackButton } from '@/components/ui/BackButton';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { cn } from '@/lib/utils';
+import { cn, normalizeAddress } from '@/lib/utils';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import { DisplayTitle } from '@/components/ui/DisplayTitle';
 import { EyebrowLabel } from '@/components/ui/EyebrowLabel';
@@ -222,7 +222,7 @@ export default async function ChargerDetailPage({
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-muted shrink-0 mt-0.5" />
                 {hasConfirmedBooking ? (
-                  <p className="text-sm text-ink">{charger.address}</p>
+                  <p className="text-sm text-ink">{normalizeAddress(charger.address)}</p>
                 ) : (
                   <p className="text-sm text-muted">
                     Exact address is shared after your booking is confirmed.

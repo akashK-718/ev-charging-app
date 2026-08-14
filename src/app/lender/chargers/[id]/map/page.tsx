@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ContainedBackButton } from '@/components/ui/BackButton';
-import { cn } from '@/lib/utils';
+import { cn, normalizeAddress } from '@/lib/utils';
 
 const MapView = dynamic(
   () => import('@/components/maps/MapView').then(m => ({ default: m.MapView })),
@@ -112,7 +112,7 @@ export default function LenderChargerMapPage() {
         <div className="bg-white rounded-xl shadow-xl px-4 py-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-bold text-ink truncate">{charger.title}</p>
-            <p className="text-xs text-muted mt-0.5 leading-snug line-clamp-2">{charger.address}</p>
+            <p className="text-xs text-muted mt-0.5 leading-snug line-clamp-2">{normalizeAddress(charger.address)}</p>
           </div>
           {!readonly && <ChargerStatusBadge status={charger.status} />}
         </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Zap, Star, ArrowUpDown, ChevronDown, Filter, Check, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, normalizeAddress } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 
@@ -114,7 +114,7 @@ function ChargerTile({
       {/* Info section */}
       <div className="p-3">
         <p className="font-medium text-sm text-ink leading-snug">{charger.title}</p>
-        <p className="text-xs text-muted truncate mt-0.5">{charger.address}</p>
+        <p className="text-xs text-muted truncate mt-0.5">{normalizeAddress(charger.address)}</p>
 
         <div className="flex items-center gap-2 mt-2 text-xs text-muted">
           {charger.avg_rating !== null && (
