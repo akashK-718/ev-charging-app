@@ -4,8 +4,17 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isEmergencyLockdown } from '@/lib/edge-config';
 import { readKillSwitch } from '@/lib/app-settings';
 
+if (!process.env.SUPABASE_PHONE_PASSWORD_SECRET) {
+  console.warn(
+    '[verify-otp] SUPABASE_PHONE_PASSWORD_SECRET is not set. OTP verification will fail.'
+  );
+}
+
 async function derivePassword(phone: string): Promise<string> {
-  const secret = process.env.SUPABASE_PHONE_PASSWORD_SECRET ?? 'dev-phone-secret-do-not-use-in-production';
+  const secret = process.env.SUPABASE_PHONE_PASSWORD_SECRET;
+  if (!secret) {
+    throw new Error('[verify-otp] SUPABASE_PHONE_PASSWORD_SECRET is not set. Cannot derive auth password.');
+  }
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
