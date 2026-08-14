@@ -100,13 +100,18 @@ export const mapboxProvider: MapProvider = {
     const data = (await res.json()) as MapboxGeocodingResponse;
 
     return data.features.map((f): PlaceSuggestion => {
-      const normalized = normalizePlaceName(f.place_name);
+      // Normalize both fields: f.text (the primary label) can itself contain
+      // U+2E41 for features like Indian highway numbers ("NH114A ⹁ 815301 …").
+      // The v1 fix only normalized f.place_name, missing f.text entirely.
+      const normalizedText = normalizePlaceName(f.text);
+      const normalizedPlace = normalizePlaceName(f.place_name);
+      const prefix = normalizedText + ', ';
       return {
         id: encodeId(f),
-        primaryText: f.text,
-        secondaryText: normalized.startsWith(f.text + ', ')
-          ? normalized.slice(f.text.length + 2)
-          : normalized,
+        primaryText: normalizedText,
+        secondaryText: normalizedPlace.startsWith(prefix)
+          ? normalizedPlace.slice(prefix.length)
+          : normalizedPlace,
         coords: { lat: f.center[1], lng: f.center[0] },
       };
     });
