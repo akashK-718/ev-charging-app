@@ -54,7 +54,7 @@ Update this file whenever a significant milestone changes status. Treat it as th
 - [x] Auth middleware — Supabase SSR cookie refresh pattern
 
 ### Repo and tooling
-- [x] GitHub repo live at `github.com/akashK-718/ev-charging-app`
+- [x] GitHub repo live at `github.com/akashK-718/ev-charging-app` <!-- TODO(migration): update to Kirin org URL after repo transfer — see docs/ACCOUNT_MIGRATION.md § GitHub -->
 - [x] First commit pushed to `main` branch
 - [x] Akash has working local dev environment, homepage runs at `localhost:3000`
 

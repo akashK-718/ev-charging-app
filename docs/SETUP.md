@@ -11,6 +11,7 @@
 ## 1. Clone & install
 
 ```bash
+# TODO(migration): update URL to Kirin org after repo transfer — see docs/ACCOUNT_MIGRATION.md § GitHub
 git clone https://github.com/akashK-718/ev-charging-app
 cd ev-charging-app
 npm install
