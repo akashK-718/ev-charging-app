@@ -5,6 +5,7 @@ import { Star, Zap } from 'lucide-react';
 import type { Database } from '@/lib/supabase/types';
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import { haptic } from '@/lib/haptics';
+import { normalizeAddress } from '@/lib/utils';
 
 export type ChargerRow = Database['public']['Tables']['chargers']['Row'];
 
@@ -71,7 +72,7 @@ export function ChargerCard({
                   : `${distanceKm.toFixed(1)} km \u00B7`}
               </span>
             )}
-            {charger.address}
+            {charger.address ? normalizeAddress(charger.address) : null}
           </p>
 
           {/* Connector chips */}

@@ -36,6 +36,17 @@ export function rupeesToPaise(rupees: number): number {
  * Generate a short, human-readable confirmation code.
  * Example: "X-7K2Q"
  */
+/**
+ * Normalize a geocoding-derived address string.
+ * Mapbox returns U+2E41 (⹁ REVERSED COMMA) as a component separator in
+ * place_name for some Indian locations. Replaces it — and any surrounding
+ * whitespace — with a standard ASCII ", " so addresses render correctly
+ * everywhere they are displayed, including already-stored values in the DB.
+ */
+export function normalizeAddress(address: string): string {
+  return address.replace(/\s*⹁\s*/g, ', ');
+}
+
 export function generateConfirmationCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No confusing chars (I, O, 0, 1)
   let code = '';

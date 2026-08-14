@@ -8,7 +8,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { MilestoneParticles } from '@/components/ui/MilestoneParticles';
 import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
-import { cn } from '@/lib/utils';
+import { cn, normalizeAddress } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { checkHostFirstBookingReceived, checkHostFirstCompletedSession, MILESTONE_LABEL, type MilestoneEvent } from '@/lib/milestones';
 import { BOOKING_AUTO_CANCEL_MINUTES, ACTIVE_BOOKING_STATUSES, type BookingStatus } from '@/lib/constants';
@@ -303,7 +303,7 @@ export default function LenderBookingDetailPage() {
         {booking.charger?.address && (
           <div className="flex items-center gap-1.5 text-xs text-muted">
             <MapPin className="w-3.5 h-3.5 shrink-0" />
-            <span>{booking.charger.address}</span>
+            <span>{normalizeAddress(booking.charger.address)}</span>
           </div>
         )}
       </div>

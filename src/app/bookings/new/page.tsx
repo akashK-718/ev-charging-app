@@ -7,7 +7,7 @@ import { haptic } from '@/lib/haptics';
 import { Calendar, Car, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CONNECTOR_LABELS } from '@/lib/constants';
-import { cn } from '@/lib/utils';
+import { cn, normalizeAddress } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
 declare global {
@@ -366,7 +366,7 @@ function NewBookingContent() {
 
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-1">
         <p className="font-semibold text-ink">{charger.title}</p>
-        <p className="text-xs text-muted">{charger.address}</p>
+        <p className="text-xs text-muted">{normalizeAddress(charger.address)}</p>
         <p className="text-sm font-bold text-volt-deep mt-1">₹{charger.price_per_kwh}/kWh</p>
       </div>
 

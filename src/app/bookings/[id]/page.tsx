@@ -15,6 +15,7 @@ import { haptic } from '@/lib/haptics';
 import { checkDriverFirstSession, MILESTONE_LABEL, type MilestoneEvent } from '@/lib/milestones';
 import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
 import { ACTIVE_BOOKING_STATUSES, FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES, type BookingStatus } from '@/lib/constants';
+import { normalizeAddress } from '@/lib/utils';
 
 type BookingDetail = {
   id: string;
@@ -339,13 +340,13 @@ export default function BookingDetailPage() {
               className="flex items-center gap-1.5 text-xs text-volt-deep font-semibold tap-target"
             >
               <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">{booking.charger.address}</span>
+              <span className="flex-1">{normalizeAddress(booking.charger.address)}</span>
               <span className="shrink-0">View on map →</span>
             </Link>
           ) : (
             <div className="flex items-center gap-1.5 text-xs text-muted">
               <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span>{booking.charger.address}</span>
+              <span>{normalizeAddress(booking.charger.address)}</span>
             </div>
           )
         ) : !booking.confirmed_at ? (

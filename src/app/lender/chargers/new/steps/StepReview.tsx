@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { PLATFORM_COMMISSION_PERCENT } from '@/lib/constants';
 import { toJpegUrl } from '@/lib/cloudinary-url';
 import type { NewChargerDraft } from '@/types/charger-draft';
+import { normalizeAddress } from '@/lib/utils';
 
 const MapViewPreview = dynamic(
   () => import('@/components/maps/MapView').then(m => ({ default: m.MapView })),
@@ -118,7 +119,7 @@ export function StepReview({ draft, onEditStep, onValidChange }: StepReviewProps
         <section className="p-4 rounded-xl border border-gray-100 bg-white">
           <SectionHeader label="Location" step={3} onEdit={onEditStep} />
           {draft.address ? (
-            <p className="text-sm font-semibold text-ink leading-snug">{draft.address}</p>
+            <p className="text-sm font-semibold text-ink leading-snug">{normalizeAddress(draft.address)}</p>
           ) : (
             <Missing />
           )}

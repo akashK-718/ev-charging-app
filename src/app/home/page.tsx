@@ -16,6 +16,7 @@ import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
 import { GoodToKnow } from '@/components/home/GoodToKnow';
 import { PwaInstallCard } from '@/components/home/PwaInstallCard';
 import { GreetingHeader } from '@/components/home/GreetingHeader';
+import { normalizeAddress } from '@/lib/utils';
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-IN', {
@@ -504,7 +505,7 @@ export default async function HomePage() {
             </div>
             <p className="mt-2 text-xl font-bold">{attnInProgress.charger?.title ?? 'Charger'}</p>
             {attnInProgress.charger?.address && (
-              <p className="text-sm text-green-100 truncate">{attnInProgress.charger.address}</p>
+              <p className="text-sm text-green-100 truncate">{normalizeAddress(attnInProgress.charger.address)}</p>
             )}
             <div className="mt-3.5">
               <div className="h-10 rounded-xl bg-white text-green text-sm font-bold grid place-items-center">
@@ -527,7 +528,7 @@ export default async function HomePage() {
             </div>
             <p className="mt-2 text-xl font-bold">{fmtTime(b.scheduled_start)}</p>
             <p className="text-sm text-green-100 truncate">
-              {b.charger?.title ?? 'Charger'}{b.charger?.address ? ` \u00B7 ${b.charger.address}` : ''}
+              {b.charger?.title ?? 'Charger'}{b.charger?.address ? ` \u00B7 ${normalizeAddress(b.charger.address)}` : ''}
             </p>
             <div className="mt-3.5 flex gap-2">
               <Link
@@ -584,7 +585,7 @@ export default async function HomePage() {
                 <p className="mt-2 text-xl font-bold">{fmtTime(b.scheduled_start)}</p>
                 <p className="text-sm text-green-100 truncate">
                   {b.charger?.title ?? 'Upcoming booking'}
-                  {b.charger?.address ? ` \u00B7 ${b.charger.address}` : ''}
+                  {b.charger?.address ? ` \u00B7 ${normalizeAddress(b.charger.address)}` : ''}
                   {card.total > 1 ? ` \u00B7 +${card.total - 1} more` : ''}
                 </p>
                 <div className="mt-3.5 flex gap-2">
