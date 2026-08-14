@@ -1,9 +1,9 @@
 import type { MapProvider, PlaceSuggestion, GeocodeResult, RouteResult, Coords } from './types';
 import { normalizeAddress } from '@/lib/utils';
 
-// Mapbox uses U+2E41 (⹁ REVERSED COMMA) as a component separator in
-// place_name for some Indian addresses. Normalize it here at the API boundary
-// so the corruption never enters the address string stored in the database.
+// Mapbox uses non-ASCII punctuation as a component separator in place_name/text
+// for some Indian addresses (confirmed: U+060C ARABIC COMMA). Normalize at the
+// API boundary so it never enters address strings stored in the database.
 function normalizePlaceName(s: string): string {
   return normalizeAddress(s);
 }
@@ -101,7 +101,7 @@ export const mapboxProvider: MapProvider = {
 
     return data.features.map((f): PlaceSuggestion => {
       // Normalize both fields: f.text (the primary label) can itself contain
-      // U+2E41 for features like Indian highway numbers ("NH114A ⹁ 815301 …").
+      // U+060C for features like Indian highway numbers ("NH114A ، 815301 …").
       // The v1 fix only normalized f.place_name, missing f.text entirely.
       const normalizedText = normalizePlaceName(f.text);
       const normalizedPlace = normalizePlaceName(f.place_name);
