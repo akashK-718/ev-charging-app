@@ -228,6 +228,9 @@ export type Database = {
           payout_released_at: string | null;
           created_at: string;
           updated_at: string;
+          payment_method: string | null;
+          card_network: string | null;
+          card_last4: string | null;
         };
         Insert: {
           id?: string;
@@ -242,6 +245,9 @@ export type Database = {
           gateway_fee?: number | null;
           status?: 'created' | 'paid' | 'transferred' | 'refunded' | 'failed';
           payout_released_at?: string | null;
+          payment_method?: string | null;
+          card_network?: string | null;
+          card_last4?: string | null;
         };
         Update: Partial<Database['public']['Tables']['payments']['Insert']>;
         Relationships: [];
@@ -443,6 +449,9 @@ export type Database = {
           p_razorpay_order_id: string;
           p_razorpay_payment_id: string;
           p_vehicle_id?: string | null;
+          p_payment_method?: string | null;
+          p_card_network?: string | null;
+          p_card_last4?: string | null;
         };
         Returns: string; // new booking UUID
       };

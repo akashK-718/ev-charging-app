@@ -32,7 +32,7 @@ export async function GET(
     adminSupabase.from('users').select('id, name, phone').eq('id', booking.lender_id).single(),
     adminSupabase
       .from('payments')
-      .select('booking_id, gross_amount, platform_fee, lender_payout, status, created_at')
+      .select('booking_id, gross_amount, platform_fee, lender_payout, status, created_at, razorpay_order_id, razorpay_payment_id, payment_method, card_network, card_last4')
       .eq('booking_id', booking.id)
       .maybeSingle(),
   ]);

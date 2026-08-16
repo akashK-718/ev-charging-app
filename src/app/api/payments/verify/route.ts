@@ -82,6 +82,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not verify payment. Please contact support.' }, { status: 502 });
   }
 
+  // Fetch payment method details for receipt display. Non-fatal: omitted if unavailable.
+  let paymentMethod: string | null = null;
+  let cardNetwork: string | null = null;
+  let cardLast4: string | null = null;
+  try {
+    const pd = await getRazorpay().payments.fetch(paymentId) as unknown as {
+      method?: string;
+      card?: { network?: string; last4?: string };
+    };
+    paymentMethod = pd.method ?? null;
+    if (paymentMethod === 'card' && pd.card) {
+      cardNetwork = pd.card.network ?? null;
+      cardLast4 = pd.card.last4 ?? null;
+    }
+  } catch (err) {
+    console.warn('[payments/verify] could not fetch payment method details (non-fatal):', err);
+  }
+
   const adminSupabase = createAdminClient();
 
   const { data: bookingId, error: rpcError } = await adminSupabase.rpc('create_booking_with_payment', {
@@ -97,6 +115,9 @@ export async function POST(request: NextRequest) {
     p_razorpay_order_id: orderId,
     p_razorpay_payment_id: paymentId,
     p_vehicle_id: vehicleId,
+    p_payment_method: paymentMethod,
+    p_card_network: cardNetwork,
+    p_card_last4: cardLast4,
   });
 
   if (rpcError || !bookingId) {
