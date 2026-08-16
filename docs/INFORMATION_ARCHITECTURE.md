@@ -8,6 +8,42 @@ This is the locked navigation and screen structure for the app. Every screen-lev
 
 **`role` is exactly two values: `driver` and `lender`.** There is no `both` value and none should ever be introduced — `lender` already implies full driver capability. Internally the DB stores a role enum (`driver` / `lender`) for routing and feature-gating convenience; the user never sees it. Any code gating driver-route access by role is a bug: only hosting-specific routes (`/lender/*` and lender API endpoints) should ever check `role === 'lender'`. The `canAccessDriver` pattern must never exist.
 
+## Responsive Design System
+
+### Three viewport modes
+
+Kirin uses three named viewport modes. The layout recomposes within modes — it does not redesign the IA or introduce new features at wider viewports.
+
+| Mode | Breakpoint | Navigation | Layout principle |
+|---|---|---|---|
+| Mobile | `< 768px` | Bottom nav | Single column; current UI unchanged |
+| Tablet | `768–1199px` | Bottom nav (retained) | Fluid spacing; touch-first; no layout paradigm change |
+| Desktop | `≥ 1200px` | Persistent left sidebar | Sidebar replaces bottom nav; content offset left by 240px |
+
+**Tailwind token:** `desk:` prefix = ≥ 1200px. Standard `md:` / `lg:` prefixes are available for intra-mode fluid scaling.
+
+**Mode switching is CSS-only** — no JS layout toggling. The sidebar (`DesktopSidebar`) is `hidden desk:flex`; the bottom nav is `desk:hidden`. The switch is a pure breakpoint boundary.
+
+### Explicitly excluded from this system
+
+- **Landing page (`/`)** — has its own separate desktop design, not subject to these breakpoints. Excluded by design, not omission.
+- **Auth flow (`/auth` — Phone/OTP/Name screens)** — stays a centered mobile-width card at every viewport. This is intentional convention for auth screens, not an oversight.
+
+### Desktop sidebar
+
+`src/components/layout/DesktopSidebar.tsx`. Visible only at `≥ 1200px`. Contains the same four destinations as the bottom nav (Home, Explore, Activity, Profile) — nothing added, nothing removed. No logo or wordmark — consistent with the in-app branding-removal rule. Active-tab indicator is a 2px left accent bar in `--green`, the vertical counterpart of the bottom nav's 2px top accent bar.
+
+At desktop, the sticky `Navbar` (`h-14`) provides the top utility bar (sign-out, avatar). The sidebar starts at `top-14` below it. Page content is offset by `desk:pl-60` (240px) in the root layout.
+
+### Layout tokens
+
+See `/design` for the full token table. Key values:
+
+- `--navbar-h: 3.5rem` — Navbar height at desktop
+- `--sidebar-w: 15rem` — sidebar width at desktop
+- `--content-max-w: 80rem` — max outer container; content never stretches edge-to-edge
+- `--page-gutter` — 16px (mobile) / 24px (tablet) / 32px (desktop)
+
 ## Bottom Navigation
 
 Four tabs, role-agnostic. The nav structure never changes based on whether a user is a driver or a lender. What changes is the *content* inside each tab, never the tabs themselves.

@@ -23,7 +23,15 @@ function isTabActive(href: string, pathname: string) {
   return pathname === href || pathname.startsWith(href + '/') || pathname.startsWith(href + '?');
 }
 
-export function BottomNav() {
+/**
+ * Persistent left sidebar for desktop (≥ 1200px). Mirrors the same four
+ * destinations as BottomNav — nothing added, nothing removed. Hidden at all
+ * viewports below the 'desk' breakpoint via CSS; no JS-driven layout switching.
+ *
+ * Active indicator: a 2px left accent bar, the vertical counterpart of
+ * BottomNav's 2px top accent bar. Same green color, same proportional inset.
+ */
+export function DesktopSidebar() {
   const pathname = usePathname();
   const { user, loading } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -48,12 +56,11 @@ export function BottomNav() {
   ) return null;
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-40 desk:hidden bg-surface-card border-t border-border"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    <aside
+      className="hidden desk:flex flex-col fixed left-0 top-14 bottom-0 w-60 z-40 bg-surface-card border-r border-border overflow-y-auto"
       aria-label="Main navigation"
     >
-      <div className="flex">
+      <nav className="flex flex-col gap-0.5 p-2 pt-3">
         {TABS.map(({ href, Icon, label }) => {
           const active = isTabActive(href, pathname);
           const showBadge = href === '/activity' && unreadCount > 0;
@@ -64,20 +71,23 @@ export function BottomNav() {
               aria-current={active ? 'page' : undefined}
               onClick={() => haptic('light')}
               className={cn(
-                'relative flex flex-col items-center gap-[3px] flex-1 px-1 py-2.5',
-                'text-[10px] font-semibold tracking-wide tap-light',
-                active ? 'text-green' : 'text-muted',
+                'relative flex items-center gap-3 px-4 py-2.5 rounded-token-sm',
+                'text-[14px] font-semibold tap-light transition-colors',
+                active
+                  ? 'text-green'
+                  : 'text-muted hover:text-ink hover:bg-surface-page',
               )}
             >
+              {/* Vertical accent bar — mirrors BottomNav's horizontal accent bar */}
               {active && (
                 <span
                   aria-hidden="true"
-                  className="absolute top-0 left-1/4 right-1/4 h-[2px] rounded-b-sm bg-green"
+                  className="absolute left-0 top-1/4 bottom-1/4 w-[2px] rounded-r-sm bg-green"
                 />
               )}
-              <span className="relative">
+              <span className="relative shrink-0">
                 <Icon
-                  className="w-[22px] h-[22px] shrink-0"
+                  className="w-[22px] h-[22px]"
                   strokeWidth={active ? 2.2 : 1.8}
                   aria-hidden
                 />
@@ -94,7 +104,7 @@ export function BottomNav() {
             </Link>
           );
         })}
-      </div>
-    </nav>
+      </nav>
+    </aside>
   );
 }
