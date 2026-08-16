@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { DesktopSidebar } from '@/components/layout/DesktopSidebar';
 import { PageTransition } from '@/components/ui/PageTransition';
 import { PushNotificationsProvider } from '@/components/ui/PushNotificationsProvider';
 import { SplashIntro } from '@/components/ui/SplashIntro';
@@ -74,12 +75,16 @@ export default function RootLayout({
       <body>
         <SplashIntro />
         <Navbar />
+        <DesktopSidebar />
         <BottomNav />
-        <PushNotificationsProvider>
-          <PageTransition>
-            {children}
-          </PageTransition>
-        </PushNotificationsProvider>
+        {/* desk:pl-60 offsets content right of the fixed 240px sidebar at ≥ 1200px */}
+        <div className="desk:pl-60">
+          <PushNotificationsProvider>
+            <PageTransition>
+              {children}
+            </PageTransition>
+          </PushNotificationsProvider>
+        </div>
         <UpdateBanner />
         {/* Capture beforeinstallprompt before React hydration so it's never missed */}
         <script dangerouslySetInnerHTML={{ __html: `

@@ -30,10 +30,10 @@ export function UpdateBanner() {
       role="status"
       aria-live="polite"
       className={cn(
-        // Positioning: above BottomNav on mobile, near bottom on desktop
+        // Positioning: above BottomNav on mobile/tablet, near bottom on desktop
         'fixed inset-x-3 z-50',
         'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]',
-        'lg:bottom-4 lg:left-auto lg:right-4 lg:max-w-sm',
+        'desk:bottom-4 desk:left-auto desk:right-4 desk:max-w-sm',
         // Card appearance — matches other surface-card patterns in the app
         'bg-surface-card border border-border rounded-xl',
         'shadow-[var(--shadow-float)]',

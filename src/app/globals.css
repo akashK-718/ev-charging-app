@@ -76,19 +76,39 @@
   --tap-dur: 80ms;
   --tap-ease: ease-out;
 
-  /* Bottom nav height — used to clear fixed BottomNav on mobile (lg:hidden) */
+  /* Bottom nav height — used to clear fixed BottomNav below desktop threshold */
   --bottom-nav-h: 4.5rem;
 
-  /* Top safe-area inset for in-app screens (mobile only — desktop Navbar handles spacing).
+  /* Top safe-area inset for in-app screens.
      Applied to every screen header so content clears the status bar / notch.
-     At least 16px on non-notch devices; respects the notch on iPhone. */
+     At least 16px on non-notch devices; respects the notch on iPhone.
+     Resets to 0 at desktop (≥1200px) where the sticky Navbar handles top spacing. */
   --screen-top-inset: max(env(safe-area-inset-top), 16px);
+
+  /* ─── Responsive layout tokens (three-mode system) ──────────────────────────
+     Mobile < 768px | Tablet 768–1199px | Desktop ≥ 1200px
+     Page-level code should prefer Tailwind breakpoint classes ('md:', 'desk:')
+     over raw media queries referencing these values. These tokens exist for
+     CSS-only contexts (e.g. calc() in positioning rules).
+     ─────────────────────────────────────────────────────────────────────────── */
+  --navbar-h: 3.5rem;      /* 56px — sticky top Navbar height at desktop only    */
+  --sidebar-w: 15rem;      /* 240px — persistent left sidebar at desktop only     */
+  --content-max-w: 80rem;  /* 1280px — max outer container; content never edge-to-edge */
+  --page-gutter: 1rem;     /* 16px mobile default; scaled via media queries below */
 }
 
-@media (min-width: 1024px) {
+/* Tablet (768–1199px): more breathing room, same single-column/bottom-nav layout */
+@media (min-width: 768px) {
   :root {
-    /* Desktop Navbar (h-14) handles top spacing — no inset needed from content. */
+    --page-gutter: 1.5rem; /* 24px */
+  }
+}
+
+/* Desktop (≥1200px): sidebar + Navbar appear; top inset no longer needed from content */
+@media (min-width: 1200px) {
+  :root {
     --screen-top-inset: 0px;
+    --page-gutter: 2rem;   /* 32px */
   }
 }
 

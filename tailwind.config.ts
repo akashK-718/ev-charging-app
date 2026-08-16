@@ -7,6 +7,12 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        // Three-mode responsive system. Mobile < 768 | Tablet 768–1199 | Desktop ≥ 1200
+        // 'sm', 'md', 'lg', 'xl' from Tailwind defaults remain available for use within modes.
+        // Use 'desk:' prefix for any layout that switches from bottom-nav to sidebar.
+        desk: '1200px',
+      },
       colors: {
         // Foundation v3 tokens
         ink: '#1a1f1c',
