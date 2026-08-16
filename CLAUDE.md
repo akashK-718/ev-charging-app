@@ -38,9 +38,9 @@ See `docs/ARCHITECTURE.md` for the full rationale and swap guide.
 - **New root-tab screen with eyebrow+title** → use `<TitleHeader>` from the same file.
 - **Top padding on any screen header** → always `pt-[var(--screen-top-inset)]`. Never hardcode `pt-6`, `pt-12`, or any fixed top value — it breaks notch clearance on mobile and adds spurious spacing on desktop.
 - **New screen with a primary action button** → must use `<PrimaryButton>` from `src/components/ui/PrimaryButton.tsx`. Never use `<Button variant="secondary">` for a primary CTA.
-- **New screen whose content scrolls near the bottom nav** → must use the canonical bottom-safe-padding class on `<main>`: `pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] desk:pb-10`. Never hardcode `pb-10`, `pb-16`, or an inline `paddingBottom` style. This has buried CTAs on Booking, Hosting Introduction, Payout Details, and multiple profile screens before being caught. (`desk:` = ≥1200px — the breakpoint where BottomNav is replaced by the sidebar.)
+- **New screen whose content scrolls near the bottom nav** → must use the canonical bottom-safe-padding class on `<main>`: `pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10`. Never hardcode `pb-10`, `pb-16`, or an inline `paddingBottom` style. This has buried CTAs on Booking, Hosting Introduction, Payout Details, and multiple profile screens before being caught. (`md:` = ≥768px — the breakpoint where BottomNav is replaced by the top nav. `desk:` = ≥1200px — where multi-column content layouts engage. These are two independent axes; do not conflate them.)
 
-**No logo in in-app screens.** The Kirin wordmark appears only on the landing page (`/`) and auth screens. The Navbar (`hidden lg:flex`) renders on desktop only, with no logo — just nav links and avatar. Mobile in-app screens have no app bar at all. Never add a logo, wordmark, or brand image to any in-app screen header.
+**No logo in in-app screens.** The Kirin wordmark appears only on the landing page (`/`) and auth screens. The Navbar (`hidden md:flex`) renders at tablet and desktop with no logo — nav tabs + sign-out + avatar only. Mobile in-app screens have no app bar at all. Never add a logo, wordmark, or brand image to any in-app screen header.
 
 ## Stack
 

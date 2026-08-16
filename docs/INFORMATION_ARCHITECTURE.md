@@ -10,41 +10,54 @@ This is the locked navigation and screen structure for the app. Every screen-lev
 
 ## Responsive Design System
 
-### Three viewport modes
+### Two independent breakpoint axes
 
-Kirin uses three named viewport modes. The layout recomposes within modes — it does not redesign the IA or introduce new features at wider viewports.
+Navigation and content composition are governed by two separate breakpoints. **Do not conflate them.**
 
-| Mode | Breakpoint | Navigation | Layout principle |
+| Axis | Breakpoint | Tailwind token | What changes |
 |---|---|---|---|
-| Mobile | `< 768px` | Bottom nav | Single column; current UI unchanged |
-| Tablet | `768–1199px` | Bottom nav (retained) | Fluid spacing; touch-first; no layout paradigm change |
-| Desktop | `≥ 1200px` | Persistent left sidebar | Sidebar replaces bottom nav; content offset left by 240px |
+| **Navigation** | `768px` | `md:` | Bottom nav → top nav |
+| **Content composition** | `1200px` | `desk:` | Single-column → multi-column |
 
-**Tailwind token:** `desk:` prefix = ≥ 1200px. Standard `md:` / `lg:` prefixes are available for intra-mode fluid scaling.
+A tablet at 900px gets the top nav **and** single-column content simultaneously — confirming these axes are independent.
 
-**Mode switching is CSS-only** — no JS layout toggling. The sidebar (`DesktopSidebar`) is `hidden desk:flex`; the bottom nav is `desk:hidden`. The switch is a pure breakpoint boundary.
+### Navigation by viewport
+
+| Viewport | Navigation |
+|---|---|
+| `< 768px` (mobile) | Bottom nav |
+| `≥ 768px` (tablet + desktop) | Top nav (`Navbar`) |
+
+**Top nav structure (≥ 768px):**
+- Left region: intentionally empty — no Kirin logo or wordmark. In-app branding-removal rule applies.
+- Center: the four nav tabs (Home, Explore, Activity, Profile) as a centered group — icon + label per tab, green bottom-accent bar + green text for active state.
+- Right: sign-out button + avatar circle.
+
+**Nav switching is CSS-only.** `Navbar` is `hidden md:flex`; `BottomNav` is `md:hidden`. No JS layout toggling.
+
+### Content composition by viewport
+
+| Viewport | Content |
+|---|---|
+| `< 1200px` (mobile + tablet) | Single-column; fluid spacing via `--page-gutter` |
+| `≥ 1200px` (desktop) | Multi-column compositions per page spec |
+
+Content composition rules are page-specific and governed by `desk:` prefixed classes. See individual page sections below for per-page layout specs.
 
 ### Explicitly excluded from this system
 
 - **Landing page (`/`)** — has its own separate desktop design, not subject to these breakpoints. Excluded by design, not omission.
-- **Auth flow (`/auth` — Phone/OTP/Name screens)** — stays a centered mobile-width card at every viewport. This is intentional convention for auth screens, not an oversight.
-
-### Desktop sidebar
-
-`src/components/layout/DesktopSidebar.tsx`. Visible only at `≥ 1200px`. Contains the same four destinations as the bottom nav (Home, Explore, Activity, Profile) — nothing added, nothing removed. No logo or wordmark — consistent with the in-app branding-removal rule. Active-tab indicator is a 2px left accent bar in `--green`, the vertical counterpart of the bottom nav's 2px top accent bar.
-
-At desktop, the sticky `Navbar` (`h-14`) provides the top utility bar (sign-out, avatar). The sidebar starts at `top-14` below it. Page content is offset by `desk:pl-60` (240px) in the root layout.
+- **Auth flow (`/auth` — Phone/OTP/Name screens)** — stays a centered mobile-width card at every viewport. Intentional convention for auth screens.
 
 ### Layout tokens
 
 See `/design` for the full token table. Key values:
 
-- `--navbar-h: 3.5rem` — Navbar height at desktop
-- `--sidebar-w: 15rem` — sidebar width at desktop
+- `--navbar-h: 3.5rem` — top nav height at tablet and desktop (≥ 768px)
 - `--content-max-w: 80rem` — max outer container; content never stretches edge-to-edge
 - `--page-gutter` — 16px (mobile) / 24px (tablet) / 32px (desktop)
 
-## Bottom Navigation
+## Navigation
 
 Four tabs, role-agnostic. The nav structure never changes based on whether a user is a driver or a lender. What changes is the *content* inside each tab, never the tabs themselves.
 
@@ -53,9 +66,12 @@ Four tabs, role-agnostic. The nav structure never changes based on whether a use
 3. Activity
 4. Profile
 
+**On mobile (< 768px):** bottom nav bar (`BottomNav`, `src/components/layout/BottomNav.tsx`).
+**On tablet + desktop (≥ 768px):** top nav bar (`Navbar`, `src/components/layout/Navbar.tsx`) — same four tabs centered in the bar.
+
 There is no separate Notifications tab. Unread notifications surface as a badge count directly on the Activity tab (e.g. "Activity · 3").
 
-There is no separate Hosting tab. Lender operations live in a linked-into Hosting Workspace, reached from Home or Profile, not from the bottom nav.
+There is no separate Hosting tab. Lender operations live in a linked-into Hosting Workspace, reached from Home or Profile, not from the nav.
 
 ## Screen Ownership Principle
 
