@@ -9,6 +9,11 @@ import { cn } from '@/lib/utils';
  * Non-blocking banner that appears when a new service worker version has
  * downloaded and is waiting to activate.
  *
+ * Only renders in standalone (installed PWA) display mode. Browser-tab visits
+ * are excluded — a browser tab gets fresh code on most navigations anyway, so
+ * the banner would be noise. The installed-app case is the one that can run
+ * stale for an extended period without a natural reload.
+ *
  * "Update"      → triggers skipWaiting() on the waiting SW, then reloads once
  *                 the new SW takes control. Never reloads without this tap.
  * "Later"       → dismisses for the current session only (React state, no
@@ -23,7 +28,11 @@ export function UpdateBanner() {
   const { hasUpdate, updateNow } = useServiceWorkerUpdate();
   const [dismissed, setDismissed] = useState(false);
 
-  if (!hasUpdate || dismissed) return null;
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+  if (!isStandalone || !hasUpdate || dismissed) return null;
 
   return (
     <div
