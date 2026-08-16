@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FeatureFlags } from '@/lib/edge-config';
 import dynamic from 'next/dynamic';
-import { Filter, LocateFixed, X } from 'lucide-react';
+import Link from 'next/link';
+import { Filter, LocateFixed, X, Zap } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { purgeLegacyKey } from '@/lib/user-storage';
 import { CONNECTOR_LABELS } from '@/lib/constants';
@@ -11,6 +12,7 @@ import type { ConnectorType } from '@/lib/constants';
 import { maps } from '@/lib/maps/provider';
 import { haversineKm } from '@/lib/haversine';
 import { cn } from '@/lib/utils';
+import { toJpegUrl } from '@/lib/cloudinary-url';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { ModeToggle } from '@/components/chargers/ModeToggle';
 import { FloatingViewToggle } from '@/components/chargers/FloatingViewToggle';
@@ -65,6 +67,13 @@ function simplifyRouteGeoJSON(geojson: string, maxPoints: number): string {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
+
+const PANEL_TYPE_LABEL: Record<string, string> = {
+  'AC_3.3kW': '3.3 kW · AC',
+  'AC_7kW': '7 kW · AC',
+  'AC_22kW': '22 kW · AC',
+  'DC_fast': 'DC Fast',
+};
 
 const DELHI_NCR: Coords = { lat: 28.6139, lng: 77.209 };
 const DEFAULT_RADIUS = 10000;
@@ -222,10 +231,12 @@ export default function ExplorePage() {
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const [selectedCharger, setSelectedCharger] = useState<ChargerRow | null>(null);
+  const [panelHoveredId, setPanelHoveredId] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const chargerItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -959,18 +970,27 @@ export default function ExplorePage() {
     [routeResult],
   );
 
+  const panelChargers = isRouteMode ? visibleRouteChargers : visibleChargers;
+
+  // Scroll the results panel to the selected charger when it changes (desktop).
+  useEffect(() => {
+    if (!selectedCharger) return;
+    chargerItemRefs.current[selectedCharger.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [selectedCharger]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div
       className={cn(
         'flex flex-col',
-        viewMode === 'map' ? 'h-dvh lg:h-[calc(100dvh-3.5rem)]' : 'min-h-dvh lg:min-h-[calc(100dvh-3.5rem)]',
+        'desk:h-[calc(100dvh-var(--navbar-h))]',
+        viewMode === 'map' ? 'h-dvh' : 'min-h-dvh',
       )}
     >
       {/* ── Header: segmented mode toggle + filters ────────────────────── */}
       <div className="border-b border-gray-100 bg-white shrink-0">
-        <div className="flex items-center gap-2 px-3 pb-2.5 pt-[calc(var(--screen-top-inset)+0.625rem)]">
+        <div className="flex items-center gap-2 px-3 pb-2.5 pt-[calc(var(--screen-top-inset)+0.625rem)] md:px-5 desk:px-6">
           {featureFlags.route_planning_enabled && (
             <ModeToggle value={searchMode} onChange={handleSearchModeChange} />
           )}
@@ -991,7 +1011,7 @@ export default function ExplorePage() {
 
         {/* ── Vehicle compatibility chips ────────────────────────────────── */}
         {showSuggestionChip && defaultVehicle && (
-          <div className="flex items-center gap-2 px-3 pb-2.5">
+          <div className="flex items-center gap-2 px-3 pb-2.5 md:px-5 desk:px-6">
             <button
               type="button"
               onClick={applyVehicleSuggestion}
@@ -1010,7 +1030,7 @@ export default function ExplorePage() {
           </div>
         )}
         {showVehicleFilterChip && (
-          <div className="flex items-center gap-2 px-3 pb-2.5">
+          <div className="flex items-center gap-2 px-3 pb-2.5 md:px-5 desk:px-6">
             <button
               type="button"
               onClick={clearCompatibility}
@@ -1023,9 +1043,16 @@ export default function ExplorePage() {
         )}
       </div>
 
-      {/* ── Map view ──────────────────────────────────────────────────────── */}
-      {viewMode === 'map' && (
-        <div className="flex-1 relative overflow-hidden">
+      {/* ── Content: column on mobile/tablet, row at desktop ─────────────── */}
+      <div className="flex-1 flex flex-col desk:flex-row desk:overflow-hidden desk:min-h-0">
+
+        {/* ── Map — map mode on mobile/tablet, always visible at desktop ──── */}
+        <div
+          className={cn(
+            'relative overflow-hidden desk:flex-[3]',
+            viewMode === 'map' ? 'flex-1' : 'hidden desk:block',
+          )}
+        >
           {locationLoading ? (
             <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center">
               <p className="text-sm text-muted">Getting your location…</p>
@@ -1151,7 +1178,6 @@ export default function ExplorePage() {
             </div>
           )}
 
-
           {/* ── Toast ─────────────────────────────────────────────────────── */}
           <div
             className={cn(
@@ -1207,7 +1233,7 @@ export default function ExplorePage() {
             </div>
           )}
 
-          {/* Bottom sheet */}
+          {/* Bottom sheet — mobile + tablet only (desk:hidden inside component) */}
           <ChargerBottomSheet
             charger={selectedCharger}
             distanceKm={selectedDistanceKm}
@@ -1216,114 +1242,205 @@ export default function ExplorePage() {
             defaultVehicle={defaultVehicle}
           />
         </div>
-      )}
 
-      {/* ── List view ─────────────────────────────────────────────────────── */}
-      {viewMode === 'list' && (
-        <div className="flex-1 px-4 sm:px-6 py-4 max-w-5xl mx-auto w-full">
-          {/* Search controls — same logic as map overlay but inline */}
-          <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-3 space-y-2">
-            {isRouteMode ? (
-              routeResult && !routeEditOpen ? (
-                <RouteCompactSummary
-                  fromAddress={routeFromAddress}
-                  toAddress={routeToAddress}
-                  distanceMeters={routeResult.distanceMeters}
-                  durationSeconds={routeResult.durationSeconds}
-                  chargerCount={visibleRouteChargers.length}
-                  chargerCountLoading={routeFetchLoading}
-                  routeLoading={routeLoading}
-                  bufferValue={routeBuffer}
-                  onBufferChange={setRouteBuffer}
-                  onEdit={() => setRouteEditOpen(true)}
-                />
-              ) : (
-                <RouteInputs
-                  fromAddress={routeFromAddress}
-                  toAddress={routeToAddress}
-                  onFromAddressChange={handleFromAddressChange}
-                  onToAddressChange={handleToAddressChange}
-                  onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
-                  onToSelect={r => setRouteTo(r)}
-                  onGpsRefresh={handleGpsRouteRefresh}
-                  activeInput={activeRouteInput}
-                  onSetActive={setActiveRouteInput}
-                  fromGeocoding={geocodingPin === 'from'}
-                  toGeocoding={geocodingPin === 'to'}
-                  fromIsGps={fromIsGps}
-                  onSwap={handleSwap}
-                  canSwap={!!(routeFrom && routeTo) && !isSwapping}
-                  isSwapping={isSwapping}
-                  routeLoading={routeLoading}
-                  onDone={routeEditOpen ? () => setRouteEditOpen(false) : undefined}
-                />
-              )
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <AddressAutocomplete
-                      value={searchAddress}
-                      onChange={handleAddressChange}
-                      onSelect={handleAddressSelect}
-                      placeholder="Search a location…"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { void handleUseGpsLocation(); }}
-                    title={gpsAvailable === false ? 'Location access denied' : 'Use my location'}
-                    aria-label="Use current GPS location"
-                    disabled={gpsAvailable === false}
-                    className={cn(
-                      'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors',
-                      gpsAvailable === false
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : centerType === 'gps'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 hover:bg-gray-200 text-ink',
-                    )}
-                  >
-                    <LocateFixed className="w-4 h-4" />
-                  </button>
-                </div>
-                <span
-                  className={cn(
-                    'block text-xs font-semibold transition-colors',
-                    activeFetchLoading ? 'text-muted' : 'text-ink',
-                  )}
-                >
-                  {counterLabel}
-                </span>
-                <RadiusSlider
-                  value={allIndiaMode ? Infinity : radius}
-                  onChange={handleRadiusChange}
-                  isLoading={fetchLoading}
-                />
-              </>
-            )}
+        {/* ── Results panel — desktop only ──────────────────────────────────── */}
+        <aside
+          className="hidden desk:flex desk:flex-col desk:flex-[2] border-l border-border bg-surface-page"
+          aria-label="Charger results"
+        >
+          <div className="px-4 py-3 border-b border-border bg-surface-card shrink-0">
+            <p className="text-sm font-semibold text-ink">
+              {activeFetchLoading
+                ? 'Searching…'
+                : `${panelChargers.length} charger${panelChargers.length === 1 ? '' : 's'}`}
+            </p>
           </div>
 
-          {!isRouteMode && allIndiaMode && chargers.length >= 100 && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-volt-soft border border-volt/20 text-volt-deep text-xs font-semibold">
-              Showing 100 of many chargers — narrow your radius to see more.
-            </div>
-          )}
-          <ChargerListView
-            chargers={isRouteMode ? (routeChargers as ChargerRow[]) : chargers}
-            loading={activeFetchLoading || locationLoading}
-            userCoords={searchCenter ?? undefined}
-            selectedConnectors={activeConnectors ?? new Set()}
-            maxPrice={activeFilters.maxPrice}
-            onConnectorToggle={toggleConnector}
-            onMaxPriceChange={handleMaxPriceChange}
-            onClearFilters={resetFilters}
-          />
-        </div>
-      )}
+          <div className="flex-1 overflow-y-auto divide-y divide-border">
+            {panelChargers.length === 0 && !activeFetchLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-2 px-4 text-center">
+                <p className="text-sm font-semibold text-ink">No chargers found</p>
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={resetFilters}
+                    className="text-xs font-semibold text-green-deep underline"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              panelChargers.map(c => {
+                const distKm = isRouteMode
+                  ? (c as RouteCharger).distance_from_route_m / 1000
+                  : searchCenter
+                    ? haversineKm(searchCenter, { lat: Number(c.latitude), lng: Number(c.longitude) })
+                    : undefined;
+                const isSelected = selectedCharger?.id === c.id;
+                const isHovered = panelHoveredId === c.id;
+                const cover = c.photos?.[0];
+                const powerLabel = PANEL_TYPE_LABEL[c.charger_type] ?? c.charger_type;
+                const isActive = c.status === 'active';
+                return (
+                  <div
+                    key={c.id}
+                    ref={el => { chargerItemRefs.current[c.id] = el; }}
+                    onMouseEnter={() => setPanelHoveredId(c.id)}
+                    onMouseLeave={() => setPanelHoveredId(null)}
+                    className={cn(
+                      'transition-colors',
+                      isSelected
+                        ? 'bg-green-soft ring-2 ring-inset ring-green'
+                        : isHovered
+                          ? 'bg-surface-card'
+                          : '',
+                    )}
+                  >
+                    <Link href={`/explore/${c.id}`} className="flex items-center gap-3 px-4 py-3">
+                      <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-volt-soft">
+                        {cover ? (
+                          <img src={toJpegUrl(cover)} alt={c.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Zap className="w-5 h-5 text-volt opacity-40" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-ink leading-snug line-clamp-1">{c.title}</p>
+                        <p className="text-xs text-muted mt-0.5">
+                          {powerLabel} · <span className="font-semibold text-ink">₹{c.price_per_kwh}/kWh</span>
+                        </p>
+                        {distKm !== undefined && (
+                          <p className="text-xs text-muted mt-0.5">
+                            {distKm < 1
+                              ? `${Math.round(distKm * 1000)} m`
+                              : `${distKm.toFixed(1)} km`}
+                            {' '}{isRouteMode ? 'off route' : 'away'}
+                          </p>
+                        )}
+                      </div>
+                      <span
+                        className={cn(
+                          'shrink-0 w-2 h-2 rounded-full',
+                          isActive ? 'bg-green' : 'bg-gray-300',
+                        )}
+                      />
+                    </Link>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </aside>
 
-      {/* ── Floating view toggle (always visible, fixed over map or list) ── */}
-      <div className="fixed bottom-20 right-4 z-30">
+        {/* ── List view — mobile/tablet only ──────────────────────────────── */}
+        {viewMode === 'list' && (
+          <div className="flex-1 px-4 sm:px-6 py-4 max-w-5xl mx-auto w-full desk:hidden">
+            {/* Search controls — same logic as map overlay but inline */}
+            <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-3 space-y-2">
+              {isRouteMode ? (
+                routeResult && !routeEditOpen ? (
+                  <RouteCompactSummary
+                    fromAddress={routeFromAddress}
+                    toAddress={routeToAddress}
+                    distanceMeters={routeResult.distanceMeters}
+                    durationSeconds={routeResult.durationSeconds}
+                    chargerCount={visibleRouteChargers.length}
+                    chargerCountLoading={routeFetchLoading}
+                    routeLoading={routeLoading}
+                    bufferValue={routeBuffer}
+                    onBufferChange={setRouteBuffer}
+                    onEdit={() => setRouteEditOpen(true)}
+                  />
+                ) : (
+                  <RouteInputs
+                    fromAddress={routeFromAddress}
+                    toAddress={routeToAddress}
+                    onFromAddressChange={handleFromAddressChange}
+                    onToAddressChange={handleToAddressChange}
+                    onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
+                    onToSelect={r => setRouteTo(r)}
+                    onGpsRefresh={handleGpsRouteRefresh}
+                    activeInput={activeRouteInput}
+                    onSetActive={setActiveRouteInput}
+                    fromGeocoding={geocodingPin === 'from'}
+                    toGeocoding={geocodingPin === 'to'}
+                    fromIsGps={fromIsGps}
+                    onSwap={handleSwap}
+                    canSwap={!!(routeFrom && routeTo) && !isSwapping}
+                    isSwapping={isSwapping}
+                    routeLoading={routeLoading}
+                    onDone={routeEditOpen ? () => setRouteEditOpen(false) : undefined}
+                  />
+                )
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <AddressAutocomplete
+                        value={searchAddress}
+                        onChange={handleAddressChange}
+                        onSelect={handleAddressSelect}
+                        placeholder="Search a location…"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { void handleUseGpsLocation(); }}
+                      title={gpsAvailable === false ? 'Location access denied' : 'Use my location'}
+                      aria-label="Use current GPS location"
+                      disabled={gpsAvailable === false}
+                      className={cn(
+                        'shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors',
+                        gpsAvailable === false
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : centerType === 'gps'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 hover:bg-gray-200 text-ink',
+                      )}
+                    >
+                      <LocateFixed className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <span
+                    className={cn(
+                      'block text-xs font-semibold transition-colors',
+                      activeFetchLoading ? 'text-muted' : 'text-ink',
+                    )}
+                  >
+                    {counterLabel}
+                  </span>
+                  <RadiusSlider
+                    value={allIndiaMode ? Infinity : radius}
+                    onChange={handleRadiusChange}
+                    isLoading={fetchLoading}
+                  />
+                </>
+              )}
+            </div>
+
+            {!isRouteMode && allIndiaMode && chargers.length >= 100 && (
+              <div className="mb-4 px-4 py-3 rounded-xl bg-volt-soft border border-volt/20 text-volt-deep text-xs font-semibold">
+                Showing 100 of many chargers — narrow your radius to see more.
+              </div>
+            )}
+            <ChargerListView
+              chargers={isRouteMode ? (routeChargers as ChargerRow[]) : chargers}
+              loading={activeFetchLoading || locationLoading}
+              userCoords={searchCenter ?? undefined}
+              selectedConnectors={activeConnectors ?? new Set()}
+              maxPrice={activeFilters.maxPrice}
+              onConnectorToggle={toggleConnector}
+              onMaxPriceChange={handleMaxPriceChange}
+              onClearFilters={resetFilters}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── Floating view toggle — mobile/tablet only ── */}
+      <div className="fixed bottom-20 right-4 z-30 desk:hidden">
         <FloatingViewToggle value={viewMode} onChange={handleViewModeChange} />
       </div>
 

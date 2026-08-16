@@ -46,20 +46,22 @@ export function ChargerBottomSheet({
 
   return (
     <>
-      {/* Backdrop — mobile only, transparent so map stays interactive */}
+      {/* Backdrop — mobile + tablet, transparent so map stays interactive */}
       <div
         className={cn(
-          'fixed inset-0 z-40 lg:hidden transition-opacity duration-200',
+          'fixed inset-0 z-40 desk:hidden transition-opacity duration-200',
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
         )}
         aria-hidden="true"
         onClick={onClose}
       />
 
-      {/* Mobile: compact bottom sheet (~120px content) */}
+      {/* Mobile + tablet (< 1200px): compact bottom sheet.
+          At desktop the permanent results panel replaces this; the panel
+          highlights the selected marker and the DesktopDrawer is not rendered. */}
       <div
         className={cn(
-          'fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl lg:hidden',
+          'fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl desk:hidden',
           'transition-transform duration-200 ease-out',
           isOpen ? 'translate-y-0' : 'translate-y-full',
         )}
@@ -69,28 +71,6 @@ export function ChargerBottomSheet({
       >
         {charger && (
           <MobileCard
-            charger={charger}
-            distanceKm={distanceKm}
-            distanceSuffix={distanceSuffix}
-            onClose={onClose}
-            defaultVehicle={defaultVehicle}
-          />
-        )}
-      </div>
-
-      {/* Desktop: right-side drawer with full details */}
-      <div
-        className={cn(
-          'hidden lg:flex lg:flex-col fixed top-14 right-0 bottom-0 w-80 bg-white shadow-2xl z-50',
-          'transition-transform duration-300 ease-out',
-          isOpen ? 'translate-x-0' : 'translate-x-full',
-        )}
-        role="dialog"
-        aria-modal="true"
-        aria-label={charger?.title ?? 'Charger details'}
-      >
-        {charger && (
-          <DesktopDrawer
             charger={charger}
             distanceKm={distanceKm}
             distanceSuffix={distanceSuffix}

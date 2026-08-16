@@ -238,12 +238,29 @@ Discovery only. Nothing about history, bookings, or configuration lives here.
 
 Lenders can also view their own charger(s) on the map here and check listing visibility. No separate map tab exists outside Explore.
 
+### Explore layout — responsive behaviour
+
+Explore owns the full viewport and has a three-mode layout distinct from all other authenticated screens.
+
+| Breakpoint | Layout |
+|---|---|
+| Mobile + tablet (< 1200px) | Full-viewport map with overlay controls; FloatingViewToggle switches to list view; ChargerBottomSheet (mobile card) on marker tap |
+| Desktop (≥ 1200px) | Permanent split: map (~60%, `flex-[3]`) + results panel (~40%, `flex-[2]`); FloatingViewToggle hidden; ChargerBottomSheet hidden |
+
+**Desktop split-view rules:**
+- The map is always rendered regardless of `viewMode` — CSS hides it on mobile/tablet when in list mode, but at desktop `desk:block` ensures it is always visible.
+- Map marker click → `selectedCharger` → panel auto-scrolls to that item + green ring highlight.
+- Panel hover → background highlight only (no `setSelectedCharger`).
+- Panel click → navigates to `/explore/${id}`.
+- `ChargerListView` (used for mobile/tablet list mode) is hidden at desktop (`desk:hidden`); the results panel replaces it.
+- `ChargerBottomSheet` is hidden at desktop (`desk:hidden`); the results panel provides the same affordance.
+
 ### Vehicle compatibility advisory
 
 When a driver has a default vehicle with connector types set, a **compatibility advisory** appears in two places:
 
 1. **Charger Detail page** (`/explore/[id]`) — below the Specifications section, a single line in green ("*[vehicle] is compatible*") or amber ("*may not be compatible*"). Shown only when the driver is signed in and has a default vehicle. Never shown to owners viewing their own listing.
-2. **ChargerBottomSheet** — a compact compatibility line appears in both the mobile card (under the distance label) and the desktop drawer (under the connector chips). Driven by `defaultVehicle` prop passed from Explore.
+2. **ChargerBottomSheet** — a compact compatibility line appears in the mobile card (under the distance label). Shown at mobile + tablet only (< 1200px); at desktop the results panel handles charger preview and the bottom sheet is not rendered. Driven by `defaultVehicle` prop passed from Explore.
 
 Both use the same logic: compatible if any of the vehicle's `connector_types` intersects the charger's `connector_types`. Advisory only — never gates access.
 
