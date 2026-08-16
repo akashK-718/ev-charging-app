@@ -11,7 +11,7 @@ import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
 import { cn, normalizeAddress } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 import { checkHostFirstBookingReceived, checkHostFirstCompletedSession, MILESTONE_LABEL, type MilestoneEvent } from '@/lib/milestones';
-import { BOOKING_AUTO_CANCEL_MINUTES, ACTIVE_BOOKING_STATUSES, type BookingStatus } from '@/lib/constants';
+import { BOOKING_AUTO_CANCEL_MINUTES, ACTIVE_BOOKING_STATUSES, PLATFORM_COMMISSION_PERCENT, type BookingStatus } from '@/lib/constants';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
@@ -379,7 +379,7 @@ export default function LenderBookingDetailPage() {
               <span className="font-semibold text-ink">₹{(booking.payment.gross_amount / 100).toFixed(0)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted">Platform fee (15%)</span>
+              <span className="text-muted">Platform fee ({PLATFORM_COMMISSION_PERCENT}%)</span>
               <span className="text-muted">−₹{(booking.payment.platform_fee / 100).toFixed(0)}</span>
             </div>
             <div className="flex justify-between border-t border-gray-100 pt-1.5 mt-1">
