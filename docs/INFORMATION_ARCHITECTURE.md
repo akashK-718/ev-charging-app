@@ -469,6 +469,25 @@ A unified surface for all lender operations. Reached via "Open Hosting Workspace
   - **Payouts** — pending/processing/paid history, bank transfer references, failed payout recovery (`/lender/payouts`)
 
   Earnings and Payouts are distinct destinations with distinct mental models: Earnings answers "how much did I make?" (revenue tracking); Payouts answers "did the money arrive?" (bank transfer status, UTR refs, failed transfers).
+
+### Host Earnings Statement
+
+The Earnings page (`/lender/earnings`) serves as the Earnings Statement view. Per-session cards show:
+- Charger name, booking reference (short code e.g. "DLZR"), session date
+- Gross booking amount, platform fee (`PLATFORM_COMMISSION_PERCENT`% — read from `src/lib/constants.ts`, not hardcoded), host net earnings
+- Payout status section (see below)
+- "Statement" download link → `GET /api/lender/bookings/[id]/statement`
+
+**PDF generation**: `GET /api/lender/bookings/[id]/statement` generates on-demand using pdfkit (same library as the driver's Payment Receipt). The PDF is titled "Host Earnings Statement" — never "Invoice" or "Tax Invoice". The lender-only auth guard (`.eq('lender_id', user.id)`) ensures drivers cannot access this endpoint.
+
+**Audience separation**: The Host Earnings Statement and the driver's Payment Receipt are entirely separate documents, endpoints, and audiences:
+- Driver receipt: `GET /api/bookings/[id]/receipt` — accessible only to the booking's driver; shows amount paid from driver's perspective
+- Host statement: `GET /api/lender/bookings/[id]/statement` — accessible only to the booking's lender; shows gross, fee, and net from host's perspective
+
+**Payout status — current placeholder state**: RazorpayX bank transfer wiring is not yet complete (as of `feature/host-earnings-statement`). The payout section shows: *"Payout processing — bank transfer integration in progress"* with no date, reference number, or "Paid" label rendered. No fabricated data is ever shown. The `PayoutStatus` component in the earnings page and the equivalent block in the PDF route are deliberately isolated — when RazorpayX payout wiring lands, only those two sections need updating; nothing else in the statement requires a rebuild.
+
+**Tax invoices explicitly deferred**: "Tax Invoice" and "GST Invoice" variants are NOT produced. Kirin's GST/tax-supplier position (marketplace vs. charging-service supplier) requires accountant confirmation before any tax document is issued. This must not be inferred or guessed at in code or copy.
+
 - **Add Charger** — 7-step wizard
 
 ## Authentication Flow
