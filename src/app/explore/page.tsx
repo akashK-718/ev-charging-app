@@ -984,7 +984,7 @@ export default function ExplorePage() {
     <div
       className={cn(
         'flex flex-col',
-        'desk:h-[calc(100dvh-var(--navbar-h))]',
+        'md:h-[calc(100dvh-var(--navbar-h))]',
         viewMode === 'map' ? 'h-dvh' : 'min-h-dvh',
       )}
     >

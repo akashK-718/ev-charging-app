@@ -82,32 +82,33 @@
   /* Top safe-area inset for in-app screens.
      Applied to every screen header so content clears the status bar / notch.
      At least 16px on non-notch devices; respects the notch on iPhone.
-     Resets to 0 at desktop (≥1200px) where the sticky Navbar handles top spacing. */
+     Resets to 0 at tablet+ (≥768px) where the sticky top Navbar handles top spacing. */
   --screen-top-inset: max(env(safe-area-inset-top), 16px);
 
-  /* ─── Responsive layout tokens (three-mode system) ──────────────────────────
-     Mobile < 768px | Tablet 768–1199px | Desktop ≥ 1200px
+  /* ─── Responsive layout tokens ──────────────────────────────────────────────
+     Two independent axes:
+       Nav axis     — Mobile < 768px (bottom nav) | Tablet + Desktop ≥ 768px (top nav)
+       Content axis — Mobile + Tablet < 1200px (single-column) | Desktop ≥ 1200px (multi-column)
      Page-level code should prefer Tailwind breakpoint classes ('md:', 'desk:')
      over raw media queries referencing these values. These tokens exist for
      CSS-only contexts (e.g. calc() in positioning rules).
      ─────────────────────────────────────────────────────────────────────────── */
-  --navbar-h: 3.5rem;      /* 56px — sticky top Navbar height at desktop only    */
-  --sidebar-w: 15rem;      /* 240px — persistent left sidebar at desktop only     */
+  --navbar-h: 3.5rem;      /* 56px — sticky top nav height at tablet and desktop  */
   --content-max-w: 80rem;  /* 1280px — max outer container; content never edge-to-edge */
   --page-gutter: 1rem;     /* 16px mobile default; scaled via media queries below */
 }
 
-/* Tablet (768–1199px): more breathing room, same single-column/bottom-nav layout */
+/* Tablet + desktop (≥768px): top nav appears; notch inset handled by the navbar */
 @media (min-width: 768px) {
   :root {
+    --screen-top-inset: 0px;
     --page-gutter: 1.5rem; /* 24px */
   }
 }
 
-/* Desktop (≥1200px): sidebar + Navbar appear; top inset no longer needed from content */
+/* Desktop (≥1200px): page gutter widens for multi-column layouts */
 @media (min-width: 1200px) {
   :root {
-    --screen-top-inset: 0px;
     --page-gutter: 2rem;   /* 32px */
   }
 }

@@ -33,7 +33,7 @@ export function UpdateBanner() {
         // Positioning: above BottomNav on mobile/tablet, near bottom on desktop
         'fixed inset-x-3 z-50',
         'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]',
-        'desk:bottom-4 desk:left-auto desk:right-4 desk:max-w-sm',
+        'md:bottom-4 md:left-auto md:right-4 md:max-w-sm',
         // Card appearance — matches other surface-card patterns in the app
         'bg-surface-card border border-border rounded-xl',
         'shadow-[var(--shadow-float)]',
