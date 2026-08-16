@@ -756,3 +756,20 @@ The two layers must never be removed separately — removing only the CSS would 
 - Every screen must reference the current `/design` foundation for visual tokens (colors, fonts, radius, shadows) and `DESIGN_EV.md` for content/interaction guardrails (no em dashes, no default pill-everything, no decorative animation, varied section header treatments).
 - Build mobile/PWA first, but every screen must also work correctly at desktop width.
 - This document reflects the current locked architecture. If a build reveals a real conflict with what's written here, flag it rather than silently deviating.
+
+## Payment Receipts
+
+### Architecture decision
+
+Kirin generates its own PDF payment receipts. Razorpay's Invoice API is **not used** for this purpose.
+
+**Why not Razorpay invoices:** Investigated in `investigate/razorpay-invoice-retroactive-state` (Aug 2026). Razorpay's `POST /v1/invoices` endpoint returns `400 BAD_REQUEST_ERROR` with `"order_id, payment_id is/are not required and should not be sent"` when either field is supplied. The Invoice API is a forward-only collection instrument (create → notify customer → customer pays → paid state). It cannot be retroactively attached to an already-captured Order or Payment. Do not attempt the Razorpay-invoice route in future — it was tested on a real paid sandbox order and confirmed structurally unsupported.
+
+### Receipt implementation
+
+- **Trigger:** visible on Booking Detail (`/bookings/[id]`) as soon as the payment row exists — i.e. immediately after booking creation, not gated behind session completion.
+- **Data source:** `bookings` + `payments` rows only — derived fresh from the database on every request, no pre-generated artifact stored.
+- **PDF endpoint:** `GET /api/bookings/[id]/receipt` — server-side PDF generated with `pdfkit` (Node-native; no headless browser). Auth: booking driver only.
+- **Razorpay IDs:** `razorpay_order_id` and `razorpay_payment_id` appear on the receipt as reference numbers (for support/audit). They are never used to create a Razorpay-side Invoice object.
+- **Terminology:** always "Payment Receipt" — never "Invoice" or "Tax Invoice".
+- **Historical data:** gracefully degrades — payment method line is omitted for bookings predating the `payment_method`/`card_network`/`card_last4` columns (migration 040); booking reference (`confirmation_code`) and Razorpay IDs are present on all historical records.
