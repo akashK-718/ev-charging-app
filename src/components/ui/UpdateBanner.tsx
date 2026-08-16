@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useServiceWorkerUpdate } from '@/hooks/useServiceWorkerUpdate';
 import { cn } from '@/lib/utils';
@@ -27,10 +27,14 @@ import { cn } from '@/lib/utils';
 export function UpdateBanner() {
   const { hasUpdate, updateNow } = useServiceWorkerUpdate();
   const [dismissed, setDismissed] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
-  const isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  useEffect(() => {
+    setIsStandalone(
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true,
+    );
+  }, []);
 
   if (!isStandalone || !hasUpdate || dismissed) return null;
 
