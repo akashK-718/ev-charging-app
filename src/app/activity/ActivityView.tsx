@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Bell, CalendarCheck, ChevronRight, CreditCard,
   Filter, ArrowUpDown, ChevronDown, Check, Home, Info, MapPin, RotateCw, Star, Wallet, X,
@@ -710,6 +711,8 @@ function HostFeaturedCard({ item }: { item: HistoryItem }) {
 // ── Compact session rows ──────────────────────────────────────────────────────
 
 function DriverCompactRow({ item }: { item: HistoryItem }) {
+  const router      = useRouter();
+  const navigating  = useRef(false);
   const detailHref  = `/bookings/${item.bookingId}`;
   const statusLabel = DRIVER_STATUS_LABEL[item.status] ?? item.status;
   const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
@@ -720,21 +723,32 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
   const showBookAgain = item.status === 'completed';
   const isTerminal  = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
 
+  function handleRowClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (navigating.current) { e.preventDefault(); return; }
+    navigating.current = true;
+  }
+
+  function handleBookAgain(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    router.push(`/explore/${item.chargerId}`);
+  }
+
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5">
-      <Link href={detailHref} className="shrink-0">
-        <div className={cn('size-10 rounded-2xl grid place-items-center', cfg.bg)}>
-          {cfg.icon}
-        </div>
-      </Link>
+    <Link
+      href={detailHref}
+      className="flex items-center gap-3 px-4 py-3.5 tap-light"
+      onClick={handleRowClick}
+    >
+      <div className={cn('size-10 rounded-2xl grid place-items-center shrink-0', cfg.bg)}>
+        {cfg.icon}
+      </div>
 
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-semibold tracking-wider uppercase text-muted leading-none mb-0.5">
           {sessionEyebrow(item)}
         </p>
-        <Link href={detailHref}>
-          <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
-        </Link>
+        <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
         <p className="text-xs text-muted truncate">
           {item.counterpartyName
             ? `Hosted by ${item.counterpartyName} \u00B7 ${fmtDate(item.scheduledStart)}`
@@ -754,30 +768,29 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
           </span>
         )}
         {showRate ? (
-          <Link
-            href={detailHref}
-            className="flex items-center gap-1 px-2.5 min-h-[44px] rounded-lg bg-green text-white text-[11px] font-semibold whitespace-nowrap transition-colors hover:bg-green-deep"
-          >
+          <span className="flex items-center gap-1 px-2.5 min-h-[44px] rounded-lg bg-green text-white text-[11px] font-semibold whitespace-nowrap">
             <Star className="w-3 h-3 shrink-0 fill-white" aria-hidden />
             Rate
-          </Link>
+          </span>
         ) : showBookAgain ? (
-          <Link
-            href={`/explore/${item.chargerId}`}
+          <button
+            type="button"
+            onClick={handleBookAgain}
             className="flex items-center gap-1 px-2.5 min-h-[44px] rounded-lg border border-green/25 bg-green-soft text-green text-[11px] font-semibold whitespace-nowrap transition-colors hover:bg-green-soft/80"
           >
             <RotateCw className="w-3 h-3 shrink-0" aria-hidden />
             Book again
-          </Link>
+          </button>
         ) : (
           <ChevronRight className="w-3.5 h-3.5 text-muted mt-0.5" aria-hidden />
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
 function HostCompactRow({ item }: { item: HistoryItem }) {
+  const navigating  = useRef(false);
   const detailHref  = `/lender/bookings/${item.bookingId}`;
   const statusLabel = HOST_STATUS_LABEL[item.status] ?? item.status;
   const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
@@ -786,21 +799,26 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
   const cfg         = KIND_ICON[kind];
   const isTerminal  = ['cancelled', 'no_show', 'auto_reject'].includes(item.status);
 
+  function handleRowClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (navigating.current) { e.preventDefault(); return; }
+    navigating.current = true;
+  }
+
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5">
-      <Link href={detailHref} className="shrink-0">
-        <div className={cn('size-10 rounded-2xl grid place-items-center', cfg.bg)}>
-          {cfg.icon}
-        </div>
-      </Link>
+    <Link
+      href={detailHref}
+      className="flex items-center gap-3 px-4 py-3.5 tap-light"
+      onClick={handleRowClick}
+    >
+      <div className={cn('size-10 rounded-2xl grid place-items-center shrink-0', cfg.bg)}>
+        {cfg.icon}
+      </div>
 
       <div className="flex-1 min-w-0">
         <p className="text-[10px] font-semibold tracking-wider uppercase text-muted leading-none mb-0.5">
           {sessionEyebrow(item)}
         </p>
-        <Link href={detailHref}>
-          <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
-        </Link>
+        <p className="text-sm font-semibold text-ink truncate">{item.chargerTitle}</p>
         <p className="text-xs text-muted truncate">
           {item.counterpartyName
             ? `Guest: ${item.counterpartyName} \u00B7 ${fmtDate(item.scheduledStart)}`
@@ -821,7 +839,7 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
         )}
         <ChevronRight className="w-3.5 h-3.5 text-muted mt-0.5" aria-hidden />
       </div>
-    </div>
+    </Link>
   );
 }
 
