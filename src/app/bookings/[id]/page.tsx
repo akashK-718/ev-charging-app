@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Phone, MapPin, Clock, ShieldCheck, ChevronRight } from 'lucide-react';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
@@ -77,6 +77,7 @@ const POLL_MS = 10000;
 export default function BookingDetailPage() {
   const params = useParams() as { id: string };
   const id = params.id;
+  const pathname = usePathname();
 
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,6 +86,11 @@ export default function BookingDetailPage() {
 
   // Receipt reveal — printer mode only; stays false until explicit tap
   const [receiptOpen, setReceiptOpen] = useState(false);
+
+  // Reset receipt to collapsed on every navigation, including cache-restored visits.
+  // Next.js 14 router cache keeps this component alive across soft navigations, so
+  // useState(false) alone only fires on first mount — pathname change catches re-entries.
+  useEffect(() => { setReceiptOpen(false); }, [pathname]);
 
   // Cancel state
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
