@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Phone, MapPin, Clock } from 'lucide-react';
+import { Phone, MapPin, Clock, ShieldCheck, ChevronRight } from 'lucide-react';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
@@ -82,6 +82,9 @@ export default function BookingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Receipt reveal — printer mode only; stays false until explicit tap
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   // Cancel state
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -416,15 +419,34 @@ export default function BookingDetailPage() {
       {/* Payment Receipt */}
       {booking.payment && (
         RECEIPT_PRESENTATION_MODE === 'printer' ? (
-          <div className="flex justify-center py-2">
-            <PrinterPaymentReceipt
-              bookingId={booking.id}
-              chargerAddress={normalizeAddress(booking.charger?.address ?? '')}
-              chargerName={booking.charger?.title ?? 'Charger'}
-              confirmationCode={booking.confirmation_code}
-              payment={booking.payment}
-            />
-          </div>
+          receiptOpen ? (
+            <div className="flex justify-center py-2">
+              <PrinterPaymentReceipt
+                bookingId={booking.id}
+                chargerAddress={normalizeAddress(booking.charger?.address ?? '')}
+                chargerName={booking.charger?.title ?? 'Charger'}
+                confirmationCode={booking.confirmation_code}
+                payment={booking.payment}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { haptic('light'); setReceiptOpen(true); }}
+              className="w-full bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between tap-target active:scale-[0.98] transition-transform"
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-4 h-4 text-volt-deep shrink-0" />
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-ink">Payment Receipt</p>
+                  <p className="text-xs text-muted">
+                    ₹{(booking.payment.gross_amount / 100).toLocaleString('en-IN')} · Tap to view
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+            </button>
+          )
         ) : (
           <PlainPaymentReceipt
             bookingId={booking.id}
