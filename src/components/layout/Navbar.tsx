@@ -11,7 +11,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
 
-const HIDDEN_ROUTES = ['/', '/login', '/verify-otp', '/design'];
+const HIDDEN_ROUTES = ['/', '/login', '/verify-otp', '/auth', '/design'];
 
 const TABS = [
   { href: '/home',     Icon: Home,         label: 'Home'    },
