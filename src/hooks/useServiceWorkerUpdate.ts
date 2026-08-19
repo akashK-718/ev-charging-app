@@ -1,20 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+export type UpdatePhase = 'idle' | 'updating' | 'ready' | 'failed';
 
 interface ServiceWorkerUpdate {
   hasUpdate: boolean;
-  updateNow: () => void;
+  phase: UpdatePhase;
+  triggerUpdate: () => void;
 }
+
+const UPDATE_TIMEOUT_MS = 15_000;
 
 export function useServiceWorkerUpdate(): ServiceWorkerUpdate {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [phase, setPhase] = useState<UpdatePhase>('idle');
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onControllerChangeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
     let cancelled = false;
-
     const cleanupFns: Array<() => void> = [];
 
     function onInstalling(worker: ServiceWorker) {
@@ -37,27 +44,19 @@ export function useServiceWorkerUpdate(): ServiceWorkerUpdate {
         return;
       }
 
-      // Case 1b: a new SW started installing BEFORE the hook mounted — the
-      // inline register() call in layout.tsx can trigger an automatic update
-      // check, and if the install completes before React hydrates we would miss
-      // the updatefound event entirely. Attach statechange to catch the
-      // waiting transition if it hasn't happened yet.
-      if (reg.installing) {
-        onInstalling(reg.installing);
-      }
+      // Case 1b: a new SW started installing BEFORE the hook mounted.
+      if (reg.installing) onInstalling(reg.installing);
 
       // Case 2: a new SW begins installing while the app is open.
       reg.addEventListener('updatefound', () => {
         if (reg.installing) onInstalling(reg.installing);
       });
 
-      // Explicit check on mount — browsers normally check on navigation, but
-      // users who leave the PWA open all day would otherwise never be notified.
-      reg.update().catch(() => { /* network may be offline; ignore */ });
+      // Explicit check on mount — users who leave the PWA open all day would
+      // otherwise never be notified until the next navigation.
+      reg.update().catch(() => {});
 
-      // Re-check when the user returns to the app from another tab or app.
-      // Important for PWA: long background gaps can mean a deployment has
-      // landed since the user last interacted.
+      // Re-check when the user returns from background — important for PWA.
       function onVisibilityChange() {
         if (document.visibilityState === 'visible' && !cancelled) {
           reg?.update().catch(() => {});
@@ -73,16 +72,45 @@ export function useServiceWorkerUpdate(): ServiceWorkerUpdate {
     };
   }, []);
 
-  function updateNow() {
-    if (!waitingWorker) return;
+  function triggerUpdate() {
+    // Allow retry from 'failed'; guard against double-tap while already updating.
+    if (!waitingWorker || (phase !== 'idle' && phase !== 'failed')) return;
 
-    // Reload as soon as the new SW takes control (fires after skipWaiting activates it).
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // Synchronous — the user sees immediate feedback before any async work.
+    setPhase('updating');
+
+    // Clean up any listener and timeout left over from a previous (failed) attempt.
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (onControllerChangeRef.current) {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChangeRef.current);
+      onControllerChangeRef.current = null;
+    }
+
+    // When the new SW takes control: briefly show 'ready', then reload.
+    function onControllerChange() {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setPhase('ready');
       window.location.reload();
-    }, { once: true });
+    }
+
+    onControllerChangeRef.current = onControllerChange;
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange, { once: true });
+
+    // Failure timeout — if controllerchange hasn't fired after 15 s, give up
+    // and let the user retry rather than being stuck on "Updating…" forever.
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
+      setPhase(prev => (prev === 'updating' ? 'failed' : prev));
+    }, UPDATE_TIMEOUT_MS);
 
     waitingWorker.postMessage({ type: 'SKIP_WAITING' });
   }
 
-  return { hasUpdate: !!waitingWorker, updateNow };
+  return { hasUpdate: !!waitingWorker, phase, triggerUpdate };
 }
