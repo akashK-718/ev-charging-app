@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { ReceiptPrinter, type ReceiptPrinterStage } from "@/components/ui/ReceiptPrinter";
 import type { PaymentData } from "@/components/bookings/PlainPaymentReceipt";
 
@@ -90,17 +89,6 @@ export function PrinterPaymentReceipt({
   return (
     <ReceiptPrinter.Root stage={stage}>
       <ReceiptPrinter.Machine>
-        <ReceiptPrinter.Header>
-          {/* Kirin icon as printer brand */}
-          <Image
-            alt="Kirin"
-            className="size-7 rounded-md"
-            height={28}
-            src="/icons/kirin-icon.svg"
-            width={28}
-          />
-        </ReceiptPrinter.Header>
-
         <ReceiptPrinter.Screen>
           <div className="space-y-3">
             {/* Charger info */}
