@@ -151,7 +151,7 @@ export default async function LenderEarningsPage() {
   const { totalEarned, thisMonth, pendingPayout, sessions } = await getEarningsData(user.id);
 
   return (
-    <main className="min-h-screen px-6 py-10 space-y-6 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10">
+    <main className="min-h-screen px-6 py-10 space-y-6 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <h1 className="text-2xl font-medium text-ink">Earnings</h1>
 
       {/* Summary cards */}
