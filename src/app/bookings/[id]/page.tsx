@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Phone, MapPin, Clock, ShieldCheck, Download } from 'lucide-react';
+import { Phone, MapPin, Clock } from 'lucide-react';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 import { BookingTimeline } from '@/components/bookings/BookingTimeline';
 import { SessionControls } from '@/components/bookings/SessionControls';
@@ -14,7 +14,9 @@ import { Button } from '@/components/ui/Button';
 import { haptic } from '@/lib/haptics';
 import { checkDriverFirstSession, MILESTONE_LABEL, type MilestoneEvent } from '@/lib/milestones';
 import { formatPhoneForDisplay, formatPhoneForCall } from '@/lib/phone';
-import { ACTIVE_BOOKING_STATUSES, FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES, type BookingStatus } from '@/lib/constants';
+import { ACTIVE_BOOKING_STATUSES, FREE_CANCEL_MINUTES, FREE_CANCEL_WINDOW_MINUTES, RECEIPT_PRESENTATION_MODE, type BookingStatus } from '@/lib/constants';
+import { PlainPaymentReceipt } from '@/components/bookings/PlainPaymentReceipt';
+import { PrinterPaymentReceipt } from '@/components/bookings/PrinterPaymentReceipt';
 import { normalizeAddress } from '@/lib/utils';
 
 type BookingDetail = {
@@ -62,24 +64,6 @@ function formatDuration(start: string, end: string) {
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
   return `${m}m`;
-}
-
-function formatPaymentMethod(method: string | null, network: string | null, last4: string | null): string | null {
-  if (!method) return null;
-  if (method === 'card' && network && last4) return `${network} •••• ${last4}`;
-  if (method === 'card') return 'Card';
-  if (method === 'upi') return 'UPI';
-  if (method === 'wallet') return 'Wallet';
-  if (method === 'netbanking') return 'Net Banking';
-  return method.charAt(0).toUpperCase() + method.slice(1);
-}
-
-function formatPaymentDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-    timeZone: 'Asia/Kolkata',
-  });
 }
 
 function formatCountdown(ms: number) {
@@ -431,72 +415,23 @@ export default function BookingDetailPage() {
 
       {/* Payment Receipt */}
       {booking.payment && (
-        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-sm text-ink flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-volt-deep" />
-              Payment Receipt
-            </h2>
-            <a
-              href={`/api/bookings/${booking.id}/receipt`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs font-semibold text-volt-deep hover:text-volt-deep/80 transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download
-            </a>
+        RECEIPT_PRESENTATION_MODE === 'printer' ? (
+          <div className="flex justify-center py-2">
+            <PrinterPaymentReceipt
+              bookingId={booking.id}
+              chargerAddress={normalizeAddress(booking.charger?.address ?? '')}
+              chargerName={booking.charger?.title ?? 'Charger'}
+              confirmationCode={booking.confirmation_code}
+              payment={booking.payment}
+            />
           </div>
-
-          {/* Amount — primary info */}
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted">Amount paid</span>
-            <span className="text-lg font-semibold text-ink">
-              ₹{(booking.payment.gross_amount / 100).toLocaleString('en-IN')}
-            </span>
-          </div>
-
-          {/* Payment method — omit if unavailable (historical payments) */}
-          {formatPaymentMethod(booking.payment.payment_method, booking.payment.card_network, booking.payment.card_last4) && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted">Payment method</span>
-              <span className="text-ink font-medium">
-                {formatPaymentMethod(booking.payment.payment_method, booking.payment.card_network, booking.payment.card_last4)}
-              </span>
-            </div>
-          )}
-
-          {/* Booking reference */}
-          <div className="flex justify-between text-sm">
-            <span className="text-muted">Booking reference</span>
-            <span className="font-mono text-ink">{booking.confirmation_code}</span>
-          </div>
-
-          {/* Payment date */}
-          <div className="flex justify-between text-sm">
-            <span className="text-muted">Payment date</span>
-            <span className="text-ink">{formatPaymentDate(booking.payment.created_at)}</span>
-          </div>
-
-          {/* Razorpay reference IDs — muted, secondary, support/audit use */}
-          {(booking.payment.razorpay_payment_id || booking.payment.razorpay_order_id) && (
-            <div className="pt-2 border-t border-gray-100 space-y-1.5">
-              <p className="text-[10px] text-muted/70">Reference numbers (for support)</p>
-              {booking.payment.razorpay_payment_id && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted">Payment ID</span>
-                  <span className="font-mono text-muted">{booking.payment.razorpay_payment_id}</span>
-                </div>
-              )}
-              {booking.payment.razorpay_order_id && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted">Order ID</span>
-                  <span className="font-mono text-muted">{booking.payment.razorpay_order_id}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        ) : (
+          <PlainPaymentReceipt
+            bookingId={booking.id}
+            confirmationCode={booking.confirmation_code}
+            payment={booking.payment}
+          />
+        )
       )}
 
       {/* Timeline */}

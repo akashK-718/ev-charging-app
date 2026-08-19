@@ -5,6 +5,9 @@
 // Platform commission (percentage of total session value)
 export const PLATFORM_COMMISSION_PERCENT = 15;
 
+// Receipt presentation mode — flip to 'plain' to revert to the plain card view
+export const RECEIPT_PRESENTATION_MODE: 'printer' | 'plain' = 'printer';
+
 // Booking auto-cancel if not confirmed by lender within this many minutes
 export const BOOKING_AUTO_CANCEL_MINUTES = 30;
 
