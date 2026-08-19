@@ -15,8 +15,11 @@ export async function GET(
   }
 
   const adminSupabase = createAdminClient();
-  await runAutoRejectSweep(adminSupabase);
-  await runFlagForReviewSweep(adminSupabase);
+
+  // Sweeps are idempotent and also driven by pg_cron — fire without awaiting so
+  // the user-facing booking fetch is not blocked by unrelated maintenance work.
+  void runAutoRejectSweep(adminSupabase);
+  void runFlagForReviewSweep(adminSupabase);
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')

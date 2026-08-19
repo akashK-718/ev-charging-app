@@ -158,7 +158,21 @@ export default function BookingDetailPage() {
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-muted">Loading…</div>;
+    return (
+      <main className="min-h-screen px-6 py-10 space-y-5">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <div className="h-7 w-24 animate-pulse bg-surface-2 rounded-token" />
+            <div className="h-3 w-32 animate-pulse bg-surface-2 rounded-token" />
+          </div>
+          <div className="h-6 w-20 animate-pulse bg-surface-2 rounded-full" />
+        </div>
+        <div className="h-24 animate-pulse bg-surface-2 rounded-xl" />
+        <div className="h-32 animate-pulse bg-surface-2 rounded-xl" />
+        <div className="h-20 animate-pulse bg-surface-2 rounded-xl" />
+        <div className="h-16 animate-pulse bg-surface-2 rounded-xl" />
+      </main>
+    );
   }
 
   if (error || !booking) {
