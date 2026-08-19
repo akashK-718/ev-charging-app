@@ -9,7 +9,7 @@ import { haptic } from '@/lib/haptics';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 
-const SUPPRESSED: string[] = ['/login', '/verify-otp', '/', '/design'];
+const SUPPRESSED: string[] = ['/login', '/verify-otp', '/auth', '/', '/design'];
 
 const TABS = [
   { href: '/home',     Icon: Home,         label: 'Home'    },
