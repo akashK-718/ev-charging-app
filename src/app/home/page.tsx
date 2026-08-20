@@ -422,10 +422,7 @@ export default async function HomePage() {
 
   return (
     <>
-    <div
-      className="min-h-screen bg-surface-page"
-      style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
-    >
+    <div className="min-h-screen bg-surface-page pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-[var(--screen-top-inset)] pb-4 space-y-3">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}

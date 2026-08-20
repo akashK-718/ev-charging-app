@@ -105,7 +105,7 @@ export default async function HostingOverviewPage() {
   const hasAttention = pendingCount > 0 || pausedCount > 0;
 
   return (
-    <main className="min-h-screen px-6 pb-10 space-y-8">
+    <main className="min-h-screen px-6 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10 space-y-8">
 
       <div className="pt-[var(--screen-top-inset)] pb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-green-600 flex items-center gap-1.5 mb-1">

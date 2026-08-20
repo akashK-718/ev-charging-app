@@ -38,7 +38,7 @@ export default async function NotificationsPage() {
 
   return (
     <main
-      className="max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10"
+      className="max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10"
     >
       <NotificationsBody initialPrefs={prefs} />
     </main>

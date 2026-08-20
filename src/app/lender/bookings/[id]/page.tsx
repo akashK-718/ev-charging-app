@@ -248,7 +248,7 @@ export default function LenderBookingDetailPage() {
     .slice(0, 2);
 
   return (
-    <main className="min-h-screen px-6 py-10 space-y-5 pb-10">
+    <main className="min-h-screen px-6 pt-10 space-y-5 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

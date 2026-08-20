@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="max-w-2xl mx-auto pb-24">
+    <main className="max-w-2xl mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <PageHeader title="Terms and Privacy" subtitle="Last updated: July 2026" href="/profile" />
 
       <div className="px-4 space-y-8 text-sm text-ink leading-relaxed">

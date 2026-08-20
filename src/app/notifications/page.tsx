@@ -53,10 +53,7 @@ export default async function NotificationsPage() {
     .limit(50);
 
   return (
-    <div
-      className="min-h-screen bg-surface-page"
-      style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
-    >
+    <div className="min-h-screen bg-surface-page pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-6 pb-6">
         <h1 className="text-2xl font-bold text-ink mb-0.5">Notifications</h1>
         <p className="text-sm text-muted mb-7">Updates from your bookings and activity.</p>

@@ -96,7 +96,7 @@ function LenderBookingsContent() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-10">
+    <main className="min-h-screen px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <h1 className="text-2xl font-medium text-ink mb-6">Bookings</h1>
 
       {/* Charger filter indicator */}

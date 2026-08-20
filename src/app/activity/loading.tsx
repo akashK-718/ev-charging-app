@@ -35,7 +35,7 @@ function CompactRowSkeleton() {
 
 export default function ActivityLoading() {
   return (
-    <div className="min-h-screen bg-surface-page pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-surface-page pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-[var(--screen-top-inset)]">
 
         {/* Header */}
