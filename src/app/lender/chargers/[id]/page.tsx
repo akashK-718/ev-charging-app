@@ -7,7 +7,7 @@ import {
   ChevronRight, Edit3, Pause, Play, MoreVertical,
   Trash2, Copy, Eye, Zap, MapPin, Star,
 } from 'lucide-react';
-import { ContainedBackButton } from '@/components/ui/BackButton';
+import { BackButton, ContainedBackButton } from '@/components/ui/BackButton';
 import { ImageCarousel } from '@/components/chargers/ImageCarousel';
 import { cn, normalizeAddress } from '@/lib/utils';
 
@@ -274,7 +274,7 @@ export default function LenderChargerDetailPage() {
     return (
       <main className="px-6 py-10">
         <p className="text-sm text-red-600 font-semibold">{error ?? 'Not found'}</p>
-        <Link href="/lender/chargers" className="mt-4 inline-block text-sm font-semibold text-volt-deep">← Back</Link>
+        <BackButton href="/lender/chargers" className="mt-2 -ml-3" />
       </main>
     );
   }
