@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
+import { BackButton } from '@/components/ui/BackButton';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { clearExploreSession } from '@/lib/user-storage';
@@ -443,12 +444,10 @@ function AuthFlow() {
     const resendDisabled = seconds > 0 || resendState === 'sending';
     return (
       <main key={stepKey} className={baseCls}>
-        <button
+        <BackButton
           onClick={() => goToStep('phone')}
-          className="text-muted text-sm mb-8 self-start hover:text-ink transition-colors tap-opacity"
-        >
-          ← Back
-        </button>
+          className="self-start -ml-3 mb-4"
+        />
 
         <h1 className="text-2xl font-bold text-ink">Enter the code</h1>
         <p className="mt-2 text-sm text-muted">
