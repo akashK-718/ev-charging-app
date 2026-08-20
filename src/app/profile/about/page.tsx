@@ -6,7 +6,7 @@ const APP_VERSION = '0.1.0';
 
 export default function AboutKirinPage() {
   return (
-    <main className="max-w-lg mx-auto pb-16">
+    <main className="max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <PageHeader title="About Kirin" href="/profile" aria-label="Back to profile" />
 
       <div className="px-4 space-y-6">

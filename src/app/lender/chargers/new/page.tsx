@@ -179,7 +179,7 @@ function NewChargerPageContent({ isOnboarding }: { isOnboarding: boolean }) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10">
+    <main className="min-h-screen flex flex-col px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <Sheet open={deleteSheetOpen} onClose={() => setDeleteSheetOpen(false)} title="Delete this draft?">
         <div className="space-y-4">
           <p className="text-sm text-ink">Photos, pricing and availability will be permanently removed.</p>

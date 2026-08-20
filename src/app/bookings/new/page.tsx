@@ -361,7 +361,7 @@ function NewBookingContent() {
   const minDate = new Date().toISOString().slice(0, 10);
 
   return (
-    <main className="min-h-screen px-6 py-10 space-y-5 max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10">
+    <main className="min-h-screen px-6 py-10 space-y-5 max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <h1 className="text-2xl font-medium text-ink">Book a slot</h1>
 
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-1">

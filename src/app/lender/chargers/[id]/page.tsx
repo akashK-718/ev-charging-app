@@ -287,7 +287,7 @@ export default function LenderChargerDetailPage() {
 
   return (
     <>
-      <main className="min-h-screen pb-[calc(9.5rem+env(safe-area-inset-bottom))] lg:pb-28">
+      <main className="min-h-screen pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+5rem)] md:pb-28">
 
         {/* ── Header ── */}
         <div className="relative">

@@ -75,10 +75,7 @@ const FAQ: { section: string; items: FaqItem[] }[] = [
 
 export default function HelpPage() {
   return (
-    <div
-      className="min-h-screen bg-surface-page"
-      style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
-    >
+    <div className="min-h-screen bg-surface-page pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <div className="max-w-2xl mx-auto pb-8">
 
         <PageHeader

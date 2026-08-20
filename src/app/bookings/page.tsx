@@ -64,7 +64,7 @@ export default function BookingsPage() {
   }, [activeTab, fetchBookings]);
 
   return (
-    <main className="min-h-screen px-6 py-10">
+    <main className="min-h-screen px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <h1 className="text-2xl font-medium text-ink mb-6">Your bookings</h1>
 
       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-6 -mx-1 px-1">

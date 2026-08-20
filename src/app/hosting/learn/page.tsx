@@ -38,7 +38,7 @@ export default async function HostingLearnPage() {
 
   return (
     <>
-      <main className="min-h-screen px-6 pt-10 pb-[calc(11rem+env(safe-area-inset-bottom))] space-y-8 lg:pb-10">
+      <main className="min-h-screen px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom)+6.5rem)] space-y-8 md:pb-10">
 
         {/* Back */}
         <BackButton href="/home" className="-ml-1.5" />

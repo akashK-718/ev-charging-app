@@ -279,7 +279,7 @@ export function VehiclesClient({ initialVehicles }: VehiclesClientProps) {
     <>
       <BackHeader title="My Vehicles" href="/profile" />
 
-      <main className="px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-10 max-w-lg mx-auto space-y-3">
+      <main className="px-4 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10 max-w-lg mx-auto space-y-3">
 
         {vehicles.length === 0 && (
           <div className="text-center py-12">

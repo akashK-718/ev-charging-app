@@ -81,7 +81,7 @@ export default async function HostReviewsPage() {
   for (const r of reviews) dist[Math.min(5, Math.max(1, r.rating))]++;
 
   return (
-    <main className="max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-10">
+    <main className="max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <PageHeader title="Host Reviews" href="/lender/dashboard" aria-label="Back to dashboard" />
 
       {totalCount === 0 ? (
