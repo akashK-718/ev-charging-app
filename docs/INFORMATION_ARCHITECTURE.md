@@ -334,6 +334,22 @@ Filter changes (including Compatibility, price, power, availability) do **not** 
 
 History and Updates, as two sub-views within one tab, not two separate tabs.
 
+### Activity layout — responsive behaviour
+
+| Breakpoint | Layout |
+|---|---|
+| Mobile + tablet (< 1200px) | Single-column `max-w-2xl`; featured card (most recent) + grouped compact rows in Sessions tab; Updates tab flat list |
+| Desktop (≥ 1200px) | Permanent master-detail split: list panel (`flex-[2]`) + detail panel (`flex-[3]`); all sessions shown as compact rows in the left panel; clicking a row shows that session's card in the right panel |
+
+**Desktop master-detail rules:**
+- The list panel contains the Sessions/Updates tab switcher, filter/sort controls, and all items as compact rows (no featured card).
+- Clicking a compact row sets `selectedItem` state — the item's `DriverFeaturedCard` or `HostFeaturedCard` renders in the right panel without navigating.
+- The right panel shows an empty state ("Select a session") until the user clicks a row.
+- The Updates tab does not use the right panel; the master-detail layout persists visually but the right panel remains in its last state.
+- `DriverCompactRow` / `HostCompactRow` accept an optional `onSelect` prop: when provided (desktop panel mode), the component renders as a `<button>` and calls `onSelect` on click; without `onSelect` it renders as a `<Link>` and navigates normally.
+
+
+
 **History** — Today / Yesterday / Earlier, merging driver sessions, hosting sessions, payments, payouts, cancelled, and completed items together chronologically. Not split into separate driver history and lender history.
 
 **Updates** — booking confirmed, booking cancelled, booking started, booking ended, KYC approved, KYC rejected, payout processed. Future: promotions, announcements, maintenance alerts.
@@ -371,6 +387,23 @@ Both the featured card and every compact row render the role-specific component.
 ## Profile
 
 Answers: "What belongs to me?" Nothing here changes minute to minute. Pure identity and configuration, never operational workflows.
+
+### Profile layout — responsive behaviour
+
+| Breakpoint | Layout |
+|---|---|
+| Mobile + tablet (< 1200px) | Single-column `max-w-lg`; sections stacked vertically with `px-4` gutter |
+| Desktop (≥ 1200px) | `max-w-4xl`; sections arranged in a 2-column grid (`desk:grid-cols-2 gap-6`) |
+
+**Desktop 2-column grid rules:**
+- Avatar / Name / Member since header: full-width (outside the grid).
+- **When hosting is started** (`hostingStarted = true`): Hosting section (`col-span-1`) + Identity Verification section (`col-span-1`) pair in the first grid row.
+- **When hosting is not started** (`hostingStarted = false`): Hosting promo card is `col-span-2` (full-width); Identity Verification is hidden.
+- Account (`col-span-1`) + Preferences (`col-span-1`) always pair in one grid row.
+- Your Activity, Support, Danger Zone (conditional): each `col-span-2` (full-width).
+- No section stretches to full canvas width unless it is explicitly `col-span-2`.
+
+
 
 **Authorship rule**: Content a user has authored (e.g. reviews they wrote) belongs on Profile. Reputation others have assigned them as a host (received reviews, star ratings) belongs on Hosting Workspace / Host Dashboard as a performance metric, alongside earnings and bookings.
 

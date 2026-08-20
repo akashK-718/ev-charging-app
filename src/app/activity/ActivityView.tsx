@@ -710,7 +710,15 @@ function HostFeaturedCard({ item }: { item: HistoryItem }) {
 
 // ── Compact session rows ──────────────────────────────────────────────────────
 
-function DriverCompactRow({ item }: { item: HistoryItem }) {
+function DriverCompactRow({
+  item,
+  onSelect,
+  isSelected,
+}: {
+  item: HistoryItem;
+  onSelect?: (item: HistoryItem) => void;
+  isSelected?: boolean;
+}) {
   const router      = useRouter();
   const navigating  = useRef(false);
   const detailHref  = `/bookings/${item.bookingId}`;
@@ -734,12 +742,13 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
     router.push(`/explore/${item.chargerId}`);
   }
 
-  return (
-    <Link
-      href={detailHref}
-      className="flex items-center gap-3 px-4 py-3.5 tap-light"
-      onClick={handleRowClick}
-    >
+  const rowClass = cn(
+    'flex items-center gap-3 px-4 py-3.5 tap-light w-full text-left transition-colors',
+    isSelected && 'bg-green-soft/60',
+  );
+
+  const inner = (
+    <>
       <div className={cn('size-10 rounded-2xl grid place-items-center shrink-0', cfg.bg)}>
         {cfg.icon}
       </div>
@@ -785,11 +794,33 @@ function DriverCompactRow({ item }: { item: HistoryItem }) {
           <ChevronRight className="w-3.5 h-3.5 text-muted mt-0.5" aria-hidden />
         )}
       </div>
+    </>
+  );
+
+  if (onSelect) {
+    return (
+      <button type="button" onClick={() => onSelect(item)} className={rowClass}>
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={detailHref} className={rowClass} onClick={handleRowClick}>
+      {inner}
     </Link>
   );
 }
 
-function HostCompactRow({ item }: { item: HistoryItem }) {
+function HostCompactRow({
+  item,
+  onSelect,
+  isSelected,
+}: {
+  item: HistoryItem;
+  onSelect?: (item: HistoryItem) => void;
+  isSelected?: boolean;
+}) {
   const navigating  = useRef(false);
   const detailHref  = `/lender/bookings/${item.bookingId}`;
   const statusLabel = HOST_STATUS_LABEL[item.status] ?? item.status;
@@ -804,12 +835,13 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
     navigating.current = true;
   }
 
-  return (
-    <Link
-      href={detailHref}
-      className="flex items-center gap-3 px-4 py-3.5 tap-light"
-      onClick={handleRowClick}
-    >
+  const rowClass = cn(
+    'flex items-center gap-3 px-4 py-3.5 tap-light w-full text-left transition-colors',
+    isSelected && 'bg-green-soft/60',
+  );
+
+  const inner = (
+    <>
       <div className={cn('size-10 rounded-2xl grid place-items-center shrink-0', cfg.bg)}>
         {cfg.icon}
       </div>
@@ -839,6 +871,20 @@ function HostCompactRow({ item }: { item: HistoryItem }) {
         )}
         <ChevronRight className="w-3.5 h-3.5 text-muted mt-0.5" aria-hidden />
       </div>
+    </>
+  );
+
+  if (onSelect) {
+    return (
+      <button type="button" onClick={() => onSelect(item)} className={rowClass}>
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={detailHref} className={rowClass} onClick={handleRowClick}>
+      {inner}
     </Link>
   );
 }
@@ -858,6 +904,7 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [unreadCount,     setUnreadCount]     = useState(initialUnreadCount);
   const [markedRead,      setMarkedRead]      = useState(false);
+  const [selectedItem,    setSelectedItem]    = useState<HistoryItem | null>(null);
 
   useEffect(() => {
     if (tab === 'updates' && !markedRead && unreadCount > 0) {
@@ -875,11 +922,12 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
   const grouped  = groupByDate(rest);
 
   return (
-    <div
-      className="min-h-screen bg-surface-page"
-      style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
-    >
-      <div className="max-w-2xl mx-auto px-4 pt-[var(--screen-top-inset)]">
+    <div className="min-h-screen bg-surface-page pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10 desk:min-h-0 desk:h-[calc(100dvh-var(--navbar-h))] desk:overflow-hidden">
+      <div className="desk:flex desk:h-full">
+
+      {/* ── Left panel: list ─────────────────────────────────────────────────── */}
+      <div className="desk:flex-[2] desk:overflow-y-auto desk:border-r desk:border-border">
+      <div className="max-w-2xl mx-auto px-4 pt-[var(--screen-top-inset)] desk:max-w-none desk:mx-0 desk:px-6 desk:pt-6">
 
         {/* Header */}
         <div className="mb-5">
@@ -934,16 +982,30 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
               />
             ) : (
               <div className="space-y-5 pb-6">
-                {/* Featured card — most recent session in current filter */}
+                {/* Mobile/tablet: featured card (most recent) + grouped compact rows */}
                 {featured && (
-                  featured.roleInSession === 'driver'
-                    ? <DriverFeaturedCard item={featured} />
-                    : <HostFeaturedCard item={featured} />
+                  <div className="desk:hidden">
+                    {featured.roleInSession === 'driver'
+                      ? <DriverFeaturedCard item={featured} />
+                      : <HostFeaturedCard item={featured} />
+                    }
+                  </div>
                 )}
 
-                {/* Compact list — single rounded-3xl card, date groups as section headers inside */}
+                {/* Desktop: all items as a single scrollable compact list (no date grouping) */}
+                <div className="hidden desk:block bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
+                  <div className="divide-y divide-border">
+                    {sorted.map(item => (
+                      item.roleInSession === 'driver'
+                        ? <DriverCompactRow key={item.id} item={item} onSelect={setSelectedItem} isSelected={selectedItem?.id === item.id} />
+                        : <HostCompactRow   key={item.id} item={item} onSelect={setSelectedItem} isSelected={selectedItem?.id === item.id} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mobile/tablet: grouped compact rows (excludes the featured item) */}
                 {grouped.length > 0 && (
-                  <div className="bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
+                  <div className="desk:hidden bg-surface-card border border-border rounded-3xl shadow-sm overflow-hidden">
                     {grouped.map(({ label, items }, gi) => (
                       <div key={label}>
                         <div className={cn(
@@ -1021,7 +1083,28 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
           </div>
         )}
 
-      </div>
+      </div>{/* end inner max-w wrapper */}
+      </div>{/* end left panel */}
+
+      {/* ── Right panel: session detail (desktop only) ───────────────────────── */}
+      <aside className="hidden desk:flex desk:flex-[3] desk:overflow-y-auto desk:p-8 desk:items-start desk:justify-center">
+        {selectedItem ? (
+          <div className="w-full max-w-md">
+            {selectedItem.roleInSession === 'driver'
+              ? <DriverFeaturedCard item={selectedItem} />
+              : <HostFeaturedCard item={selectedItem} />
+            }
+          </div>
+        ) : (
+          <EmptyState
+            icon={<CalendarCheck className="size-7" />}
+            title="Select a session"
+            subtitle="Click any session in the list to see its details here"
+          />
+        )}
+      </aside>
+
+      </div>{/* end desk:flex row */}
     </div>
   );
 }

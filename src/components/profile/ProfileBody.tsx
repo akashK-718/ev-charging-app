@@ -343,10 +343,10 @@ export function ProfileBody({
         }}
       />
 
-      <div className="pb-8">
+      <div className="pb-8 desk:pb-12">
 
         {/* ── Header ──────────────────────────────────────────────────────────── */}
-        <div className="px-4 pt-[var(--screen-top-inset)] pb-5 flex items-center gap-4">
+        <div className="px-4 desk:px-6 pt-[var(--screen-top-inset)] pb-5 flex items-center gap-4">
           <button
             type="button"
             onClick={() => setAvatarSheetOpen(true)}
@@ -376,19 +376,22 @@ export function ProfileBody({
         </div>
 
         {avatarError && (
-          <p className="mx-4 -mt-2 mb-3 text-xs text-danger font-medium">{avatarError}</p>
+          <p className="mx-4 desk:mx-6 -mt-2 mb-3 text-xs text-danger font-medium">{avatarError}</p>
         )}
 
         {/* ── Submitted banner ─────────────────────────────────────────────────── */}
         {showSubmittedBanner && hostingStarted && kycStatus === 'pending' && (
-          <div className="mx-4 mb-4 px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
+          <div className="mx-4 desk:mx-6 mb-4 px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
             <p className="font-semibold text-blue-800">Verification submitted!</p>
             <p className="text-sm text-blue-700 mt-0.5">We&apos;ll review your documents within 24–48 hours.</p>
           </div>
         )}
 
+        {/* ── Sections (desktop: 2-column grid) ──────────────────────────────── */}
+        <div className="desk:px-6 desk:grid desk:grid-cols-2 desk:gap-6 desk:items-start">
+
         {/* ── Hosting ─────────────────────────────────────────────────────────── */}
-        <div className="px-4">
+        <div className={cn('px-4 desk:px-0', !hostingStarted && 'desk:col-span-2')}>
 
           {/* not_enabled: promo gradient card, no section title */}
           {hostingState === 'not_enabled' && (
@@ -525,7 +528,7 @@ export function ProfileBody({
 
         {/* ── Identity verification (shown when hosting is started) ────────────── */}
         {hostingStarted && (
-          <div className="px-4 mt-6">
+          <div className="px-4 mt-6 desk:px-0 desk:mt-0">
             <SectionLabel>Identity verification</SectionLabel>
             <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden p-4 space-y-3">
 
@@ -608,7 +611,7 @@ export function ProfileBody({
         )}
 
         {/* ── Account ─────────────────────────────────────────────────────────── */}
-        <div className="px-4 mt-6">
+        <div className="px-4 mt-6 desk:px-0 desk:mt-0">
           <SectionLabel>Account</SectionLabel>
           <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
             <div className="px-4 py-3.5">
@@ -642,7 +645,7 @@ export function ProfileBody({
         </div>
 
         {/* ── Preferences ─────────────────────────────────────────────────────── */}
-        <div className="px-4 mt-6">
+        <div className="px-4 mt-6 desk:px-0 desk:mt-0">
           <SectionLabel>Preferences</SectionLabel>
           <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
             <ProfileRow
@@ -654,7 +657,7 @@ export function ProfileBody({
         </div>
 
         {/* ── Your Activity ────────────────────────────────────────────────────── */}
-        <div className="px-4 mt-6">
+        <div className="px-4 mt-6 desk:px-0 desk:mt-0 desk:col-span-2">
           <SectionLabel>Your Activity</SectionLabel>
           <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
             <ProfileRow
@@ -666,7 +669,7 @@ export function ProfileBody({
         </div>
 
         {/* ── Support ─────────────────────────────────────────────────────────── */}
-        <div className="px-4 mt-6">
+        <div className="px-4 mt-6 desk:px-0 desk:mt-0 desk:col-span-2">
           <SectionLabel>Support</SectionLabel>
           <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
             <ProfileRow
@@ -679,7 +682,7 @@ export function ProfileBody({
 
         {/* ── Danger Zone (hosting-active accounts only) ───────────────────────── */}
         {hostingState === 'active' && (
-          <div className="px-4 mt-6">
+          <div className="px-4 mt-6 desk:px-0 desk:mt-0 desk:col-span-2">
             <SectionLabel>Danger Zone</SectionLabel>
             <div className="bg-white border border-border rounded-3xl shadow-sm overflow-hidden divide-y divide-border">
               <ProfileRow
@@ -694,11 +697,12 @@ export function ProfileBody({
         )}
 
         {/* ── Footer tagline ───────────────────────────────────────────────────── */}
-        <p className="text-center text-[10px] text-muted mt-6 leading-relaxed px-8">
+        <p className="text-center text-[10px] text-muted mt-6 leading-relaxed px-8 desk:col-span-2">
           One account for everything. Charging always works.<br />
           Hosting is just a section that appears when you turn it on.
         </p>
 
+        </div>{/* end desktop grid */}
       </div>
 
       {/* ── Pause confirmation sheet ──────────────────────────────────────────── */}

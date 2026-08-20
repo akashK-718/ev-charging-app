@@ -128,8 +128,7 @@ export default async function ProfilePage({
   return (
     <>
       <main
-        className="max-w-lg mx-auto"
-        style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+        className="max-w-lg desk:max-w-4xl mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10"
       >
         <ProfileBody
           isAdmin={isAdmin}
