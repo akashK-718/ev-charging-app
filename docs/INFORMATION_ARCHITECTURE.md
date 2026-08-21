@@ -552,6 +552,8 @@ The Earnings page (`/lender/earnings`) serves as the Earnings Statement view. Pe
 
 **Payout status — current placeholder state**: RazorpayX bank transfer wiring is not yet complete (as of `feature/host-earnings-statement`). The payout section shows: *"Payout processing — bank transfer integration in progress"* with no date, reference number, or "Paid" label rendered. No fabricated data is ever shown. The `PayoutStatus` component in the earnings page and the equivalent block in the PDF route are deliberately isolated — when RazorpayX payout wiring lands, only those two sections need updating; nothing else in the statement requires a rebuild.
 
+**Presentation:** plain card only — no animated printer treatment. This is a deliberate design decision. See [ReceiptPrinter animated presentation — scope lock](#receiptprinter-animated-presentation--scope-lock) in the Payment Receipts section for the rationale.
+
 **Tax invoices explicitly deferred**: "Tax Invoice" and "GST Invoice" variants are NOT produced. Kirin's GST/tax-supplier position (marketplace vs. charging-service supplier) requires accountant confirmation before any tax document is issued. This must not be inferred or guessed at in code or copy.
 
 - **Add Charger** — 7-step wizard
@@ -894,3 +896,11 @@ Kirin generates its own PDF payment receipts. Razorpay's Invoice API is **not us
 - **Razorpay IDs:** `razorpay_order_id` and `razorpay_payment_id` appear on the receipt as reference numbers (for support/audit). They are never used to create a Razorpay-side Invoice object.
 - **Terminology:** always "Payment Receipt" — never "Invoice" or "Tax Invoice".
 - **Historical data:** gracefully degrades — payment method line is omitted for bookings predating the `payment_method`/`card_network`/`card_last4` columns (migration 040); booking reference (`confirmation_code`) and Razorpay IDs are present on all historical records.
+
+### ReceiptPrinter animated presentation — scope lock
+
+The animated thermal-printer reveal (`src/components/ui/ReceiptPrinter.tsx`) is active when `RECEIPT_PRESENTATION_MODE = 'printer'` (default) in `src/lib/constants.ts`. Flip to `'plain'` to revert to the static card. The component is a compound (`ReceiptPrinter.Root / .Machine / .Screen / .Status / .Output / .Paper`) and is deliberately restricted to the driver's Payment Receipt on Booking Detail — no other document in the app uses it.
+
+**This scope is locked.** The printer presentation is intentionally the one visual departure from Kirin's restrained design language in the entire app. Extending it further would dilute why it works — it reads as special because it's rare. The driver Payment Receipt is a clean confirmatory event (you paid, proof received); the Host Earnings Statement is a financial record a host may check repeatedly, closer to a ledger than a moment — the printer's physical-receipt metaphor doesn't fit that use case. Keep Earnings Statement plain.
+
+Any future work must not extend the printer treatment to the Host Earnings Statement or any other document without a fresh decision recorded here. See [Host Earnings Statement](#host-earnings-statement) — its plain card presentation is an explicit design decision, not an oversight.
