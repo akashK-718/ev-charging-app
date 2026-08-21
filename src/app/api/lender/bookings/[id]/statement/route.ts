@@ -1,18 +1,18 @@
+import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import PDFDocument from 'pdfkit';
 import { normalizeAddress } from '@/lib/utils';
 import { PLATFORM_COMMISSION_PERCENT } from '@/lib/constants';
+import { formatCurrency } from '@/lib/pdf/format';
+
+const NOTO_SANS_FONT = path.join(process.cwd(), 'public', 'fonts', 'NotoSans-Regular.ttf');
 
 // Brand palette (matches globals.css tokens)
 const INK    = '#1a1f1c';
 const GREEN  = '#1c6b47';
 const MUTED  = '#6b7269';
 const BORDER = '#d5e0d8';
-
-function formatAmountPaise(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 function formatDateOnly(iso: string): string {
   return new Date(iso).toLocaleDateString('en-IN', {
@@ -86,6 +86,7 @@ export async function GET(
 
   // ── Build PDF ──────────────────────────────────────────────────────────────
   const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true });
+  doc.registerFont('NotoSans', NOTO_SANS_FONT);
 
   const L = 60;
   const R = 535;
@@ -112,10 +113,10 @@ export async function GET(
   y += 20;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  function row(label: string, value: string, labelColor = MUTED, valueColor = INK, fontSize = 10) {
+  function row(label: string, value: string, labelColor = MUTED, valueColor = INK, fontSize = 10, valueFont = 'Helvetica') {
     doc.fillColor(labelColor).fontSize(fontSize).font('Helvetica');
     doc.text(label, L, y, { lineBreak: false });
-    doc.fillColor(valueColor).fontSize(fontSize).font('Helvetica');
+    doc.fillColor(valueColor).fontSize(fontSize).font(valueFont);
     doc.text(value, L, y, { width: W, align: 'right', lineBreak: false });
     y += 20;
   }
@@ -143,8 +144,9 @@ export async function GET(
   // ── Earnings section ───────────────────────────────────────────────────────
   sectionHeading('Earnings');
 
-  row('Session total', formatAmountPaise(payment.gross_amount));
-  row(`Platform fee (${PLATFORM_COMMISSION_PERCENT}%)`, `−${formatAmountPaise(payment.platform_fee)}`, MUTED, MUTED);
+  // NotoSans: required for ₹ (U+20B9) — base-14 PDF fonts lack this glyph
+  row('Session total', formatCurrency(payment.gross_amount / 100), MUTED, INK, 10, 'NotoSans');
+  row(`Platform fee (${PLATFORM_COMMISSION_PERCENT}%)`, `−${formatCurrency(payment.platform_fee / 100)}`, MUTED, MUTED, 10, 'NotoSans');
 
   // Divider before net
   doc.moveTo(L, y - 4).lineTo(R, y - 4).lineWidth(0.3).strokeColor(BORDER).stroke();
@@ -152,8 +154,9 @@ export async function GET(
   // Net earnings — prominent in green
   doc.fillColor(MUTED).fontSize(10).font('Helvetica');
   doc.text('Your earnings', L, y, { lineBreak: false });
-  doc.fillColor(GREEN).fontSize(16).font('Helvetica-Bold');
-  doc.text(formatAmountPaise(payment.lender_payout), L, y - 3, { width: W, align: 'right', lineBreak: false });
+  // NotoSans: required for ₹ (U+20B9) — base-14 PDF fonts lack this glyph
+  doc.fillColor(GREEN).fontSize(16).font('NotoSans');
+  doc.text(formatCurrency(payment.lender_payout / 100), L, y - 3, { width: W, align: 'right', lineBreak: false });
   y += 28;
 
   // ── Payout section ─────────────────────────────────────────────────────────

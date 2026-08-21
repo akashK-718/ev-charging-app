@@ -1,17 +1,17 @@
+import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import PDFDocument from 'pdfkit';
 import { normalizeAddress } from '@/lib/utils';
+import { formatCurrency } from '@/lib/pdf/format';
+
+const NOTO_SANS_FONT = path.join(process.cwd(), 'public', 'fonts', 'NotoSans-Regular.ttf');
 
 // Brand palette (matches globals.css tokens)
 const INK    = '#1a1f1c';
 const GREEN  = '#1c6b47';
 const MUTED  = '#6b7269';
 const BORDER = '#d5e0d8';
-
-function formatAmountPaise(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
 
 function formatDatetime(iso: string): string {
   return new Date(iso).toLocaleString('en-IN', {
@@ -103,6 +103,7 @@ export async function GET(
 
   // ── Build PDF ──────────────────────────────────────────────────────────────
   const doc = new PDFDocument({ size: 'A4', margin: 0, bufferPages: true });
+  doc.registerFont('NotoSans', NOTO_SANS_FONT);
 
   const L = 60;   // left margin
   const R = 535;  // right edge
@@ -165,8 +166,9 @@ export async function GET(
   // Amount — larger, prominent
   doc.fillColor(MUTED).fontSize(10).font('Helvetica');
   doc.text('Amount paid', L, y, { lineBreak: false });
-  doc.fillColor(GREEN).fontSize(16).font('Helvetica-Bold');
-  doc.text(formatAmountPaise(payment.gross_amount), L, y - 3, { width: W, align: 'right', lineBreak: false });
+  // NotoSans: required for ₹ (U+20B9) — base-14 PDF fonts lack this glyph
+  doc.fillColor(GREEN).fontSize(16).font('NotoSans');
+  doc.text(formatCurrency(payment.gross_amount / 100), L, y - 3, { width: W, align: 'right', lineBreak: false });
   y += 24;
 
   const methodLabel = formatPaymentMethod(
