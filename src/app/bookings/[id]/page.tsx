@@ -87,10 +87,14 @@ export default function BookingDetailPage() {
   // Receipt reveal — printer mode only; stays false until explicit tap
   const [receiptOpen, setReceiptOpen] = useState(false);
 
-  // Reset receipt to collapsed on every navigation, including cache-restored visits.
+  // Reset transient UI state on every navigation, including cache-restored visits.
   // Next.js 14 router cache keeps this component alive across soft navigations, so
-  // useState(false) alone only fires on first mount — pathname change catches re-entries.
-  useEffect(() => { setReceiptOpen(false); }, [pathname]);
+  // useState(false/null) alone only fires on first mount — pathname change catches re-entries.
+  useEffect(() => {
+    setReceiptOpen(false);
+    setShowCancelConfirm(false);
+    setCancelError(null);
+  }, [pathname]);
 
   // Cancel state
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
