@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { formatINR } from '@/lib/currency';
 import {
   AlertCircle, ChevronRight,
-  Zap, Calendar, Shield,
+  Zap, Shield,
   TrendingUp, ArrowRight, Map as MapIcon, Route,
   Check, X, Inbox, CalendarClock,
 } from 'lucide-react';
@@ -15,6 +15,7 @@ import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { DynamicNudge, type RuleNudge } from '@/components/home/DynamicNudge';
 import { GoodToKnow } from '@/components/home/GoodToKnow';
 import { PwaInstallCard } from '@/components/home/PwaInstallCard';
+import { ConfirmationNotifCards } from '@/components/home/ConfirmationNotifCards';
 import { GreetingHeader } from '@/components/home/GreetingHeader';
 import { normalizeAddress } from '@/lib/utils';
 
@@ -545,24 +546,7 @@ export default async function HomePage() {
         ))}
 
         {/* ── Awaiting driver confirmation ──────────────────────────────────── */}
-        {attnAwaitingConf.map(b => (
-          <Link
-            key={`adc-${b.id}`}
-            href={`/bookings/${b.id}/session`}
-            className="rise-in flex items-center gap-3 bg-white border-2 border-green/20 rounded-3xl px-4 py-3.5 shadow-sm active:scale-[0.98] transition-transform"
-          >
-            <div className="size-9 rounded-xl bg-green-soft grid place-items-center shrink-0">
-              <Calendar className="size-4 text-green" aria-hidden />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-ink">Booking confirmed by host</p>
-              <p className="text-xs text-muted truncate">
-                {b.charger?.title ?? 'Charger'} &middot; {fmtDate(b.scheduled_start)} at {fmtTime(b.scheduled_start)}
-              </p>
-            </div>
-            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
-          </Link>
-        ))}
+        <ConfirmationNotifCards bookings={attnAwaitingConf} userId={user.id} />
 
         {/* ── Snapshot cards ───────────────────────────────────────────────── */}
         {snapshotCards.map((card, i) => {
