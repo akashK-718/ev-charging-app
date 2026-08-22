@@ -45,7 +45,7 @@ type Charger = {
   charger_type: string;
   connector_types: string[];
   price_per_kwh: number;
-  address: string;
+  address: string | null;
   status: string;
 };
 
@@ -428,7 +428,7 @@ function NewBookingContent() {
       {/* Charger summary */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-1">
         <p className="font-semibold text-ink">{charger.title}</p>
-        <p className="text-xs text-muted">{normalizeAddress(charger.address)}</p>
+        {charger.address && <p className="text-xs text-muted">{normalizeAddress(charger.address)}</p>}
         <p className="text-sm font-bold text-volt-deep mt-1">₹{charger.price_per_kwh}/kWh</p>
       </div>
 

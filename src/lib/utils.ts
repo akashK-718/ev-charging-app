@@ -50,7 +50,8 @@ export function rupeesToPaise(rupees: number): number {
  *   U+3001  IDEOGRAPHIC COMMA      (、) — guard against East Asian geodata
  *   U+FE50  SMALL COMMA            (﹐) — guard against compatibility variants
  */
-export function normalizeAddress(address: string): string {
+export function normalizeAddress(address: string | null | undefined): string {
+  if (!address) return '';
   return address.replace(/\s*[،⹁、﹐]\s*/g, ', ');
 }
 
