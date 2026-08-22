@@ -28,7 +28,7 @@ export async function GET(
   }
 
   const [chargerRes, lenderRes, paymentRes] = await Promise.all([
-    adminSupabase.from('chargers').select('id, title, address, photos').eq('id', booking.charger_id).single(),
+    adminSupabase.from('chargers').select('id, title, address, photos, price_per_kwh, charger_type').eq('id', booking.charger_id).single(),
     adminSupabase.from('users').select('id, name, phone').eq('id', booking.lender_id).single(),
     adminSupabase
       .from('payments')

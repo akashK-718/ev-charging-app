@@ -44,7 +44,8 @@ export function BottomNav() {
     !user ||
     !user.onboarded ||
     SUPPRESSED.includes(pathname) ||
-    pathname.startsWith('/welcome')
+    pathname.startsWith('/welcome') ||
+    pathname.endsWith('/session')
   ) return null;
 
   return (

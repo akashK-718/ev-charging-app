@@ -536,7 +536,8 @@ function SessionMapThumbnail({
 
 function DriverFeaturedCard({ item }: { item: HistoryItem }) {
   const [mapImgError, setMapImgError] = useState(false);
-  const detailHref  = `/bookings/${item.bookingId}`;
+  const detailHref   = `/bookings/${item.bookingId}`;
+  const sessionHref  = `/bookings/${item.bookingId}/session`;
   const statusLabel = DRIVER_STATUS_LABEL[item.status] ?? item.status;
   const statusColor = STATUS_COLOR[item.status] ?? 'bg-surface-page text-muted';
   const amountText  = driverAmountDisplay(item);
@@ -551,6 +552,10 @@ function DriverFeaturedCard({ item }: { item: HistoryItem }) {
   const mapsUrl = item.chargerLat !== null && item.chargerLng !== null
     ? `https://www.google.com/maps/dir/?api=1&destination=${item.chargerLat},${item.chargerLng}`
     : null;
+
+  // Session CTA targets the live session screen for active sessions
+  const secondaryCtaHref =
+    isReadyToStart || isInProgress ? sessionHref : detailHref;
 
   const secondaryCtaLabel =
     isReadyToStart ? 'Start session' :
@@ -625,7 +630,7 @@ function DriverFeaturedCard({ item }: { item: HistoryItem }) {
               ? <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={ctaBtnClass}>Get directions</a>
               : <Link href={detailHref} className={ctaBtnClass}>View booking</Link>
           ) : secondaryCtaLabel ? (
-            <Link href={detailHref} className={ctaBtnClass}>{secondaryCtaLabel}</Link>
+            <Link href={secondaryCtaHref} className={ctaBtnClass}>{secondaryCtaLabel}</Link>
           ) : null}
           {!isTerminal && (
             <Link
