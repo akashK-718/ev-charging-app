@@ -10,7 +10,8 @@
  * |               |            | kirin_intro_done (sessionStorage)          |                     |
  * | User-level    | User ID    | kirin:milestones:{userId}                  | NOT cleared —       |
  * |               |            | lender:new-charger:draft:{userId}          | persists for that   |
- * |               |            |                                            | user on next login  |
+ * |               |            | kirin:home:conf-notif:{userId}             | user on next login  |
+ * |               |            | kirin:home:tip:{userId}                    |                     |
  * | Session-level | Auth token | Supabase access/refresh tokens, OTP state               | Cleared by          |
  * |               |            | kirin:explore:mode (sessionStorage)                     | supabase.signOut()  |
  * |               |            | kirin:explore:near_me (sessionStorage)                  | + clearExploreSession() |
