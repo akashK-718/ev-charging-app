@@ -41,6 +41,8 @@ type BookingDetail = {
   end_initiated_at: string | null;
   no_show_at: string | null;
   created_at: string;
+  constraint_type: 'duration' | 'budget' | null;
+  constraint_value: number | null;
   charger: { id: string; title: string; address: string } | null;
   driver: { id: string; name: string | null; phone: string | null } | null;
   payment: {
@@ -382,6 +384,18 @@ export default function LenderBookingDetailPage() {
           <p className="text-xs text-muted">Full contact details shown after accepting.</p>
         )}
       </div>
+
+      {/* Budget context — shown on pending budget bookings so host understands the charge */}
+      {isPending && booking.constraint_type === 'budget' && booking.constraint_value != null && booking.payment && (
+        <div className="bg-volt-soft rounded-xl border border-volt/20 p-4 space-y-1">
+          <p className="text-sm font-semibold text-ink">
+            Driver spending up to ₹{booking.constraint_value.toLocaleString('en-IN')}
+          </p>
+          <p className="text-xs text-muted">
+            Session total: ₹{(booking.payment.gross_amount / 100).toLocaleString('en-IN')} · Estimated earnings: ₹{(booking.payment.lender_payout / 100).toLocaleString('en-IN')}
+          </p>
+        </div>
+      )}
 
       {/* Payment breakdown */}
       {booking.payment && (

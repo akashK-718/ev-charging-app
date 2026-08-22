@@ -76,7 +76,7 @@ export async function GET(
 
   const { data: booking } = await adminSupabase
     .from('bookings')
-    .select('id, driver_id, charger_id, scheduled_start, scheduled_end, confirmation_code, created_at')
+    .select('id, driver_id, charger_id, scheduled_start, scheduled_end, confirmation_code, created_at, constraint_type, constraint_value')
     .eq('id', params.id)
     .eq('driver_id', user.id)
     .single();
@@ -157,6 +157,9 @@ export async function GET(
     row('Address', normalizeAddress(charger.address));
   }
   row('Time slot', formatTimeRange(booking.scheduled_start, booking.scheduled_end));
+  if (booking.constraint_type === 'budget' && booking.constraint_value != null) {
+    row('Booked as', `Spend up to ₹${booking.constraint_value.toLocaleString('en-IN')}`, MUTED, MUTED, 9);
+  }
 
   y += 4;
 

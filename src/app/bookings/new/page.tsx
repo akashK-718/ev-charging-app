@@ -30,7 +30,12 @@ const DURATION_OPTIONS = [
   { minutes: 120, label: '2 hours' },
 ];
 
-// Minimum selectable duration — matches the shortest preset.
+const BUDGET_OPTIONS = [
+  { rupees: 200,  label: '₹200' },
+  { rupees: 500,  label: '₹500' },
+  { rupees: 1000, label: '₹1,000' },
+];
+
 const MIN_CUSTOM_DURATION_MINUTES = 30;
 
 type Charger = {
@@ -65,11 +70,19 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 function defaultDateTime() {
-  const d = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+  const d = new Date(Date.now() + 60 * 60 * 1000);
   d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
   const date = d.toISOString().slice(0, 10);
   const time = d.toTimeString().slice(0, 5);
   return { date, time };
+}
+
+function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
 }
 
 export default function NewBookingPage() {
@@ -100,14 +113,22 @@ function NewBookingContent() {
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState(defaultTime);
 
-  // Duration mode: 'preset' uses one of the fixed options; 'custom' lets the
-  // driver pick an explicit end date+time (supports overnight bookings).
+  // ── Constraint mode ────────────────────────────────────────────────────────
+  // 'duration' = existing time-based flow; 'budget' = new budget-based flow.
+  const [constraintMode, setConstraintMode] = useState<'duration' | 'budget'>('duration');
+
+  // ── Duration mode state ────────────────────────────────────────────────────
   const [durationMode, setDurationMode] = useState<'preset' | 'custom'>('preset');
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [customEndDate, setCustomEndDate] = useState('');
   const [customEndTime, setCustomEndTime] = useState('');
 
-  // Availability window fetched from server for the selected start time.
+  // ── Budget mode state ──────────────────────────────────────────────────────
+  const [budgetMode, setBudgetMode] = useState<'preset' | 'custom'>('preset');
+  const [budgetRupees, setBudgetRupees] = useState(500);
+  const [budgetCustomInput, setBudgetCustomInput] = useState('');
+
+  // ── Availability window ────────────────────────────────────────────────────
   const [maxEnd, setMaxEnd] = useState<Date | null>(null);
   const [maxEndReason, setMaxEndReason] = useState('');
 
@@ -141,13 +162,10 @@ function NewBookingContent() {
       .finally(() => setLoadingCharger(false));
   }, [chargerId]);
 
-  // Fetch the availability window (maxEnd) whenever the start date/time changes.
-  // Debounced 400 ms so rapid typing doesn't flood the server.
   useEffect(() => {
     if (!chargerId) return;
     let cancelled = false;
     const controller = new AbortController();
-
     const timeoutId = setTimeout(() => {
       const startIso = new Date(`${date}T${time}:00`).toISOString();
       fetch(
@@ -162,47 +180,62 @@ function NewBookingContent() {
           }
         })
         .catch(() => {
-          // Fail open — the server independently revalidates on submission.
           if (!cancelled) { setMaxEnd(null); setMaxEndReason(''); }
         });
     }, 400);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeoutId);
-      controller.abort();
-    };
+    return () => { cancelled = true; clearTimeout(timeoutId); controller.abort(); };
   }, [chargerId, date, time]);
 
   const scheduledStart = useMemo(() => new Date(`${date}T${time}:00`), [date, time]);
+  const nominalKw = useMemo(() => charger ? (NOMINAL_KW[charger.charger_type] ?? 7) : 7, [charger]);
 
+  // ── Budget resolution ──────────────────────────────────────────────────────
+  // candidate_duration = budget ÷ (price/kWh × rated_kW) — what the budget would buy
+  // in an unconstrained world. Resolved duration is capped at maxEnd availability.
+  const budgetResolution = useMemo(() => {
+    if (!charger || constraintMode !== 'budget' || budgetRupees <= 0) return null;
+    const candidateDurationMinutes = (budgetRupees / charger.price_per_kwh / nominalKw) * 60;
+    const availableMinutes = maxEnd
+      ? (maxEnd.getTime() - scheduledStart.getTime()) / 60000
+      : Infinity;
+    const resolvedDurationMinutes = Math.min(candidateDurationMinutes, availableMinutes);
+    const resolvedKwh = Math.round(nominalKw * (resolvedDurationMinutes / 60) * 100) / 100;
+    const resolvedGrossRupees = Math.round(charger.price_per_kwh * resolvedKwh);
+    const isCapped = isFinite(availableMinutes) && availableMinutes < candidateDurationMinutes;
+    return { candidateDurationMinutes, resolvedDurationMinutes, resolvedKwh, resolvedGrossRupees, isCapped };
+  }, [charger, constraintMode, budgetRupees, nominalKw, maxEnd, scheduledStart]);
+
+  // ── Resolved scheduled end ─────────────────────────────────────────────────
   const scheduledEnd = useMemo(() => {
+    if (constraintMode === 'budget' && budgetResolution) {
+      return new Date(scheduledStart.getTime() + budgetResolution.resolvedDurationMinutes * 60000);
+    }
     if (durationMode === 'custom' && customEndDate && customEndTime) {
       const parsed = new Date(`${customEndDate}T${customEndTime}:00`);
       if (!isNaN(parsed.getTime())) return parsed;
     }
     return new Date(scheduledStart.getTime() + durationMinutes * 60000);
-  }, [durationMode, customEndDate, customEndTime, scheduledStart, durationMinutes]);
+  }, [constraintMode, budgetResolution, durationMode, customEndDate, customEndTime, scheduledStart, durationMinutes]);
 
   const effectiveDurationMinutes = useMemo(
     () => Math.max(0, (scheduledEnd.getTime() - scheduledStart.getTime()) / 60000),
     [scheduledEnd, scheduledStart],
   );
 
+  // Duration-mode estimate (unchanged from existing logic)
   const estimate = useMemo(() => {
-    if (!charger) return null;
-    const nominalKw = NOMINAL_KW[charger.charger_type] ?? 7;
+    if (!charger || constraintMode !== 'duration') return null;
     const kwh = Math.round(nominalKw * (effectiveDurationMinutes / 60) * 100) / 100;
     const grossRupees = Math.round(charger.price_per_kwh * kwh);
     return { kwh, grossRupees };
-  }, [charger, effectiveDurationMinutes]);
+  }, [charger, constraintMode, nominalKw, effectiveDurationMinutes]);
 
-  // True when maxEnd is so close to start that even the 30-minute minimum can't fit.
   const noAvailability = useMemo(
     () => maxEnd !== null && maxEnd <= new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000),
     [maxEnd, scheduledStart],
   );
 
+  // ── Duration-mode helpers (unchanged) ─────────────────────────────────────
   function isPresetDisabled(minutes: number): boolean {
     if (!maxEnd) return false;
     return scheduledStart.getTime() + minutes * 60000 > maxEnd.getTime();
@@ -213,10 +246,9 @@ function NewBookingContent() {
     setDurationMinutes(minutes);
   }
 
-  function handleSelectCustom() {
+  function handleSelectCustomDuration() {
     setDurationMode('custom');
     if (!customEndDate || !customEndTime) {
-      // Initialise to start + 1 hour, capped at maxEnd if available.
       const initialMs = scheduledStart.getTime() + 60 * 60000;
       const cappedMs = maxEnd ? Math.min(initialMs, maxEnd.getTime()) : initialMs;
       const initialEnd = new Date(cappedMs);
@@ -225,15 +257,12 @@ function NewBookingContent() {
     }
   }
 
-  // Derived min/max values for the custom end date+time inputs.
   const minEnd = new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000);
   const minEndDate = minEnd.toISOString().slice(0, 10);
   const minEndTimeOnMinDate = minEnd.toTimeString().slice(0, 5);
   const maxEndDateStr = maxEnd ? maxEnd.toISOString().slice(0, 10) : undefined;
   const maxEndTimeOnMaxDate =
-    maxEnd && customEndDate === maxEndDateStr
-      ? maxEnd.toTimeString().slice(0, 5)
-      : undefined;
+    maxEnd && customEndDate === maxEndDateStr ? maxEnd.toTimeString().slice(0, 5) : undefined;
 
   const customEndIsValid = useMemo(() => {
     if (durationMode !== 'custom') return true;
@@ -246,7 +275,40 @@ function NewBookingContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durationMode, customEndDate, customEndTime, scheduledStart, maxEnd]);
 
-  const canSubmit = !submitting && customEndIsValid && !noAvailability;
+  // ── Budget-mode helpers ────────────────────────────────────────────────────
+  function handleBudgetPresetSelect(rupees: number) {
+    setBudgetMode('preset');
+    setBudgetRupees(rupees);
+  }
+
+  function handleSelectCustomBudget() {
+    setBudgetMode('custom');
+    if (!budgetCustomInput) setBudgetCustomInput(String(budgetRupees));
+  }
+
+  function handleBudgetCustomChange(raw: string) {
+    setBudgetCustomInput(raw);
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed) && parsed > 0) setBudgetRupees(parsed);
+  }
+
+  const budgetTooSmall = useMemo(
+    () => constraintMode === 'budget' && budgetResolution !== null &&
+      budgetResolution.resolvedDurationMinutes < MIN_CUSTOM_DURATION_MINUTES,
+    [constraintMode, budgetResolution],
+  );
+
+  // ── Submit gate ────────────────────────────────────────────────────────────
+  const canSubmit = !submitting && !noAvailability && (
+    constraintMode === 'duration'
+      ? customEndIsValid
+      : (budgetResolution !== null && !budgetTooSmall && budgetRupees >= 1)
+  );
+
+  // The rupee amount that will actually be charged (resolved, never raw budget)
+  const paymentGrossRupees = constraintMode === 'budget'
+    ? (budgetResolution?.resolvedGrossRupees ?? 0)
+    : (estimate?.grossRupees ?? 0);
 
   async function handlePayAndBook() {
     if (!charger || !canSubmit) return;
@@ -262,6 +324,10 @@ function NewBookingContent() {
           scheduled_start: scheduledStart.toISOString(),
           scheduled_end: scheduledEnd.toISOString(),
           vehicle_id: selectedVehicleId,
+          constraint_type: constraintMode,
+          constraint_value: constraintMode === 'duration'
+            ? Math.round(effectiveDurationMinutes)
+            : budgetRupees,
         }),
       });
       const orderBody = await orderRes.json() as { data?: Record<string, unknown>; error?: string };
@@ -313,9 +379,7 @@ function NewBookingContent() {
             }
           })();
         },
-        modal: {
-          ondismiss: () => setSubmitting(false),
-        },
+        modal: { ondismiss: () => setSubmitting(false) },
         theme: { color: '#10d96a' },
       });
       rzp.open();
@@ -339,9 +403,6 @@ function NewBookingContent() {
     );
   }
 
-  // Per-charger ownership check: hosts must not book their own charger.
-  // The explore/[id] detail page already shows "Edit listing" instead of
-  // "Book now" for owners, so this guard catches direct URL access only.
   if (currentUser && currentUser.id === charger.lender_id) {
     return (
       <main className="px-6 py-10 space-y-4">
@@ -364,13 +425,14 @@ function NewBookingContent() {
     <main className="min-h-screen px-6 py-10 space-y-5 max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <h1 className="text-2xl font-medium text-ink">Book a slot</h1>
 
+      {/* Charger summary */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-1">
         <p className="font-semibold text-ink">{charger.title}</p>
         <p className="text-xs text-muted">{normalizeAddress(charger.address)}</p>
         <p className="text-sm font-bold text-volt-deep mt-1">₹{charger.price_per_kwh}/kWh</p>
       </div>
 
-      {/* Vehicle selector — only shown when the driver has 2+ vehicles */}
+      {/* Vehicle selector — only shown when driver has 2+ vehicles */}
       {vehicles.length >= 2 && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
           <h2 className="font-semibold text-sm text-ink flex items-center gap-1.5">
@@ -404,7 +466,9 @@ function NewBookingContent() {
         </div>
       )}
 
+      {/* Date / time / constraint card */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+        {/* Date */}
         <div>
           <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="date">
             <Calendar className="w-4 h-4" /> Date
@@ -419,6 +483,7 @@ function NewBookingContent() {
           />
         </div>
 
+        {/* Start time */}
         <div>
           <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="time">
             <Clock className="w-4 h-4" /> Start time
@@ -432,107 +497,218 @@ function NewBookingContent() {
           />
         </div>
 
+        {/* Constraint mode tabs */}
         <div>
-          <p className="text-sm font-semibold text-ink mb-1.5">Duration</p>
-
-          {noAvailability ? (
-            <p className="text-sm text-amber-600 font-medium">
-              {maxEndReason} — no slot available at this start time. Choose a different start.
-            </p>
-          ) : (
-            <>
-              <div className="grid grid-cols-4 gap-2">
-                {DURATION_OPTIONS.map(opt => {
-                  const disabled = isPresetDisabled(opt.minutes);
-                  const selected = durationMode === 'preset' && durationMinutes === opt.minutes;
-                  return (
-                    <button
-                      key={opt.minutes}
-                      onClick={() => !disabled && handlePresetSelect(opt.minutes)}
-                      disabled={disabled}
-                      className={cn(
-                        'py-2 rounded-xl text-xs font-semibold transition-colors',
-                        selected
-                          ? 'bg-volt text-ink'
-                          : disabled
-                            ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                            : 'bg-gray-100 text-muted hover:text-ink',
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-
+          <p className="text-sm font-semibold text-ink mb-2">How do you want to charge?</p>
+          <div className="flex gap-2 mb-4">
+            {(['duration', 'budget'] as const).map(mode => (
               <button
-                onClick={handleSelectCustom}
+                key={mode}
+                onClick={() => setConstraintMode(mode)}
                 className={cn(
-                  'mt-2 w-full py-2 rounded-xl text-xs font-semibold transition-colors',
-                  durationMode === 'custom'
+                  'flex-1 py-2 rounded-xl text-sm font-semibold transition-colors',
+                  constraintMode === mode
                     ? 'bg-volt text-ink'
                     : 'bg-gray-100 text-muted hover:text-ink',
                 )}
               >
-                Custom
+                {mode === 'duration' ? 'By time' : 'By budget'}
               </button>
+            ))}
+          </div>
 
-              {/* Show reason when any preset is disabled and driver hasn't opened Custom */}
-              {maxEnd && DURATION_OPTIONS.some(o => isPresetDisabled(o.minutes)) && durationMode !== 'custom' && (
-                <p className="text-xs text-muted mt-1.5">{maxEndReason}</p>
-              )}
-
-              {durationMode === 'custom' && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-date">
-                      <Calendar className="w-4 h-4" /> End date
-                    </label>
-                    <input
-                      id="end-date"
-                      type="date"
-                      value={customEndDate}
-                      min={minEndDate}
-                      max={maxEndDateStr}
-                      onChange={e => setCustomEndDate(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-time">
-                      <Clock className="w-4 h-4" /> End time
-                    </label>
-                    <input
-                      id="end-time"
-                      type="time"
-                      value={customEndTime}
-                      min={customEndDate === minEndDate ? minEndTimeOnMinDate : undefined}
-                      max={maxEndTimeOnMaxDate}
-                      onChange={e => setCustomEndTime(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
-                    />
-                  </div>
-
-                  {maxEndReason && (
-                    <p className="text-xs text-amber-600">{maxEndReason}</p>
-                  )}
-
-                  {customEndDate && customEndTime && !customEndIsValid && (
-                    <p className="text-xs text-red-500">
-                      {new Date(`${customEndDate}T${customEndTime}:00`) < minEnd
-                        ? `Minimum booking duration is ${MIN_CUSTOM_DURATION_MINUTES} minutes`
-                        : 'End time exceeds the available window'}
-                    </p>
-                  )}
+          {/* ── By time ─────────────────────────────────────────────────────── */}
+          {constraintMode === 'duration' && (
+            noAvailability ? (
+              <p className="text-sm text-amber-600 font-medium">
+                {maxEndReason} — no slot available at this start time. Choose a different start.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-2">
+                  {DURATION_OPTIONS.map(opt => {
+                    const disabled = isPresetDisabled(opt.minutes);
+                    const selected = durationMode === 'preset' && durationMinutes === opt.minutes;
+                    return (
+                      <button
+                        key={opt.minutes}
+                        onClick={() => !disabled && handlePresetSelect(opt.minutes)}
+                        disabled={disabled}
+                        className={cn(
+                          'py-2 rounded-xl text-xs font-semibold transition-colors',
+                          selected
+                            ? 'bg-volt text-ink'
+                            : disabled
+                              ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                              : 'bg-gray-100 text-muted hover:text-ink',
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
-            </>
+
+                <button
+                  onClick={handleSelectCustomDuration}
+                  className={cn(
+                    'mt-2 w-full py-2 rounded-xl text-xs font-semibold transition-colors',
+                    durationMode === 'custom'
+                      ? 'bg-volt text-ink'
+                      : 'bg-gray-100 text-muted hover:text-ink',
+                  )}
+                >
+                  Custom
+                </button>
+
+                {maxEnd && DURATION_OPTIONS.some(o => isPresetDisabled(o.minutes)) && durationMode !== 'custom' && (
+                  <p className="text-xs text-muted mt-1.5">{maxEndReason}</p>
+                )}
+
+                {durationMode === 'custom' && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-date">
+                        <Calendar className="w-4 h-4" /> End date
+                      </label>
+                      <input
+                        id="end-date"
+                        type="date"
+                        value={customEndDate}
+                        min={minEndDate}
+                        max={maxEndDateStr}
+                        onChange={e => setCustomEndDate(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                      />
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-time">
+                        <Clock className="w-4 h-4" /> End time
+                      </label>
+                      <input
+                        id="end-time"
+                        type="time"
+                        value={customEndTime}
+                        min={customEndDate === minEndDate ? minEndTimeOnMinDate : undefined}
+                        max={maxEndTimeOnMaxDate}
+                        onChange={e => setCustomEndTime(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                      />
+                    </div>
+                    {maxEndReason && (
+                      <p className="text-xs text-amber-600">{maxEndReason}</p>
+                    )}
+                    {customEndDate && customEndTime && !customEndIsValid && (
+                      <p className="text-xs text-red-500">
+                        {new Date(`${customEndDate}T${customEndTime}:00`) < minEnd
+                          ? `Minimum booking duration is ${MIN_CUSTOM_DURATION_MINUTES} minutes`
+                          : 'End time exceeds the available window'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )
+          )}
+
+          {/* ── By budget ────────────────────────────────────────────────────── */}
+          {constraintMode === 'budget' && (
+            noAvailability ? (
+              <p className="text-sm text-amber-600 font-medium">
+                {maxEndReason} — no slot available at this start time. Choose a different start.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  {BUDGET_OPTIONS.map(opt => {
+                    const selected = budgetMode === 'preset' && budgetRupees === opt.rupees;
+                    return (
+                      <button
+                        key={opt.rupees}
+                        onClick={() => handleBudgetPresetSelect(opt.rupees)}
+                        className={cn(
+                          'py-2 rounded-xl text-xs font-semibold transition-colors',
+                          selected
+                            ? 'bg-volt text-ink'
+                            : 'bg-gray-100 text-muted hover:text-ink',
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={handleSelectCustomBudget}
+                  className={cn(
+                    'mt-2 w-full py-2 rounded-xl text-xs font-semibold transition-colors',
+                    budgetMode === 'custom'
+                      ? 'bg-volt text-ink'
+                      : 'bg-gray-100 text-muted hover:text-ink',
+                  )}
+                >
+                  Custom amount
+                </button>
+
+                {budgetMode === 'custom' && (
+                  <div className="mt-3">
+                    <label className="text-sm font-semibold text-ink mb-1.5 block" htmlFor="budget-amount">
+                      Budget limit (₹)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted">₹</span>
+                      <input
+                        id="budget-amount"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        value={budgetCustomInput}
+                        onChange={e => handleBudgetCustomChange(e.target.value)}
+                        placeholder="e.g. 750"
+                        className="w-full rounded-xl border border-gray-200 pl-8 pr-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Budget resolution summary */}
+                {budgetResolution && !budgetTooSmall && (
+                  <div className="mt-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-ink">
+                        Spend up to ₹{budgetRupees.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {budgetResolution.isCapped && maxEnd && (
+                      <p className="text-xs text-muted">
+                        This charger is available for {formatMinutes(
+                          (maxEnd.getTime() - scheduledStart.getTime()) / 60000
+                        )} from your start time
+                      </p>
+                    )}
+                    {budgetResolution.isCapped && (
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-xs text-muted">Maximum estimated charge</span>
+                        <span className="text-sm font-bold text-ink">₹{budgetResolution.resolvedGrossRupees}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {budgetTooSmall && (
+                  <p className="mt-2 text-xs text-red-500">
+                    Budget too low — increase it to cover at least {MIN_CUSTOM_DURATION_MINUTES} minutes of charging at this charger.
+                  </p>
+                )}
+              </>
+            )
           )}
         </div>
       </div>
 
-      {estimate && (
+      {/* Estimate card */}
+      {constraintMode === 'duration' && estimate && (
         <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
           <h2 className="font-semibold text-sm text-ink flex items-center gap-1.5">
             <Zap className="w-4 h-4 text-volt-deep" /> Estimated cost
@@ -544,6 +720,41 @@ function NewBookingContent() {
           <p className="text-xs text-muted">
             Final amount may vary slightly based on actual energy delivered.
           </p>
+          {(() => {
+            const sv = vehicles.find(v => v.id === selectedVehicleId);
+            if (!sv || !charger.connector_types?.length || !sv.connector_types.length) return null;
+            const ok = sv.connector_types.some(c => charger.connector_types.includes(c));
+            const vehicleName = sv.nickname ?? `${sv.make} ${sv.model}`;
+            return (
+              <p className={cn('text-xs font-medium', ok ? 'text-green' : 'text-amber-600')}>
+                {ok
+                  ? `${vehicleName} is compatible with this charger`
+                  : `${vehicleName} may not be compatible — verify connectors before arriving`}
+              </p>
+            );
+          })()}
+        </div>
+      )}
+
+      {constraintMode === 'budget' && budgetResolution && !budgetTooSmall && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+          <h2 className="font-semibold text-sm text-ink flex items-center gap-1.5">
+            <Zap className="w-4 h-4 text-volt-deep" />
+            {budgetResolution.isCapped ? 'Estimated maximum' : 'Estimated cost'}
+          </h2>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted">~{budgetResolution.resolvedKwh} kWh · {formatMinutes(budgetResolution.resolvedDurationMinutes)}</span>
+            <span className="font-display font-bold text-lg text-ink">₹{budgetResolution.resolvedGrossRupees}</span>
+          </div>
+          {budgetResolution.isCapped ? (
+            <p className="text-xs text-muted">
+              You will be charged up to ₹{budgetResolution.resolvedGrossRupees} — the maximum available in your selected window.
+            </p>
+          ) : (
+            <p className="text-xs text-muted">
+              Final amount may vary slightly based on actual energy delivered.
+            </p>
+          )}
           {(() => {
             const sv = vehicles.find(v => v.id === selectedVehicleId);
             if (!sv || !charger.connector_types?.length || !sv.connector_types.length) return null;
@@ -573,7 +784,7 @@ function NewBookingContent() {
         disabled={!canSubmit}
         onClick={() => { void handlePayAndBook(); }}
       >
-        {submitting ? 'Processing…' : `Pay ₹${estimate?.grossRupees ?? ''} & book`}
+        {submitting ? 'Processing…' : `Pay ₹${paymentGrossRupees} & book`}
       </Button>
     </main>
   );

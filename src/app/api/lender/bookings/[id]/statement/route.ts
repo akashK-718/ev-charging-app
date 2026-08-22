@@ -59,7 +59,7 @@ export async function GET(
   // Lender-only: the .eq('lender_id', user.id) ensures drivers cannot access this.
   const { data: booking } = await adminSupabase
     .from('bookings')
-    .select('id, lender_id, charger_id, scheduled_start, scheduled_end, confirmation_code')
+    .select('id, lender_id, charger_id, scheduled_start, scheduled_end, confirmation_code, constraint_type, constraint_value')
     .eq('id', params.id)
     .eq('lender_id', user.id)
     .single();
@@ -138,6 +138,9 @@ export async function GET(
     row('Address', normalizeAddress(charger.address));
   }
   row('Time slot', formatTimeRange(booking.scheduled_start, booking.scheduled_end));
+  if (booking.constraint_type === 'budget' && booking.constraint_value != null) {
+    row('Booked as', `Spend up to ₹${booking.constraint_value.toLocaleString('en-IN')}`, MUTED, MUTED, 9);
+  }
 
   y += 4;
 
