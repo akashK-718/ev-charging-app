@@ -47,12 +47,62 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // ── Step 1: lender initiates end ──────────────────────────────────────────
-  if (booking.status === 'in_progress') {
-    if (booking.lender_id !== user.id) {
-      return NextResponse.json({ error: 'Only the lender can initiate session end' }, { status: 403 });
+  // ── Step 1a: driver stops charging directly ───────────────────────────────
+  // Driver may end from in_progress without waiting for lender confirmation.
+  // The lender-initiated path (below) is preserved for lenders who want to
+  // signal end first; both paths ultimately reach completed exactly once.
+  if (booking.status === 'in_progress' && booking.driver_id === user.id) {
+    const nowIso = new Date().toISOString();
+    const startedAt = booking.started_at ?? nowIso;
+    const durationHours = Math.max(
+      0,
+      (new Date(nowIso).getTime() - new Date(startedAt).getTime()) / (1000 * 60 * 60),
+    );
+
+    const { data: charger } = await adminSupabase
+      .from('chargers')
+      .select('charger_type, title')
+      .eq('id', booking.charger_id)
+      .single();
+
+    const nominalKw = charger ? (NOMINAL_KW[charger.charger_type] ?? 7) : 7;
+    const kwhDelivered = Math.round(nominalKw * durationHours * 100) / 100;
+
+    const { data: updated } = await adminSupabase
+      .from('bookings')
+      .update({
+        status: 'completed',
+        ended_at: nowIso,
+        actual_end: nowIso,
+        kwh_delivered: kwhDelivered,
+      })
+      .eq('id', params.id)
+      .eq('status', 'in_progress')
+      .select('id')
+      .maybeSingle();
+
+    if (!updated) {
+      return NextResponse.json({ error: 'Session state has changed' }, { status: 409 });
     }
 
+    await queuePayoutForBooking(adminSupabase, params.id, booking.lender_id);
+    const chargerName = (charger as { title?: string } | null)?.title ?? 'your charger';
+    const driverName = (user.user_metadata?.name as string | undefined) ?? 'Your driver';
+    void Promise.all([
+      sendPushNotification({
+        userId: booking.lender_id,
+        title: 'Session complete',
+        body: `${driverName}'s session at ${chargerName} is complete — payout in 24h`,
+        url: `/lender/bookings/${params.id}`,
+        category: 'hosting_activity',
+      }),
+    ]);
+
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Step 1b: lender initiates end ─────────────────────────────────────────
+  if (booking.status === 'in_progress') {
     const nowIso = new Date().toISOString();
 
     const { error: updateError } = await adminSupabase

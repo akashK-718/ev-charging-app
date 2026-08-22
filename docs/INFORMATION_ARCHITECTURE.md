@@ -874,6 +874,73 @@ The two layers must never be removed separately — removing only the CSS would 
 
 `PullToRefresh` must **never** be attached to any form, checkout, or booking-creation flow. Adding it to these screens is a bug.
 
+## Live Charging Session Screen (`/bookings/[id]/session`)
+
+### Screen structure
+
+The session screen is a full-screen dark immersive (`bg-[#08110c]`) that replaces the normal chrome (no bottom nav, no top nav). It is re-enterable: navigating away and returning while the booking is `in_progress` resumes the live view with timers recalculated from `started_at`.
+
+The X button in the top bar navigates away without ending the session. **The session continues running.** No API call is made on dismiss.
+
+### Three views
+
+| View | Trigger | Contents |
+|---|---|---|
+| `live` | Initial render when booking is active | Ring + elapsed clock + stat tiles + Stop/Confirm CTA |
+| `complete` | Driver taps "Stop charging" + API succeeds | Estimated cost summary + "Done" button |
+| `rating` | Driver taps "Done" on complete view | 5-star rating + Submit/Skip |
+
+### Session progress ring
+
+The ring shows **session progress (elapsed / scheduled duration)**, not battery percentage. Kirin has no hardware telemetry; the ring represents time consumed, not charge delivered. The ring label reads "Session progress". The ring fills green as time elapses, reaching 100% when the scheduled window ends.
+
+### Shared estimate function
+
+All estimated values — stat tiles, final total, budget notifications — are derived from a single shared function:
+
+```
+computeSessionEstimate(chargerType, pricePerKwh, elapsedMs)
+  → { estimatedKwh, estimatedCostRupees }
+```
+
+Source: `src/lib/bookings/session-estimate.ts`
+
+This function is the single source of truth for all cost and energy estimates in the session flow. Using it consistently ensures the live ticker, the final summary, and the budget threshold calculations are always coherent with each other.
+
+**Every estimated value displayed to the user carries a `~` prefix** (e.g. `~₹240`, `~3.50 kWh`). The UI also displays "Estimated" as the tile label. Never display estimated values without these qualifiers.
+
+### Driver-initiated session end
+
+Driver taps "Stop charging" from `in_progress`:
+→ `POST /api/bookings/[id]/end` (driver identity)
+→ booking transitions directly `in_progress → completed` (kWh computed from elapsed, payout queued, lender notified)
+→ UI shows `complete` view with `~₹X` summary
+→ Tapping "Done" shows `rating` view
+
+The lender-initiated path (lender ends → `awaiting_end_confirmation` → driver "Confirm end") is preserved for cases where the lender signals end first. Both paths reach `completed` exactly once; payout fires in both.
+
+**There is no separate host-confirmation step for driver-initiated Stop Charging.** Mutual confirmation would add friction without providing verification value (neither party has hardware telemetry to confirm charge delivered). The session end is driver-declared and immediately final.
+
+### Budget advisory notifications
+
+When `constraint_type = 'budget'`:
+- At `estimatedCostRupees ≥ 0.8 × constraint_value`: amber banner "Approaching your ₹X budget"
+- At `estimatedCostRupees ≥ constraint_value`: red banner "₹X budget reached — tap Stop charging when ready"
+
+**These are advisory only.** The session never auto-completes. No API calls are made for budget notifications. The booking status is not changed by budget threshold crossing. The driver must tap "Stop charging" to end the session — this is an absolute invariant.
+
+### Rating in-flow
+
+After the driver-initiated Stop Charging flow completes, a 5-star rating screen is shown immediately (same session, no navigation). Ratings submit to `POST /api/bookings/[id]/review` with identical values for `charger_rating` and `lender_rating`. Skipping navigates to booking detail without submitting. The existing `DriverRatingSection` on the booking detail page remains as a fallback for lender-initiated completions and historical bookings.
+
+### Home page entry points
+
+| Home card | Booking status | Destination |
+|---|---|---|
+| "Charging now" green card | `in_progress` | `/bookings/[id]/session` |
+| "Booking confirmed by host" white card | `awaiting_driver_confirmation` | `/bookings/[id]/session` |
+| "Your next charge" green card | `confirmed` | `/bookings/[id]` (lender hasn't started yet) |
+
 ## Notes for implementation
 
 - Every screen must reference the current `/design` foundation for visual tokens (colors, fonts, radius, shadows) and `DESIGN_EV.md` for content/interaction guardrails (no em dashes, no default pill-everything, no decorative animation, varied section header treatments).

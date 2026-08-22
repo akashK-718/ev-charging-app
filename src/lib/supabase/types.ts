@@ -178,6 +178,8 @@ export type Database = {
           keep_waiting_until: string | null;
           lifecycle_reason: string | null;
           vehicle_id: string | null;
+          constraint_type: 'duration' | 'budget' | null;
+          constraint_value: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -208,6 +210,8 @@ export type Database = {
           keep_waiting_until?: string | null;
           lifecycle_reason?: string | null;
           vehicle_id?: string | null;
+          constraint_type?: 'duration' | 'budget' | null;
+          constraint_value?: number | null;
         };
         Update: Partial<Database['public']['Tables']['bookings']['Insert']>;
         Relationships: [];
