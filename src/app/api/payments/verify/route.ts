@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
     razorpay_signature: signature,
   } = b;
   const vehicleId = typeof b.vehicle_id === 'string' ? b.vehicle_id : null;
+  const constraintType = typeof b.constraint_type === 'string' ? b.constraint_type : null;
+  const constraintValue = typeof b.constraint_value === 'number' ? b.constraint_value : null;
 
   if (
     typeof chargerId !== 'string' || typeof lenderId !== 'string' ||
@@ -118,6 +120,8 @@ export async function POST(request: NextRequest) {
     p_payment_method: paymentMethod,
     p_card_network: cardNetwork,
     p_card_last4: cardLast4,
+    p_constraint_type: constraintType,
+    p_constraint_value: constraintValue,
   });
 
   if (rpcError || !bookingId) {

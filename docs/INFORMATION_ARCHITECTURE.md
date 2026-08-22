@@ -619,6 +619,46 @@ In all cases, the **compatibility advisory** appears in the Estimated Cost card 
 
 The `vehicle_id` is stored as an optional FK on `bookings.vehicle_id` (nullable, `ON DELETE SET NULL`) for future analytics. It is not exposed anywhere in the current booking detail or admin views.
 
+### Booking constraint types
+
+Drivers can book by **time** ("By time" tab) or by **budget** ("By budget" tab). Both modes produce an identical concrete `scheduled_start`/`scheduled_end` window at creation time — all downstream logic (payment, sweeps, buffer, receipts, Activity) is identical between the two.
+
+| Field | Duration booking | Budget booking |
+|---|---|---|
+| `constraint_type` | `'duration'` | `'budget'` |
+| `constraint_value` | Minutes (integer) | Driver's stated budget in whole rupees |
+| `scheduled_end` | `start + constraint_value minutes` | `start + resolved_duration_minutes` |
+| Razorpay amount | `round(price_per_kwh × nominalKw × (duration_minutes / 60) × 100)` paise | Same formula on the **resolved** duration — **never** the raw budget |
+
+**Critical rule — charge resolved, not raw:** For budget bookings the payment amount is always the resolved estimated cost (the kWh the charger can deliver in the available window priced at `price_per_kwh`). The driver's stated budget is an upper bound, not the charged amount. The Razorpay order is created for `resolved_gross_rupees`, which may be less than `constraint_value` when availability is not the binding constraint.
+
+**Budget resolution formula** (client-side, using the `computeMaxEndTime` availability window):
+
+```
+candidate_duration_minutes = (budget_rupees / price_per_kwh / nominal_kw) × 60
+available_minutes          = (maxEnd − scheduledStart) / 60000          -- Infinity if no next booking
+resolved_duration_minutes  = min(candidate_duration_minutes, available_minutes)
+resolved_gross_rupees      = round(price_per_kwh × nominal_kw × (resolved_duration_minutes / 60))
+is_capped                  = available_minutes < candidate_duration_minutes
+```
+
+When `is_capped` is true the UI shows: "Spend up to ₹X · This charger is available for Yh from your start time · Maximum estimated charge: ₹Z".
+
+**Host-card abstraction rule:** The lender sees `constraint_value` as a soft "Driver spending up to ₹X" context line, never as a fixed committed price. The actual charge (`gross_amount / 100`) and earnings (`lender_payout / 100`) come from the payment record and are always the resolved amounts.
+
+**PDF receipts:** Both driver receipt and host statement include an optional "Booked as: Spend up to ₹X" muted line when `constraint_type = 'budget'`.
+
+**Null handling:** `constraint_type` and `constraint_value` are nullable — rows created before migration 041 carry `NULL` on both. Application code treats `NULL` as `'duration'` for display purposes.
+
+**`NOMINAL_KW` mapping** (shared between client and `create-order` API):
+
+```
+AC_3.3kW → 3.3 kW
+AC_7kW   → 7 kW
+AC_22kW  → 22 kW
+DC_fast  → 50 kW
+```
+
 ### Duration picker
 
 Four fixed presets (30 min, 1 h, 1.5 h, 2 h) plus a **Custom** option that reveals separate end-date and end-time pickers. Custom is the only mode that supports overnight bookings (end date ≠ start date); the presets always end on the same calendar day as they start. Minimum duration for any selection is 30 minutes.
@@ -664,6 +704,7 @@ The `booking-lifecycle-sweep` pg_cron job (migration 026) calls `POST /api/inter
 2. No-show warning at T+25 min.
 3. No-show auto-transition at T+30/60 min.
 4. Flag stuck `awaiting_end_confirmation` sessions for review.
+5. Auto-cancel `confirmed` bookings whose `scheduled_end` has passed without a session starting (full refund, `cancellation_reason = 'booking_window_expired'`).
 
 Lazy sweeps in individual API routes remain as a belt-and-suspenders fallback. Setup steps are in `docs/SETUP.md § Lifecycle sweep`.
 
