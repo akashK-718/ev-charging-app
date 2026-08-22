@@ -488,7 +488,7 @@ export default async function HomePage() {
         {/* ── Charging in progress ─────────────────────────────────────────── */}
         {attnInProgress && (
           <Link
-            href={`/bookings/${attnInProgress.id}`}
+            href={`/bookings/${attnInProgress.id}/session`}
             className="rise-in block bg-green text-white rounded-3xl p-4 shadow-lg shadow-green-900/20 active:scale-[0.98] transition-transform"
           >
             <div className="flex items-center justify-between">
@@ -548,7 +548,7 @@ export default async function HomePage() {
         {attnAwaitingConf.map(b => (
           <Link
             key={`adc-${b.id}`}
-            href={`/bookings/${b.id}`}
+            href={`/bookings/${b.id}/session`}
             className="rise-in flex items-center gap-3 bg-white border-2 border-green/20 rounded-3xl px-4 py-3.5 shadow-sm active:scale-[0.98] transition-transform"
           >
             <div className="size-9 rounded-xl bg-green-soft grid place-items-center shrink-0">

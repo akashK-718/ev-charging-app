@@ -255,9 +255,13 @@ export default function BookingDetailPage() {
       )}
 
       {booking.status === 'awaiting_driver_confirmation' && (
-        <div className="px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
-          <p className="text-sm font-semibold text-blue-700">Lender has started the session — confirm below to begin charging.</p>
-        </div>
+        <Link
+          href={`/bookings/${booking.id}/session`}
+          className="block px-4 py-3 bg-blue-50 rounded-xl border border-blue-200 tap-light active:scale-[0.98] transition-transform"
+        >
+          <p className="text-sm font-semibold text-blue-700">Lender has started the session — confirm to begin charging</p>
+          <p className="text-xs text-blue-600 mt-0.5 font-semibold">Open live session →</p>
+        </Link>
       )}
 
 
@@ -289,6 +293,19 @@ export default function BookingDetailPage() {
           endedAt={booking.ended_at}
           paymentPaise={booking.payment?.gross_amount ?? null}
         />
+      )}
+
+      {/* Live session shortcut — in_progress and awaiting_end_confirmation */}
+      {(booking.status === 'in_progress' || booking.status === 'awaiting_end_confirmation') && (
+        <Link
+          href={`/bookings/${booking.id}/session`}
+          className="block px-4 py-3 bg-[#08110c] rounded-xl border border-green/20 tap-light active:scale-[0.98] transition-transform"
+        >
+          <p className="text-sm font-semibold text-green">
+            {booking.status === 'in_progress' ? 'Charging in progress' : 'Session ending — confirm below'}
+          </p>
+          <p className="text-xs text-green/70 mt-0.5 font-semibold">Open live session →</p>
+        </Link>
       )}
 
       {/* Session controls (start/end) */}

@@ -18,7 +18,7 @@ export async function GET(
 
   const { data: booking, error: bookingError } = await adminSupabase
     .from('bookings')
-    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, end_initiated_at, no_show_at, cancelled_at, cancellation_reason, rejection_reason, created_at')
+    .select('id, charger_id, driver_id, lender_id, scheduled_start, scheduled_end, actual_start, actual_end, kwh_delivered, status, confirmation_code, confirmed_at, rejected_at, started_at, ended_at, end_initiated_at, no_show_at, cancelled_at, cancellation_reason, rejection_reason, constraint_type, constraint_value, created_at')
     .eq('id', params.id)
     .eq('driver_id', user.id)
     .single();
@@ -28,7 +28,7 @@ export async function GET(
   }
 
   const [chargerRes, lenderRes, paymentRes] = await Promise.all([
-    adminSupabase.from('chargers').select('id, title, address, photos').eq('id', booking.charger_id).single(),
+    adminSupabase.from('chargers').select('id, title, address, photos, price_per_kwh, charger_type').eq('id', booking.charger_id).single(),
     adminSupabase.from('users').select('id, name, phone').eq('id', booking.lender_id).single(),
     adminSupabase
       .from('payments')
