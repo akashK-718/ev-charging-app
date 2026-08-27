@@ -512,7 +512,13 @@ A standalone pre-decision educational screen. It does not fit the Hosting Worksp
 
 A unified surface for all lender operations. Reached via "Open Hosting Workspace →" from Home's Hosting Preview or Profile's Hosting section. Explicitly not a bottom nav tab, this avoids giving pure drivers a dead tab and keeps the main nav role-agnostic.
 
-- **Overview** — today's earnings, upcoming bookings, live chargers, draft chargers, quick actions, recent activity, and a **host rating summary** (average star rating from driver reviews, total review count, "View all →" link to Host Reviews). The rating summary is always present for lenders — shows empty state if no reviews yet.
+- **Overview** — today's earnings, upcoming bookings, live chargers, draft chargers, reactive Quick Actions, recent activity, and a **host rating summary** (average star rating from driver reviews, total review count, "View all →" link to Host Reviews). The rating summary is always present for lenders — shows empty state if no reviews yet.
+
+  **Quick Actions — two states:**
+  - **Zero chargers** (`chargerCount === 0`): the 3-item list is replaced by a single onboarding CTA card — Zap icon, "Add your first charger" heading, "Start earning by sharing your charger" subtext, and a full-width primary action button routing to `/lender/chargers/new`.
+  - **One or more chargers** (`chargerCount > 0`): 3-item list — **My chargers** (`/lender/chargers`), **View bookings** (`/lender/bookings`), **Finance** (`/lender/earnings`). "Add charger" does not appear as a Quick Action — adding a new charger is done from within My Chargers.
+
+  `chargerCount` counts all non-deleted charger rows (`deleted_at IS NULL`) for the host, regardless of status (active / paused / draft / suspended).
 - **Host Reviews** (`/lender/reviews`) — overall star average, star-distribution breakdown (5★ through 1★ with proportional bars), and a chronological list of reviews received from drivers. Each row links to the corresponding booking detail. Non-lenders who visit this route are redirected to `/profile`.
 - **Chargers** — all / live / paused / draft / suspended, plus charger detail
 - **Bookings** — active / past / cancelled, plus detail

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Plus, ListChecks, BookOpen, IndianRupee, AlertCircle, Clock, Zap, FileText, ChevronRight, Star } from 'lucide-react';
+import { LayoutDashboard, ListChecks, BookOpen, IndianRupee, AlertCircle, Clock, Zap, FileText, ChevronRight, Star } from 'lucide-react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { StatusBadge } from '@/components/bookings/StatusBadge';
 
@@ -26,7 +26,7 @@ async function getOverviewData(userId: string) {
   const bookingIds = (allBookings ?? []).map((b: { id: string }) => b.id);
 
   const [chargersRes, pendingRes, upcomingRes, todayPayRes, recentRes] = await Promise.all([
-    adminSupabase.from('chargers').select('id, status').eq('lender_id', userId),
+    adminSupabase.from('chargers').select('id, status').eq('lender_id', userId).is('deleted_at', null),
     adminSupabase.from('bookings').select('id').eq('lender_id', userId).eq('status', 'pending'),
     adminSupabase
       .from('bookings')
@@ -51,6 +51,7 @@ async function getOverviewData(userId: string) {
   ]);
 
   const chargers = (chargersRes.data ?? []) as Array<{ id: string; status: string }>;
+  const chargerCount = chargers.length;
   const liveCount = chargers.filter(c => c.status === 'active').length;
   const draftCount = chargers.filter(c => c.status === 'draft').length;
   const pausedCount = chargers.filter(c => c.status === 'paused').length;
@@ -91,7 +92,7 @@ async function getOverviewData(userId: string) {
     ? ratings.reduce((sum, r) => sum + r.rating, 0) / reviewCount
     : null;
 
-  return { liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings, reviewCount, hostAvgRating };
+  return { chargerCount, liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings, reviewCount, hostAvgRating };
 }
 
 export default async function HostingOverviewPage() {
@@ -99,7 +100,7 @@ export default async function HostingOverviewPage() {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect('/auth');
 
-  const { liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings, reviewCount, hostAvgRating } =
+  const { chargerCount, liveCount, draftCount, pausedCount, pendingCount, upcomingCount, todayEarnings, recentBookings, reviewCount, hostAvgRating } =
     await getOverviewData(user.id);
 
   const hasAttention = pendingCount > 0 || pausedCount > 0;
@@ -197,48 +198,59 @@ export default async function HostingOverviewPage() {
 
       <section className="space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Quick actions</p>
-        <div className="bg-white border border-border rounded-2xl overflow-hidden divide-y divide-border">
-          <Link
-            href="/lender/chargers/new"
-            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-          >
-            <div className="size-9 rounded-xl bg-green-soft grid place-items-center shrink-0">
-              <Plus className="size-4 text-green" aria-hidden />
+
+        {chargerCount === 0 ? (
+          /* Zero-charger onboarding CTA — shown only when host has no chargers */
+          <div className="bg-white border border-border rounded-2xl p-6 flex flex-col items-center text-center gap-4">
+            <div className="size-12 rounded-2xl bg-green-soft grid place-items-center">
+              <Zap className="size-6 text-green" aria-hidden />
             </div>
-            <span className="text-sm font-semibold text-ink flex-1">Add charger</span>
-            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
-          </Link>
-          <Link
-            href="/lender/chargers"
-            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-          >
-            <div className="size-9 rounded-xl bg-gray-100 grid place-items-center shrink-0">
-              <ListChecks className="size-4 text-muted" aria-hidden />
+            <div>
+              <p className="font-semibold text-ink">Add your first charger</p>
+              <p className="text-sm text-muted mt-1">Start earning by sharing your charger</p>
             </div>
-            <span className="text-sm font-semibold text-ink flex-1">Manage chargers</span>
-            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
-          </Link>
-          <Link
-            href="/lender/bookings"
-            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-          >
-            <div className="size-9 rounded-xl bg-blue-50 grid place-items-center shrink-0">
-              <BookOpen className="size-4 text-blue-600" aria-hidden />
-            </div>
-            <span className="text-sm font-semibold text-ink flex-1">View bookings</span>
-            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
-          </Link>
-          <Link
-            href="/lender/earnings"
-            className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
-          >
-            <div className="size-9 rounded-xl bg-emerald-50 grid place-items-center shrink-0">
-              <IndianRupee className="size-4 text-emerald-700" aria-hidden />
-            </div>
-            <span className="text-sm font-semibold text-ink flex-1">Finance</span>
-            <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
-          </Link>
-        </div>
+            <Link
+              href="/lender/chargers/new"
+              className="inline-flex items-center justify-center gap-2 rounded-token font-semibold h-[48px] px-[26px] text-[15px] transition duration-[80ms] ease-out bg-green text-white hover:bg-green-deep active:scale-[0.96] shadow-[0_4px_20px_-4px_rgba(28,107,71,0.35)] w-full"
+            >
+              Add your first charger
+            </Link>
+          </div>
+        ) : (
+          /* Established host — 3 destinations, no add action */
+          <div className="bg-white border border-border rounded-2xl overflow-hidden divide-y divide-border">
+            <Link
+              href="/lender/chargers"
+              className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
+            >
+              <div className="size-9 rounded-xl bg-gray-100 grid place-items-center shrink-0">
+                <ListChecks className="size-4 text-muted" aria-hidden />
+              </div>
+              <span className="text-sm font-semibold text-ink flex-1">My chargers</span>
+              <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+            </Link>
+            <Link
+              href="/lender/bookings"
+              className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
+            >
+              <div className="size-9 rounded-xl bg-blue-50 grid place-items-center shrink-0">
+                <BookOpen className="size-4 text-blue-600" aria-hidden />
+              </div>
+              <span className="text-sm font-semibold text-ink flex-1">View bookings</span>
+              <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+            </Link>
+            <Link
+              href="/lender/earnings"
+              className="tap-light flex items-center gap-3 px-4 py-3.5 hover:bg-surface-page transition-colors"
+            >
+              <div className="size-9 rounded-xl bg-emerald-50 grid place-items-center shrink-0">
+                <IndianRupee className="size-4 text-emerald-700" aria-hidden />
+              </div>
+              <span className="text-sm font-semibold text-ink flex-1">Finance</span>
+              <ChevronRight className="size-4 text-muted shrink-0" aria-hidden />
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* ── Host rating summary ──────────────────────────────────────────────── */}
