@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Camera, CreditCard, User, Building2, Upload, X } from 'lucide-react';
 import { toJpegUrl } from '@/lib/cloudinary-url';
-import { Button } from '@/components/ui/Button';
+import { BackHeader } from '@/components/ui/PageHeader';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Sheet } from '@/components/ui/Sheet';
 import { cn } from '@/lib/utils';
@@ -157,7 +157,7 @@ function StepAadhaar({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-ink">Aadhaar card</h1>
+        <p className="text-2xl font-medium text-ink">Aadhaar card</p>
         <p className="mt-2 text-muted">Upload a clear photo of your Aadhaar card.</p>
       </div>
       <PhotoUploader label="Aadhaar photo" hint="Front side showing your name and photo" value={draft.aadhaar_photo_url} onChange={url => onChange({ aadhaar_photo_url: url })} />
@@ -180,7 +180,7 @@ function StepPan({ draft, onChange, onValidChange }: { draft: KycDraft; onChange
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-ink">PAN card</h1>
+        <p className="text-2xl font-medium text-ink">PAN card</p>
         <p className="mt-2 text-muted">Upload your PAN card and enter the PAN number.</p>
       </div>
       <PhotoUploader label="PAN card photo" hint="Clear photo showing the PAN number" value={draft.pan_photo_url} onChange={url => onChange({ pan_photo_url: url })} />
@@ -207,7 +207,7 @@ function StepSelfie({ draft, onChange, onValidChange }: { draft: KycDraft; onCha
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-ink">Take a selfie</h1>
+        <p className="text-2xl font-medium text-ink">Take a selfie</p>
         <p className="mt-2 text-muted">A clear photo of your face for identity verification.</p>
       </div>
       <div className="px-4 py-3 bg-volt-soft rounded-xl text-sm text-ink">
@@ -232,7 +232,7 @@ function StepBankUpi({ draft, onChange, onValidChange }: { draft: KycDraft; onCh
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-ink">Payout details</h1>
+        <p className="text-2xl font-medium text-ink">Payout details</p>
         <p className="mt-2 text-muted">Choose how you want to receive your earnings.</p>
       </div>
       <div className="flex rounded-xl overflow-hidden border border-gray-200">
@@ -292,7 +292,7 @@ function StepReview({ draft, onEditStep, onValidChange, displayName }: { draft: 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-ink">Review & submit</h1>
+        <p className="text-2xl font-medium text-ink">Review & submit</p>
         <p className="mt-2 text-muted">Check everything before submitting.</p>
       </div>
       <div className="space-y-3">
@@ -426,7 +426,7 @@ function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
   const isLastStep = step === TOTAL_STEPS;
 
   return (
-    <main className="min-h-screen flex flex-col px-6 pt-10 pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
+    <main className="min-h-screen flex flex-col pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <Sheet open={cancelSheetOpen} onClose={() => setCancelSheetOpen(false)} title="Cancel hosting setup?">
         <div className="space-y-4">
           <p className="text-sm text-ink">Your verification progress will be removed.</p>
@@ -452,7 +452,17 @@ function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
           </div>
         </div>
       </Sheet>
-      <div className="mb-8">
+
+      <BackHeader
+        title={STEP_LABELS[step]}
+        onClick={() => {
+          if (isSubmitting) return;
+          if (step === 1) router.back();
+          else goToStep(step - 1);
+        }}
+      />
+
+      <div className="mb-8 px-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-muted uppercase tracking-wide">
             Step {step} of {TOTAL_STEPS}
@@ -467,7 +477,7 @@ function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
         </div>
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 px-4">
         {step === 1 && <StepAadhaar draft={draft} onChange={updateDraft} onValidChange={setStepValid} />}
         {step === 2 && <StepPan draft={draft} onChange={updateDraft} onValidChange={setStepValid} />}
         {step === 3 && <StepSelfie draft={draft} onChange={updateDraft} onValidChange={setStepValid} />}
@@ -476,20 +486,15 @@ function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
       </div>
 
       {submitError && (
-        <p className="mt-4 px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
+        <p className="mt-4 mx-4 px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {submitError}
         </p>
       )}
 
-      <div className="mt-8 flex gap-3">
-        {step > 1 && (
-          <Button variant="ghost" size="lg" className="flex-1" disabled={isSubmitting} onClick={() => goToStep(step - 1)}>
-            Back
-          </Button>
-        )}
+      <div className="mt-8 px-4">
         <PrimaryButton
           size="lg"
-          className="flex-1"
+          className="w-full"
           disabled={!stepValid || isSubmitting}
           onClick={isLastStep ? () => { void handleSubmit(); } : () => goToStep(step + 1)}
         >
@@ -498,7 +503,7 @@ function ProfileVerifyPageContent({ isOnboarding }: { isOnboarding: boolean }) {
       </div>
 
       {isOnboarding && (
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex justify-center px-4">
           <button
             type="button"
             onClick={() => setCancelSheetOpen(true)}

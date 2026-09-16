@@ -34,7 +34,7 @@ See `docs/ARCHITECTURE.md` for the full rationale and swap guide.
 
 **Mandatory shared components — using a one-off implementation of either is a bug:**
 
-- **New back-navigable screen** → must use `<BackHeader>` from `src/components/ui/PageHeader.tsx`. Never roll a bespoke `BackButton + h1` layout. (`PageHeader` is a deprecated alias that still works — new screens use `BackHeader`.)
+- **New back-navigable screen** → must use `<BackHeader>` from `src/components/ui/PageHeader.tsx`. Never roll a bespoke `BackButton + h1` layout. (`PageHeader` is a deprecated alias that still works — new screens use `BackHeader`.) **This includes every step of a multi-step wizard.** Each step is a back-navigable view — use `BackHeader` with an `onClick` handler rather than `href` when back means "previous step, not previous route". On Step 1 (or the only step), back exits to the previous route. Placing a "Back" button in the action footer instead is also a bug — back belongs in the header. `BackHeader` renders an `h1`; step content must not also render an `h1` (use `<p>` with the same visual classes instead to avoid duplicate headings).
 - **New root-tab screen with eyebrow+title** → use `<TitleHeader>` from the same file.
 - **Top padding on any screen header** → always `pt-[var(--screen-top-inset)]`. Never hardcode `pt-6`, `pt-12`, or any fixed top value — it breaks notch clearance on mobile and adds spurious spacing on desktop.
 - **New screen with a primary action button** → must use `<PrimaryButton>` from `src/components/ui/PrimaryButton.tsx`. Never use `<Button variant="secondary">` for a primary CTA.
