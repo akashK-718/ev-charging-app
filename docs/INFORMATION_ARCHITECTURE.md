@@ -667,9 +667,9 @@ DC_fast  → 50 kW
 
 ### Duration picker
 
-Four fixed presets (30 min, 1 h, 1.5 h, 2 h) plus a **Custom** option that reveals separate end-date and end-time pickers. Custom is the only mode that supports overnight bookings (end date ≠ start date); the presets always end on the same calendar day as they start. Minimum duration for any selection is 30 minutes.
+Four fixed presets (30 min, 1 h, 1.5 h, 2 h) plus a **Custom** option that reveals a duration input (hours + minutes). The end time is always derived — `scheduled_end = scheduled_start + duration` — and is never typed directly by the user. This makes "end before start" impossible by construction and handles midnight-crossing automatically. Minimum duration is 30 minutes (`MIN_CUSTOM_DURATION_MINUTES`); maximum is 12 hours (`PLATFORM_MAX_BOOKING_DURATION_HOURS`).
 
-All duration options — presets and Custom — are constrained by the same availability window computed for the selected start time (see *Slot conflict rules* below). Presets that would exceed the window are disabled in the picker; Custom's end-time picker is hard-capped at the window boundary.
+All duration options — presets and Custom — are constrained by the same availability window computed for the selected start time (see *Slot conflict rules* below). Presets that would exceed the window are disabled in the picker; Custom shows an inline validation message if the derived end exceeds the window boundary.
 
 ## Booking Lifecycle
 

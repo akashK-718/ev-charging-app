@@ -35,7 +35,7 @@ The non-technical rules that shape the product. Every developer working on the c
   - After 15 minutes with no arrival, lender can mark no-show
 - **Booking lookahead:** Drivers can book up to 7 days in advance
 - **Session duration:** Drivers specify estimated time, lender confirms actual end
-- **Maximum session length:** 8 hours (sanity check)
+- **Maximum session length:** 12 hours (`PLATFORM_MAX_BOOKING_DURATION_HOURS` in `src/lib/constants.ts`)
 
 ## Cancellation policy
 
