@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { haptic } from '@/lib/haptics';
 import { Calendar, Car, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { CONNECTOR_LABELS } from '@/lib/constants';
+import { CONNECTOR_LABELS, PLATFORM_MAX_BOOKING_DURATION_HOURS } from '@/lib/constants';
 import { cn, normalizeAddress } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -120,8 +120,9 @@ function NewBookingContent() {
   // ── Duration mode state ────────────────────────────────────────────────────
   const [durationMode, setDurationMode] = useState<'preset' | 'custom'>('preset');
   const [durationMinutes, setDurationMinutes] = useState(60);
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [customEndTime, setCustomEndTime] = useState('');
+  // Custom duration — hours + minutes pair; end is always derived, never typed directly.
+  const [customHours, setCustomHours] = useState(1);
+  const [customMins, setCustomMins] = useState(0);
 
   // ── Budget mode state ──────────────────────────────────────────────────────
   const [budgetMode, setBudgetMode] = useState<'preset' | 'custom'>('preset');
@@ -210,12 +211,12 @@ function NewBookingContent() {
     if (constraintMode === 'budget' && budgetResolution) {
       return new Date(scheduledStart.getTime() + budgetResolution.resolvedDurationMinutes * 60000);
     }
-    if (durationMode === 'custom' && customEndDate && customEndTime) {
-      const parsed = new Date(`${customEndDate}T${customEndTime}:00`);
-      if (!isNaN(parsed.getTime())) return parsed;
+    if (durationMode === 'custom') {
+      const totalMins = customHours * 60 + customMins;
+      return new Date(scheduledStart.getTime() + totalMins * 60000);
     }
     return new Date(scheduledStart.getTime() + durationMinutes * 60000);
-  }, [constraintMode, budgetResolution, durationMode, customEndDate, customEndTime, scheduledStart, durationMinutes]);
+  }, [constraintMode, budgetResolution, durationMode, customHours, customMins, scheduledStart, durationMinutes]);
 
   const effectiveDurationMinutes = useMemo(
     () => Math.max(0, (scheduledEnd.getTime() - scheduledStart.getTime()) / 60000),
@@ -248,32 +249,31 @@ function NewBookingContent() {
 
   function handleSelectCustomDuration() {
     setDurationMode('custom');
-    if (!customEndDate || !customEndTime) {
-      const initialMs = scheduledStart.getTime() + 60 * 60000;
-      const cappedMs = maxEnd ? Math.min(initialMs, maxEnd.getTime()) : initialMs;
-      const initialEnd = new Date(cappedMs);
-      setCustomEndDate(initialEnd.toISOString().slice(0, 10));
-      setCustomEndTime(initialEnd.toTimeString().slice(0, 5));
-    }
   }
 
-  const minEnd = new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000);
-  const minEndDate = minEnd.toISOString().slice(0, 10);
-  const minEndTimeOnMinDate = minEnd.toTimeString().slice(0, 5);
-  const maxEndDateStr = maxEnd ? maxEnd.toISOString().slice(0, 10) : undefined;
-  const maxEndTimeOnMaxDate =
-    maxEnd && customEndDate === maxEndDateStr ? maxEnd.toTimeString().slice(0, 5) : undefined;
-
-  const customEndIsValid = useMemo(() => {
+  const customDurationIsValid = useMemo(() => {
     if (durationMode !== 'custom') return true;
-    if (!customEndDate || !customEndTime) return false;
-    const end = new Date(`${customEndDate}T${customEndTime}:00`);
-    if (isNaN(end.getTime())) return false;
-    if (end < minEnd) return false;
-    if (maxEnd && end > maxEnd) return false;
+    const total = customHours * 60 + customMins;
+    if (total < MIN_CUSTOM_DURATION_MINUTES) return false;
+    if (total > PLATFORM_MAX_BOOKING_DURATION_HOURS * 60) return false;
+    if (maxEnd && new Date(scheduledStart.getTime() + total * 60000) > maxEnd) return false;
     return true;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [durationMode, customEndDate, customEndTime, scheduledStart, maxEnd]);
+  }, [durationMode, customHours, customMins, scheduledStart, maxEnd]);
+
+  const customDurationValidationMsg = useMemo(() => {
+    if (durationMode !== 'custom') return null;
+    const total = customHours * 60 + customMins;
+    if (total < MIN_CUSTOM_DURATION_MINUTES) {
+      return { type: 'error' as const, msg: `Minimum booking duration is ${MIN_CUSTOM_DURATION_MINUTES} minutes` };
+    }
+    if (total > PLATFORM_MAX_BOOKING_DURATION_HOURS * 60) {
+      return { type: 'error' as const, msg: `Maximum booking duration is ${PLATFORM_MAX_BOOKING_DURATION_HOURS} hours` };
+    }
+    if (maxEnd && new Date(scheduledStart.getTime() + total * 60000) > maxEnd) {
+      return { type: 'warning' as const, msg: maxEndReason };
+    }
+    return null;
+  }, [durationMode, customHours, customMins, scheduledStart, maxEnd, maxEndReason]);
 
   // ── Budget-mode helpers ────────────────────────────────────────────────────
   function handleBudgetPresetSelect(rupees: number) {
@@ -301,7 +301,7 @@ function NewBookingContent() {
   // ── Submit gate ────────────────────────────────────────────────────────────
   const canSubmit = !submitting && !noAvailability && (
     constraintMode === 'duration'
-      ? customEndIsValid
+      ? customDurationIsValid
       : (budgetResolution !== null && !budgetTooSmall && budgetRupees >= 1)
   );
 
@@ -568,41 +568,44 @@ function NewBookingContent() {
                 {durationMode === 'custom' && (
                   <div className="mt-3 space-y-3">
                     <div>
-                      <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-date">
-                        <Calendar className="w-4 h-4" /> End date
+                      <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5">
+                        <Clock className="w-4 h-4" /> Duration
                       </label>
-                      <input
-                        id="end-date"
-                        type="date"
-                        value={customEndDate}
-                        min={minEndDate}
-                        max={maxEndDateStr}
-                        onChange={e => setCustomEndDate(e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
-                      />
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-2">
+                          <input
+                            id="custom-hours"
+                            type="number"
+                            min={0}
+                            max={PLATFORM_MAX_BOOKING_DURATION_HOURS}
+                            value={customHours}
+                            onChange={e => setCustomHours(Math.max(0, Math.min(PLATFORM_MAX_BOOKING_DURATION_HOURS, parseInt(e.target.value, 10) || 0)))}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                            aria-label="Hours"
+                          />
+                          <span className="text-sm text-muted shrink-0">h</span>
+                        </div>
+                        <div className="flex-1 flex items-center gap-2">
+                          <input
+                            id="custom-mins"
+                            type="number"
+                            min={0}
+                            max={59}
+                            value={customMins}
+                            onChange={e => setCustomMins(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                            aria-label="Minutes"
+                          />
+                          <span className="text-sm text-muted shrink-0">min</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="flex items-center gap-1.5 text-sm font-semibold text-ink mb-1.5" htmlFor="end-time">
-                        <Clock className="w-4 h-4" /> End time
-                      </label>
-                      <input
-                        id="end-time"
-                        type="time"
-                        value={customEndTime}
-                        min={customEndDate === minEndDate ? minEndTimeOnMinDate : undefined}
-                        max={maxEndTimeOnMaxDate}
-                        onChange={e => setCustomEndTime(e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
-                      />
-                    </div>
-                    {maxEndReason && (
-                      <p className="text-xs text-amber-600">{maxEndReason}</p>
-                    )}
-                    {customEndDate && customEndTime && !customEndIsValid && (
-                      <p className="text-xs text-red-500">
-                        {new Date(`${customEndDate}T${customEndTime}:00`) < minEnd
-                          ? `Minimum booking duration is ${MIN_CUSTOM_DURATION_MINUTES} minutes`
-                          : 'End time exceeds the available window'}
+                    {customDurationValidationMsg && (
+                      <p className={cn(
+                        'text-xs',
+                        customDurationValidationMsg.type === 'error' ? 'text-red-500' : 'text-amber-600',
+                      )}>
+                        {customDurationValidationMsg.msg}
                       </p>
                     )}
                   </div>
