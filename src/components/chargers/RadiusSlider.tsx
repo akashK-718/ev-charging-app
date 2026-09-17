@@ -9,13 +9,28 @@ interface RadiusSliderProps {
   value: number;
   onChange: (meters: number) => void;
   isLoading?: boolean;
+  /** Override the default RADIUS_STEPS. When provided the "All India" special-case is suppressed. */
+  customSteps?: readonly number[];
+  /** Labels matching customSteps length. */
+  customLabels?: string[];
+  ariaLabel?: string;
 }
 
-export function RadiusSlider({ value, onChange, isLoading }: RadiusSliderProps) {
-  const nearestIdx = RADIUS_STEPS.reduce(
+export function RadiusSlider({
+  value,
+  onChange,
+  isLoading,
+  customSteps,
+  customLabels,
+  ariaLabel,
+}: RadiusSliderProps) {
+  const steps  = customSteps  ?? RADIUS_STEPS;
+  const labels = customLabels ?? LABELS;
+
+  const nearestIdx = steps.reduce(
     (best, step, i) =>
       Math.abs((isFinite(step) ? step : 1e9) - (isFinite(value) ? value : 1e9)) <
-      Math.abs((isFinite(RADIUS_STEPS[best]) ? RADIUS_STEPS[best] : 1e9) - (isFinite(value) ? value : 1e9))
+      Math.abs((isFinite(steps[best] as number) ? (steps[best] as number) : 1e9) - (isFinite(value) ? value : 1e9))
         ? i
         : best,
     0,
@@ -27,22 +42,22 @@ export function RadiusSlider({ value, onChange, isLoading }: RadiusSliderProps) 
     const idx = Number(e.target.value);
     setVisualIdx(idx);
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => onChange(RADIUS_STEPS[idx]), 300);
+    timerRef.current = setTimeout(() => onChange(steps[idx] as number), 300);
   }
 
-  const isAllIndia = visualIdx === RADIUS_STEPS.length - 1;
+  const isAllIndia = !customSteps && visualIdx === RADIUS_STEPS.length - 1;
 
   return (
     <div className="flex items-center gap-2 w-full">
       <input
         type="range"
         min={0}
-        max={RADIUS_STEPS.length - 1}
+        max={steps.length - 1}
         step={1}
         value={visualIdx}
         onChange={handleChange}
         className="flex-1 accent-volt h-1 cursor-pointer"
-        aria-label="Search radius"
+        aria-label={ariaLabel ?? 'Search radius'}
       />
       <div className="shrink-0 flex items-center gap-1.5 min-w-[5.5rem] justify-end">
         {isLoading && (
@@ -54,7 +69,7 @@ export function RadiusSlider({ value, onChange, isLoading }: RadiusSliderProps) 
             (isAllIndia ? 'text-volt-deep' : 'text-ink')
           }
         >
-          {LABELS[visualIdx]}
+          {labels[visualIdx]}
         </span>
       </div>
     </div>
