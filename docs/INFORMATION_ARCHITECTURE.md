@@ -247,7 +247,7 @@ If these three questions don't yield a clear place for it, it probably doesn't b
 Discovery only. Nothing about history, bookings, or configuration lives here.
 
 - **Near Me** — GPS, address search, radius, map/list toggle
-- **Along Route** — from, to, buffer, route map
+- **Along Route** — from, to, coverage slider, off-route slider, route map
 - **Filters** — connector type, price, future filters
 - **Charger Detail** — gallery, specifications, host, pricing, reviews, location, instructions, Book Now; vehicle compatibility advisory (if default vehicle set)
 - **Booking Entry** — create booking flow starts here; vehicle selector (2+ vehicles) and compatibility advisory in estimated cost summary
@@ -326,9 +326,24 @@ Multiple manually-selected connector types within a single `manual` Compatibilit
 
 Near Me and Along Route maintain **completely independent filter state**. Applying, changing, or resetting filters in one mode has no effect on the other mode's filters. The suggestion-dismissed flag is also per-mode. Switching modes loads that mode's own stored filter state without clobbering the other.
 
+### Along Route: two independent search controls
+
+The Along Route compact summary exposes two independent sliders that solve different problems:
+
+| Control | What it controls | Default | Range |
+|---|---|---|---|
+| **Coverage** (`CoverageSlider`) | How much of the route to search — client-side truncation of the route geometry before the API call | Entire route (Infinity) | 500 m · 1 km · 2.5 km · 5 km · 10 km · 25 km · Entire route |
+| **Off route** (`RadiusSlider` with custom steps) | How far laterally from the route line a charger may sit — maps to the `buffer_m` PostGIS parameter | 2.5 km | 0 m · 500 m · 1 km · 2.5 km · 5 km |
+
+**Changing one must never change the other.** Coverage is "how much of the journey to search"; off-route is "how far the driver is willing to deviate". They are orthogonal axes.
+
+Coverage truncation is performed client-side (`truncateRouteGeometry`) before simplification and the API call. When Coverage = "Entire route", the full route geometry is passed unchanged.
+
+The API returns at most 200 chargers. When the server total exceeds 200, the response includes a `total` field and the UI shows "N of M chargers".
+
 ### Along Route: filters never trigger route recompute
 
-Filter changes (including Compatibility, price, power, availability) do **not** trigger route recalculation. Route recomputation is triggered only by changes to `routeFrom`, `routeTo`, or the buffer radius — never by filter state.
+Filter changes (including Compatibility, price, power, availability) do **not** trigger route recalculation. Route recomputation is triggered only by changes to `routeFrom` or `routeTo` — never by filter state or the coverage/off-route sliders.
 
 ## Activity
 

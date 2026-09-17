@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const bufferM = Math.min(25000, Math.max(500, Number(bufferStr) || 2500));
+    const bufferM = Math.min(25000, Math.max(0, Number(bufferStr) || 2500));
 
     if (process.env.NODE_ENV === 'development') {
       console.log('[chargers-along-route] points:', parsedRoute.coordinates.length, 'buffer_m:', bufferM);
@@ -119,7 +119,16 @@ export async function GET(request: NextRequest) {
       chargers = chargers.filter(c => Number(c.price_per_kwh) <= maxPrice);
     }
 
-    return NextResponse.json({ chargers: chargers.map(offsetCharger) });
+    // Cap route results at 200 (nearest first — RPC orders by distance_from_route_m ASC).
+    // Return total when capped so the client can display "N of M chargers".
+    const ROUTE_RESULT_CAP = 200;
+    const routeTotal = chargers.length;
+    const cappedChargers = chargers.slice(0, ROUTE_RESULT_CAP);
+
+    return NextResponse.json({
+      chargers: cappedChargers.map(offsetCharger),
+      ...(routeTotal > ROUTE_RESULT_CAP ? { total: routeTotal } : {}),
+    });
   }
 
   // ── All India mode ──────────────────────────────────────────────────────────

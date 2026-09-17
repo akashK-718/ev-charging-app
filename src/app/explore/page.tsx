@@ -66,6 +66,44 @@ function simplifyRouteGeoJSON(geojson: string, maxPoints: number): string {
   }
 }
 
+// ── Route geometry truncation ─────────────────────────────────────────────────
+// Trims a GeoJSON LineString to the first maxMeters along the route.
+// Returns the original string unchanged when maxMeters is Infinity (Entire route)
+// or when the route is shorter than maxMeters.
+function truncateRouteGeometry(geojson: string, maxMeters: number): string {
+  if (!isFinite(maxMeters)) return geojson;
+  try {
+    const route = JSON.parse(geojson) as { type: string; coordinates: number[][] };
+    const coords = route.coordinates;
+    if (!Array.isArray(coords) || coords.length < 2) return geojson;
+
+    let accumulated = 0;
+    const result: number[][] = [coords[0]];
+
+    for (let i = 1; i < coords.length; i++) {
+      const [lng1, lat1] = coords[i - 1];
+      const [lng2, lat2] = coords[i];
+      const segmentM = haversineKm({ lat: lat1, lng: lng1 }, { lat: lat2, lng: lng2 }) * 1000;
+
+      if (accumulated + segmentM >= maxMeters) {
+        const fraction = segmentM > 0 ? (maxMeters - accumulated) / segmentM : 0;
+        result.push([
+          lng1 + fraction * (lng2 - lng1),
+          lat1 + fraction * (lat2 - lat1),
+        ]);
+        break;
+      }
+      accumulated += segmentM;
+      result.push(coords[i]);
+    }
+
+    if (result.length < 2) return geojson;
+    return JSON.stringify({ type: 'LineString', coordinates: result });
+  } catch {
+    return geojson;
+  }
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const PANEL_TYPE_LABEL: Record<string, string> = {
@@ -192,10 +230,14 @@ export default function ExplorePage() {
   const [routeTo, setRouteTo] = useState<{ coords: Coords; address: string } | null>(null);
   const [routeToAddress, setRouteToAddress] = useState('');
   const [routeBuffer, setRouteBuffer] = useState(DEFAULT_BUFFER);
+  /** Coverage in metres along the route (Infinity = Entire route). */
+  const [routeCoverage, setRouteCoverage] = useState(Infinity);
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeChargers, setRouteChargers] = useState<RouteCharger[]>([]);
   const [routeFetchLoading, setRouteFetchLoading] = useState(false);
+  /** Server total before the 200-result cap, or 0 when results are not capped. */
+  const [routeChargerTotal, setRouteChargerTotal] = useState(0);
   /** Which From/To input is targeted by the next long-press pin drop. */
   const [activeRouteInput, setActiveRouteInput] = useState<'from' | 'to'>('from');
   /** Which pin is currently being reverse-geocoded after a drop or drag. */
@@ -274,12 +316,19 @@ export default function ExplorePage() {
     [viewMode],
   );
 
-  const fetchRouteChargers = useCallback(async (geojson: string, bufferM: number) => {
+  const fetchRouteChargers = useCallback(async (
+    geojson: string,
+    bufferM: number,
+    coverageM: number,
+  ) => {
     setRouteFetchLoading(true);
+    setRouteChargerTotal(0);
     try {
-      // Simplify geometry before sending — full Mapbox routes can be 1000+ points,
-      // easily exceeding Vercel's 4 KB query-string limit and causing silent 400s.
-      const simplified = simplifyRouteGeoJSON(geojson, 100);
+      // 1. Truncate to coverage distance (no-op when coverageM = Infinity).
+      const truncated = truncateRouteGeometry(geojson, coverageM);
+      // 2. Simplify point count before sending — full Mapbox routes can be 1000+ points,
+      //    easily exceeding Vercel's 4 KB query-string limit and causing silent 400s.
+      const simplified = simplifyRouteGeoJSON(truncated, 100);
       const params = new URLSearchParams({ route: simplified, buffer: String(bufferM) });
       const res = await fetch(`/api/chargers?${params}`);
       if (!res.ok) {
@@ -287,9 +336,10 @@ export default function ExplorePage() {
         setRouteChargers([]);
         return;
       }
-      const json = await res.json() as { chargers?: RouteCharger[]; error?: string };
+      const json = await res.json() as { chargers?: RouteCharger[]; total?: number; error?: string };
       if (json.error) console.error('[fetchRouteChargers] RPC error:', json.error);
       setRouteChargers(json.chargers ?? []);
+      setRouteChargerTotal(json.total ?? 0);
     } catch {
       setRouteChargers([]);
     } finally {
@@ -463,8 +513,8 @@ export default function ExplorePage() {
 
   useEffect(() => {
     if (!routeResult) return;
-    void fetchRouteChargers(routeResult.geojson, routeBuffer);
-  }, [routeBuffer, routeResult, fetchRouteChargers]);
+    void fetchRouteChargers(routeResult.geojson, routeBuffer, routeCoverage);
+  }, [routeBuffer, routeCoverage, routeResult, fetchRouteChargers]);
 
   // ── Route: get route when From + To are set ───────────────────────────────
 
@@ -735,11 +785,11 @@ export default function ExplorePage() {
 
   const handleRefresh = useCallback(async () => {
     if (searchMode === 'along_route' && routeResult) {
-      await fetchRouteChargers(routeResult.geojson, routeBuffer);
+      await fetchRouteChargers(routeResult.geojson, routeBuffer, routeCoverage);
     } else if (searchMode === 'near_me') {
       await fetchChargers(searchCenter, radius, allIndiaMode);
     }
-  }, [searchMode, routeResult, routeBuffer, fetchRouteChargers, searchCenter, radius, allIndiaMode, fetchChargers]);
+  }, [searchMode, routeResult, routeBuffer, routeCoverage, fetchRouteChargers, searchCenter, radius, allIndiaMode, fetchChargers]);
 
   function handleGpsRouteRefresh() {
     function applyGps(gps: Coords) {
@@ -1103,8 +1153,12 @@ export default function ExplorePage() {
                       chargerCount={visibleRouteChargers.length}
                       chargerCountLoading={routeFetchLoading}
                       routeLoading={routeLoading}
-                      bufferValue={routeBuffer}
-                      onBufferChange={setRouteBuffer}
+                      chargerRawCount={routeChargers.length}
+                      chargerCappedTotal={routeChargerTotal > 0 ? routeChargerTotal : undefined}
+                      coverageM={routeCoverage}
+                      onCoverageChange={setRouteCoverage}
+                      offRouteM={routeBuffer}
+                      onOffRouteChange={setRouteBuffer}
                       onEdit={() => setRouteEditOpen(true)}
                     />
                   ) : (
@@ -1349,8 +1403,12 @@ export default function ExplorePage() {
                     chargerCount={visibleRouteChargers.length}
                     chargerCountLoading={routeFetchLoading}
                     routeLoading={routeLoading}
-                    bufferValue={routeBuffer}
-                    onBufferChange={setRouteBuffer}
+                    chargerRawCount={routeChargers.length}
+                    chargerCappedTotal={routeChargerTotal > 0 ? routeChargerTotal : undefined}
+                    coverageM={routeCoverage}
+                    onCoverageChange={setRouteCoverage}
+                    offRouteM={routeBuffer}
+                    onOffRouteChange={setRouteBuffer}
                     onEdit={() => setRouteEditOpen(true)}
                   />
                 ) : (
