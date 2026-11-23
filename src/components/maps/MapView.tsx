@@ -240,6 +240,7 @@ export function MapView({
   const prevFitBoundsKey = useRef<string | null>(null);
 
   const [mapZoom, setMapZoom] = useState(zoom);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Long-press state
   const lpTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -282,7 +283,7 @@ export function MapView({
   // ── Camera: fly to center when the prop changes ───────────────────────────
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapLoaded || !mapRef.current) return;
     if (prevCenter.current === null) {
       prevCenter.current = center;
       return;
@@ -291,12 +292,12 @@ export function MapView({
       prevCenter.current = center;
       mapRef.current.flyTo({ center: [center.lng, center.lat], zoom: zoom ?? 12, duration: 800 });
     }
-  }, [center, zoom]);
+  }, [center, zoom, mapLoaded]);
 
   // ── Camera: All India / back to centre ───────────────────────────────────
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapLoaded || !mapRef.current) return;
     if (fitIndia && !prevFitIndia.current) {
       mapRef.current.fitBounds([[68, 8], [97, 37]], { padding: 30, duration: 800 });
     } else if (!fitIndia && prevFitIndia.current) {
@@ -304,17 +305,24 @@ export function MapView({
     }
     prevFitIndia.current = fitIndia;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitIndia]);
+  }, [fitIndia, mapLoaded]);
 
   // ── Camera: fit route bounds ──────────────────────────────────────────────
 
   useEffect(() => {
-    if (!fitBoundsTarget) return;
+    if (!mapLoaded || !mapRef.current) return;
+    if (!fitBoundsTarget) {
+      if (prevFitBoundsKey.current && !fitIndia) {
+        mapRef.current.flyTo({ center: [center.lng, center.lat], zoom, duration: 800 });
+      }
+      prevFitBoundsKey.current = null;
+      return;
+    }
     const key = JSON.stringify(fitBoundsTarget);
     if (key === prevFitBoundsKey.current) return;
     prevFitBoundsKey.current = key;
     mapRef.current?.fitBounds(fitBoundsTarget, { padding: 60, duration: 800 });
-  }, [fitBoundsTarget]);
+  }, [fitBoundsTarget, mapLoaded, fitIndia, center, zoom]);
 
   // ── Long-press helpers ────────────────────────────────────────────────────
 
@@ -445,6 +453,7 @@ export function MapView({
       mapStyle="mapbox://styles/mapbox/streets-v12"
       style={{ width: '100%', height: '100%' }}
       cursor={cursor}
+      onLoad={() => setMapLoaded(true)}
       onClick={handleClick}
       onMouseDown={onLongPress ? handleMouseDown : undefined}
       onMouseMove={handleMouseMove}

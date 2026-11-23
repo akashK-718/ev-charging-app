@@ -1,7 +1,22 @@
 {
   "extends": "next/core-web-vitals",
-  "plugins": ["@typescript-eslint"],
+  "plugins": [
+    "@typescript-eslint"
+  ],
   "rules": {
-    "react/no-unescaped-entities": "warn"
+    "react/no-unescaped-entities": "warn",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "@/app/api/**"
+            ],
+            "message": "Move shared types to src/types and shared logic to src/lib; API routes are entry points."
+          }
+        ]
+      }
+    ]
   }
 }

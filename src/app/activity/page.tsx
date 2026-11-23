@@ -1,7 +1,8 @@
-import { redirect } from 'next/navigation';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { ActivityView, type HistoryItem, type UpdateItem } from './ActivityView';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import type { HistoryItem, UpdateItem } from '@/types/activity';
+import { redirect } from 'next/navigation';
+import { ActivityView } from './ActivityView';
 
 export default async function ActivityPage() {
   const supabase = createClient();

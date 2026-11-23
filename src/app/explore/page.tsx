@@ -1,37 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FeatureFlags } from '@/lib/edge-config';
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import { Filter, LocateFixed, X, Zap } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { purgeLegacyKey } from '@/lib/user-storage';
-import { CONNECTOR_LABELS } from '@/lib/constants';
-import type { ConnectorType } from '@/lib/constants';
-import { maps } from '@/lib/maps/provider';
-import { haversineKm } from '@/lib/haversine';
-import { cn } from '@/lib/utils';
-import { toJpegUrl } from '@/lib/cloudinary-url';
-import { PullToRefresh } from '@/components/ui/PullToRefresh';
-import { ModeToggle } from '@/components/chargers/ModeToggle';
-import { FloatingViewToggle } from '@/components/chargers/FloatingViewToggle';
-import { RadiusSlider, RADIUS_STEPS } from '@/components/chargers/RadiusSlider';
-import { RouteInputs } from '@/components/chargers/RouteInputs';
-import { RouteCompactSummary } from '@/components/chargers/RouteCompactSummary';
 import { ChargerBottomSheet } from '@/components/chargers/ChargerBottomSheet';
+import type { ChargerRow } from '@/components/chargers/ChargerCard';
 import { ChargerListView } from '@/components/chargers/ChargerListView';
 import { FilterSheet } from '@/components/chargers/FilterSheet';
-import type {
-  Availability,
-  PowerFilter,
-  CompatibilityState,
-  ExploreFilterState,
-  FilterVehicle,
-} from '@/components/chargers/FilterSheet';
-import type { ChargerRow } from '@/components/chargers/ChargerCard';
-import type { Coords, RouteResult } from '@/lib/maps/types';
+import { FloatingViewToggle } from '@/components/chargers/FloatingViewToggle';
+import { ModeToggle } from '@/components/chargers/ModeToggle';
+import { RADIUS_STEPS, RadiusSlider } from '@/components/chargers/RadiusSlider';
+import { RouteCompactSummary } from '@/components/chargers/RouteCompactSummary';
+import { RouteInputs } from '@/components/chargers/RouteInputs';
+import { ExploreResultsPanel } from '@/components/explore/ExploreResultsPanel';
 import type { ChargerMarkerData } from '@/components/maps/MapView';
+import { PullToRefresh } from '@/components/ui/PullToRefresh';
+import { useExploreSearch } from '@/hooks/useExploreSearch';
+import { countActiveFilters, filterChargers, resolveConnectors } from '@/lib/explore/filters';
+import { haversineKm } from '@/lib/haversine';
+import { computeRouteBounds } from '@/lib/maps/geometry';
+import { cn } from '@/lib/utils';
+import type { CompatibilityState, ExploreFilterState, FilterVehicle } from '@/types/explore';
+import { Filter, LocateFixed, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState } from 'react';
+
+import type { Vehicle } from '@/lib/explore/session';
+import {
+  DEFAULT_FILTER_STATE,
+  DELHI_NCR,
+  SESSION_KEY_SUGGESTION_DISMISSED_NEAR_ME,
+  SESSION_KEY_SUGGESTION_DISMISSED_ROUTE,
+} from '@/lib/explore/session';
 
 const MapView = dynamic(
   () => import('@/components/maps/MapView').then(m => ({ default: m.MapView })),
@@ -46,212 +43,22 @@ const AddressAutocomplete = dynamic(
   { ssr: false },
 );
 
-// ── Route geometry simplification ────────────────────────────────────────────
-// Mapbox overview=full returns 1000+ points for long routes. URL-encoding that
-// as a query param can exceed Vercel's 4 KB limit, causing silent 400 errors.
-// We keep at most maxPoints coords — sufficient for ST_DWithin proximity checks.
-function simplifyRouteGeoJSON(geojson: string, maxPoints: number): string {
-  try {
-    const route = JSON.parse(geojson) as { type: string; coordinates: number[][] };
-    const coords = route.coordinates;
-    if (coords.length <= maxPoints) return geojson;
-    const step = Math.ceil(coords.length / maxPoints);
-    const simplified: number[][] = [];
-    for (let i = 0; i < coords.length; i++) {
-      if (i % step === 0 || i === coords.length - 1) simplified.push(coords[i]);
-    }
-    return JSON.stringify({ type: 'LineString', coordinates: simplified });
-  } catch {
-    return geojson;
-  }
-}
-
-// ── Route geometry truncation ─────────────────────────────────────────────────
-// Trims a GeoJSON LineString to the first maxMeters along the route.
-// Returns the original string unchanged when maxMeters is Infinity (Entire route)
-// or when the route is shorter than maxMeters.
-function truncateRouteGeometry(geojson: string, maxMeters: number): string {
-  if (!isFinite(maxMeters)) return geojson;
-  try {
-    const route = JSON.parse(geojson) as { type: string; coordinates: number[][] };
-    const coords = route.coordinates;
-    if (!Array.isArray(coords) || coords.length < 2) return geojson;
-
-    let accumulated = 0;
-    const result: number[][] = [coords[0]];
-
-    for (let i = 1; i < coords.length; i++) {
-      const [lng1, lat1] = coords[i - 1];
-      const [lng2, lat2] = coords[i];
-      const segmentM = haversineKm({ lat: lat1, lng: lng1 }, { lat: lat2, lng: lng2 }) * 1000;
-
-      if (accumulated + segmentM >= maxMeters) {
-        const fraction = segmentM > 0 ? (maxMeters - accumulated) / segmentM : 0;
-        result.push([
-          lng1 + fraction * (lng2 - lng1),
-          lat1 + fraction * (lat2 - lat1),
-        ]);
-        break;
-      }
-      accumulated += segmentM;
-      result.push(coords[i]);
-    }
-
-    if (result.length < 2) return geojson;
-    return JSON.stringify({ type: 'LineString', coordinates: result });
-  } catch {
-    return geojson;
-  }
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const PANEL_TYPE_LABEL: Record<string, string> = {
-  'AC_3.3kW': '3.3 kW · AC',
-  'AC_7kW': '7 kW · AC',
-  'AC_22kW': '22 kW · AC',
-  'DC_fast': 'DC Fast',
-};
-
-const DELHI_NCR: Coords = { lat: 28.6139, lng: 77.209 };
-const DEFAULT_RADIUS = 10000;
-const DEFAULT_BUFFER = 2500;
-const MAX_PRICE = 50;
-// Legacy User-level key — never written again; purged on first load.
-const LEGACY_STORAGE_KEY = 'chargers_map_state_v2';
-
-// Session-scoped storage keys (sessionStorage, cleared on signOut).
-// No userId suffix needed — sessionStorage is per-tab and not shared across users.
-const SESSION_KEY_MODE        = 'kirin:explore:mode';
-const SESSION_KEY_NEAR_ME     = 'kirin:explore:near_me';
-const SESSION_KEY_ALONG_ROUTE = 'kirin:explore:along_route';
-// Per-mode suggestion dismissal — each mode tracks independently.
-const SESSION_KEY_SUGGESTION_DISMISSED_NEAR_ME = 'kirin:explore:suggestion-dismissed:near_me';
-const SESSION_KEY_SUGGESTION_DISMISSED_ROUTE   = 'kirin:explore:suggestion-dismissed:along_route';
-
-// ── Session state types ───────────────────────────────────────────────────────
-
-type SearchMode = 'near_me' | 'along_route';
-
-// FilterVehicle is the vehicle shape used by both FilterSheet and this page.
-type Vehicle = FilterVehicle;
-
-const DEFAULT_FILTER_STATE: ExploreFilterState = {
-  compatibility: { type: 'none' },
-  availability:  'any',
-  powerFilter:   'any',
-  maxPrice:      MAX_PRICE,
-};
-
-type RouteCharger = ChargerRow & { distance_from_route_m: number };
-
-type NearMeSession = {
-  center: Coords;
-  radius: number | 'all_india';
-  viewMode: 'map' | 'list';
-  centerType: 'gps' | 'manual' | 'default';
-};
-
-type AlongRouteSession = {
-  routeFrom: { coords: Coords; address: string } | null;
-  routeFromAddress: string;
-  routeTo: { coords: Coords; address: string } | null;
-  routeToAddress: string;
-  fromIsGps: boolean;
-};
-
-function loadSession<T>(key: string): T | null {
-  try {
-    const raw = sessionStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch { return null; }
-}
-
-function saveSession(key: string, value: unknown): void {
-  try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {}
-}
-
-function computeRouteBounds(
-  geometry: Coords[],
-): [[number, number], [number, number]] | undefined {
-  if (geometry.length < 2) return undefined;
-  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-  for (const c of geometry) {
-    if (c.lng < minLng) minLng = c.lng;
-    if (c.lng > maxLng) maxLng = c.lng;
-    if (c.lat < minLat) minLat = c.lat;
-    if (c.lat > maxLat) maxLat = c.lat;
-  }
-  return [[minLng, minLat], [maxLng, maxLat]];
-}
-
 // ── Page component ────────────────────────────────────────────────────────────
 
 export default function ExplorePage() {
-  // ── Auth — stored so save effect can scope its key without re-fetching ───
-  const userIdRef = useRef<string | null>(null);
-  const initCompleteRef = useRef(false); // guards persist effects during async init
-
-  // ── Feature flags — fetched once on mount, default to permissive ─────────
-  const [featureFlags, setFeatureFlags] = useState<Pick<FeatureFlags, 'route_planning_enabled'>>({
-    route_planning_enabled: true,
-  });
-
-  useEffect(() => {
-    fetch('/api/feature-flags')
-      .then(r => r.json() as Promise<FeatureFlags>)
-      .then(f => setFeatureFlags({ route_planning_enabled: f.route_planning_enabled }))
-      .catch(() => {});
-  }, []);
-
-  // ── Search / view mode ────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-  const [searchMode, setSearchMode] = useState<SearchMode>('near_me');
-
-  // ── Near-me: search centre ────────────────────────────────────────────────
-  const [searchCenter, setSearchCenter] = useState<Coords | null>(null);
-  const [centerType, setCenterType] = useState<'gps' | 'manual' | 'default'>('default');
-  const [searchAddress, setSearchAddress] = useState('');
-
-  // GPS position — kept fresh independently of searchCenter
-  const [gpsCoords, setGpsCoords] = useState<Coords | null>(null);
-  const [gpsAvailable, setGpsAvailable] = useState<boolean | null>(null);
-
-  // ── Near-me: data ─────────────────────────────────────────────────────────
-  const [zoom] = useState(12);
-  const [radius, setRadius] = useState(DEFAULT_RADIUS);
-  const [allIndiaMode, setAllIndiaMode] = useState(false);
-  const [chargers, setChargers] = useState<ChargerRow[]>([]);
-  const [fetchLoading, setFetchLoading] = useState(false);
-
-  // ── Route mode state ───────────────────────────────────────────────────────
-  const [routeFrom, setRouteFrom] = useState<{ coords: Coords; address: string } | null>(null);
-  const [routeFromAddress, setRouteFromAddress] = useState('');
-  const [routeTo, setRouteTo] = useState<{ coords: Coords; address: string } | null>(null);
-  const [routeToAddress, setRouteToAddress] = useState('');
-  const [routeBuffer, setRouteBuffer] = useState(DEFAULT_BUFFER);
-  /** Coverage in metres along the route (Infinity = Entire route). */
-  const [routeCoverage, setRouteCoverage] = useState(Infinity);
-  const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [routeChargers, setRouteChargers] = useState<RouteCharger[]>([]);
-  const [routeFetchLoading, setRouteFetchLoading] = useState(false);
-  /** Server total before the 200-result cap, or 0 when results are not capped. */
-  const [routeChargerTotal, setRouteChargerTotal] = useState(0);
-  /** Which From/To input is targeted by the next long-press pin drop. */
-  const [activeRouteInput, setActiveRouteInput] = useState<'from' | 'to'>('from');
-  /** Which pin is currently being reverse-geocoded after a drop or drag. */
-  const [geocodingPin, setGeocodingPin] = useState<'from' | 'to' | null>(null);
-  const dragDebounceFromRef = useRef<ReturnType<typeof setTimeout>>();
-  const dragDebounceToRef = useRef<ReturnType<typeof setTimeout>>();
-  /** True when routeFrom was set from GPS — renders a locked "Your location" chip instead of editable input. */
-  const [fromIsGps, setFromIsGps] = useState(false);
-  /** Prevents the GPS pre-fill effect from re-firing after the user explicitly clears the From field. */
-  const userClearedFromRef = useRef(false);
-  /** Whether the user is in edit mode for an already-calculated route (State 4). */
-  const [routeEditOpen, setRouteEditOpen] = useState(false);
-  /** Brief animation flag for the From/To swap — fades fields out, swaps, fades back. */
-  const [isSwapping, setIsSwapping] = useState(false);
+  const {
+    viewMode, searchMode, featureFlags, selectedCharger, setSelectedCharger, showToast, toastMessage,
+    chargers, fetchLoading, routeChargers, routeFetchLoading, routeChargerTotal,
+    searchCenter, centerType, searchAddress, gpsCoords, gpsAvailable, radius, allIndiaMode, locationLoading,
+    routeFrom, setRouteFrom, routeFromAddress, routeTo, setRouteTo, routeToAddress,
+    routeBuffer, setRouteBuffer, routeCoverage, setRouteCoverage, routeResult, routeLoading,
+    activeRouteInput, setActiveRouteInput, geocodingPin, fromIsGps, setFromIsGps,
+    routeEditOpen, setRouteEditOpen, isSwapping,
+    handleAddressChange, handleAddressSelect, handleUseGpsLocation, handleRadiusChange,
+    handlePinDragEnd, handleGpsRouteRefresh, handleFromAddressChange, handleToAddressChange, handleSwap,
+    handleViewModeChange, handleSearchModeChange, handleLongPress, handleRefresh,
+  } = useExploreSearch();
+  const zoom = 12;
 
   // ── Per-mode filter state (Near Me and Along Route are fully independent) ──
   const [nearMeFilters,    setNearMeFilters]    = useState<ExploreFilterState>(DEFAULT_FILTER_STATE);
@@ -271,225 +78,6 @@ export default function ExplorePage() {
     catch { return false; }
   });
 
-  // ── UI ────────────────────────────────────────────────────────────────────
-  const [selectedCharger, setSelectedCharger] = useState<ChargerRow | null>(null);
-  const [panelHoveredId, setPanelHoveredId] = useState<string | null>(null);
-  const [locationLoading, setLocationLoading] = useState(true);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
-  const chargerItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  function showToastMsg(msg: string, durationMs = 5000) {
-    setToastMessage(msg);
-    setShowToast(true);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setShowToast(false), durationMs);
-  }
-
-  const fetchChargers = useCallback(
-    async (coords: Coords | null, radiusM: number, india: boolean) => {
-      setFetchLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (india) {
-          params.set('radius', 'all_india');
-          params.set('limit', viewMode === 'list' ? '100' : '500');
-        } else if (coords) {
-          params.set('lat', String(coords.lat));
-          params.set('lng', String(coords.lng));
-          params.set('radius', String(radiusM));
-        } else {
-          return;
-        }
-        const res = await fetch(`/api/chargers?${params}`);
-        const json = await res.json() as { chargers?: ChargerRow[] };
-        setChargers(json.chargers ?? []);
-      } catch {
-        setChargers([]);
-      } finally {
-        setFetchLoading(false);
-      }
-    },
-    [viewMode],
-  );
-
-  const fetchRouteChargers = useCallback(async (
-    geojson: string,
-    bufferM: number,
-    coverageM: number,
-  ) => {
-    setRouteFetchLoading(true);
-    setRouteChargerTotal(0);
-    try {
-      // 1. Truncate to coverage distance (no-op when coverageM = Infinity).
-      const truncated = truncateRouteGeometry(geojson, coverageM);
-      // 2. Simplify point count before sending — full Mapbox routes can be 1000+ points,
-      //    easily exceeding Vercel's 4 KB query-string limit and causing silent 400s.
-      const simplified = simplifyRouteGeoJSON(truncated, 100);
-      const params = new URLSearchParams({ route: simplified, buffer: String(bufferM) });
-      const res = await fetch(`/api/chargers?${params}`);
-      if (!res.ok) {
-        console.error('[fetchRouteChargers] API error', res.status, await res.text().catch(() => ''));
-        setRouteChargers([]);
-        return;
-      }
-      const json = await res.json() as { chargers?: RouteCharger[]; total?: number; error?: string };
-      if (json.error) console.error('[fetchRouteChargers] RPC error:', json.error);
-      setRouteChargers(json.chargers ?? []);
-      setRouteChargerTotal(json.total ?? 0);
-    } catch {
-      setRouteChargers([]);
-    } finally {
-      setRouteFetchLoading(false);
-    }
-  }, []);
-
-  // ── Init: URL params → session state → user → purge legacy → GPS ──────────
-  //
-  // URL params are read synchronously at the top (before any await) so a
-  // ?mode=near_me deeplink from Home always wins over saved session state —
-  // this is the fix for non-deterministic Home shortcut behaviour.
-  // initCompleteRef guards persist effects from writing during the async gap.
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // ── 1. URL params — read before any await so deeplinks are deterministic ──
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlMode = urlParams.get('mode');
-    const deeplinkedId = urlParams.get('charger_id');
-    if (urlParams.toString()) {
-      // Strip params immediately so back navigation returns cleanly to /explore
-      window.history.replaceState(null, '', '/explore');
-    }
-
-    // ── 2. Resolve initial mode: URL param > session memory > default ─────────
-    //    URL param is authoritative — Home shortcuts always force a specific mode.
-    //    Bottom-nav entry falls back to the last-used mode from this session.
-    const sessionMode = loadSession<SearchMode>(SESSION_KEY_MODE);
-    const isValidMode = (m: string | null): m is SearchMode =>
-      m === 'near_me' || m === 'along_route';
-
-    let resolvedMode: SearchMode =
-      isValidMode(urlMode)     ? urlMode     :
-      isValidMode(sessionMode) ? sessionMode :
-      'near_me'; // default for new sessions
-
-    (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (cancelled) return;
-
-      userIdRef.current = user?.id ?? null;
-
-      // Purge both legacy storage keys (unscoped and old User-level scoped).
-      purgeLegacyKey(LEGACY_STORAGE_KEY);
-      if (user?.id) {
-        try { localStorage.removeItem(`${LEGACY_STORAGE_KEY}:${user.id}`); } catch {}
-      }
-
-      // ── 3. Feature-flag constraint ──────────────────────────────────────────
-      if (!featureFlags.route_planning_enabled && resolvedMode === 'along_route') {
-        resolvedMode = 'near_me';
-      }
-      setSearchMode(resolvedMode);
-
-      // ── 4. Restore mode-specific session state ──────────────────────────────
-      if (resolvedMode === 'near_me') {
-        const saved = loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
-        if (saved) {
-          setSearchCenter(saved.center);
-          // Never restore centerType as 'gps' — GPS handler below re-sets it
-          // if permission is still granted this session.
-          setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
-          setViewMode(saved.viewMode);
-          const isAllIndia = saved.radius === 'all_india';
-          setAllIndiaMode(isAllIndia);
-          setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
-        }
-      } else {
-        const saved = loadSession<AlongRouteSession>(SESSION_KEY_ALONG_ROUTE);
-        if (saved) {
-          if (saved.routeFrom) {
-            setRouteFrom(saved.routeFrom);
-            setRouteFromAddress(saved.routeFromAddress || saved.routeFrom.address);
-          }
-          if (saved.routeTo) {
-            setRouteTo(saved.routeTo);
-            setRouteToAddress(saved.routeToAddress || saved.routeTo.address);
-          }
-          if (saved.fromIsGps) setFromIsGps(true);
-        }
-      }
-
-      // ── 5. Deeplinked charger ───────────────────────────────────────────────
-      if (deeplinkedId) {
-        void (async () => {
-          try {
-            const res = await fetch(`/api/chargers/${deeplinkedId}`);
-            if (!res.ok) return;
-            const body = await res.json() as { data: ChargerRow & { latitude: number; longitude: number } };
-            const charger = body.data;
-            setSelectedCharger(charger);
-            setSearchCenter({ lat: Number(charger.latitude), lng: Number(charger.longitude) });
-            setCenterType('manual');
-          } catch {
-            // Deeplink failure must never break the map
-          }
-        })();
-      }
-
-      // ── 6. GPS resolution — set initCompleteRef first so any user interaction
-      //       during the GPS wait is persisted correctly. ──────────────────────
-      const hasSavedNearMe = !!loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
-      initCompleteRef.current = true;
-
-      if (!navigator.geolocation) {
-        setGpsAvailable(false);
-        if (!hasSavedNearMe) {
-          setSearchCenter(DELHI_NCR);
-          showToastMsg('Showing chargers near Delhi. Set a location or allow GPS access to personalise.');
-        }
-        setLocationLoading(false);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          if (cancelled) return;
-          const gps: Coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setGpsCoords(gps);
-          setGpsAvailable(true);
-          const nearMe = loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
-          if (!nearMe || nearMe.centerType === 'gps') {
-            setSearchCenter(gps);
-            setCenterType('gps');
-          }
-          setLocationLoading(false);
-        },
-        () => {
-          if (cancelled) return;
-          setGpsAvailable(false);
-          if (!hasSavedNearMe) {
-            setSearchCenter(DELHI_NCR);
-            showToastMsg('Showing chargers near Delhi. Set a location or allow GPS access to personalise.');
-          }
-          setLocationLoading(false);
-        },
-        { timeout: 8000 },
-      );
-    })();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(toastTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ── Fetch vehicles (for FilterSheet Vehicle section + suggestion chip) ─────
   // Fetches all of the user's vehicles once on mount.  The default vehicle is
   // derived from the list so the same data feeds both the Filters sheet and
@@ -501,358 +89,6 @@ export default function ExplorePage() {
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ── Near-me: fetch on centre / radius / mode change ───────────────────────
-
-  useEffect(() => {
-    if (locationLoading || searchMode !== 'near_me') return;
-    void fetchChargers(searchCenter, radius, allIndiaMode);
-  }, [searchCenter, radius, allIndiaMode, fetchChargers, locationLoading, searchMode]);
-
-  // ── Route: fetch chargers when buffer changes (route already loaded) ───────
-
-  useEffect(() => {
-    if (!routeResult) return;
-    void fetchRouteChargers(routeResult.geojson, routeBuffer, routeCoverage);
-  }, [routeBuffer, routeCoverage, routeResult, fetchRouteChargers]);
-
-  // ── Route: get route when From + To are set ───────────────────────────────
-
-  useEffect(() => {
-    if (!routeFrom || !routeTo) return;
-    let cancelled = false;
-
-    async function loadRoute() {
-      if (!routeFrom || !routeTo) return;
-      setRouteLoading(true);
-      try {
-        const result = await maps.getRoute(routeFrom.coords, routeTo.coords);
-        if (cancelled) return;
-        setRouteResult(result);
-        // fetchRouteChargers is triggered by the useEffect watching routeResult —
-        // don't call it here too or we get two simultaneous requests.
-      } catch {
-        if (!cancelled) { setRouteResult(null); setRouteChargers([]); }
-      } finally {
-        if (!cancelled) setRouteLoading(false);
-      }
-    }
-
-    void loadRoute();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeFrom, routeTo]);
-
-  // ── Pre-fill From with GPS when switching to route mode ───────────────────
-
-  useEffect(() => {
-    if (searchMode === 'along_route' && gpsCoords && !routeFrom && !userClearedFromRef.current) {
-      setRouteFrom({ coords: gpsCoords, address: 'Your location' });
-      setRouteFromAddress('Your location');
-      setFromIsGps(true);
-      setActiveRouteInput('to');
-    }
-  }, [searchMode, gpsCoords, routeFrom]);
-
-  // ── Persist: Near Me state ────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!initCompleteRef.current || searchMode !== 'near_me' || !searchCenter) return;
-    saveSession(SESSION_KEY_NEAR_ME, {
-      center: searchCenter,
-      radius: allIndiaMode ? 'all_india' : radius,
-      viewMode,
-      centerType,
-    } satisfies NearMeSession);
-  }, [searchMode, searchCenter, radius, allIndiaMode, viewMode, centerType]);
-
-  // ── Persist: Along Route state ────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!initCompleteRef.current || searchMode !== 'along_route') return;
-    saveSession(SESSION_KEY_ALONG_ROUTE, {
-      routeFrom: routeFrom ?? null,
-      routeFromAddress,
-      routeTo: routeTo ?? null,
-      routeToAddress,
-      fromIsGps,
-    } satisfies AlongRouteSession);
-  }, [searchMode, routeFrom, routeFromAddress, routeTo, routeToAddress, fromIsGps]);
-
-  // ── Persist: last-used mode ───────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!initCompleteRef.current) return;
-    saveSession(SESSION_KEY_MODE, searchMode);
-  }, [searchMode]);
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  function handleRadiusChange(meters: number) {
-    if (!isFinite(meters)) {
-      setAllIndiaMode(true);
-    } else {
-      setAllIndiaMode(false);
-      setRadius(meters);
-    }
-  }
-
-  function handleViewModeChange(mode: 'map' | 'list') {
-    setViewMode(mode);
-    if (selectedCharger) setSelectedCharger(null);
-  }
-
-  function handleSearchModeChange(mode: SearchMode) {
-    if (mode === 'along_route' && !featureFlags.route_planning_enabled) return;
-
-    // Save the departing mode's state then restore the arriving mode's,
-    // so each mode maintains independent state across switches.
-    if (searchMode === 'near_me' && searchCenter) {
-      saveSession(SESSION_KEY_NEAR_ME, {
-        center: searchCenter,
-        radius: allIndiaMode ? 'all_india' : radius,
-        viewMode,
-        centerType,
-      } satisfies NearMeSession);
-    } else if (searchMode === 'along_route') {
-      saveSession(SESSION_KEY_ALONG_ROUTE, {
-        routeFrom: routeFrom ?? null,
-        routeFromAddress,
-        routeTo: routeTo ?? null,
-        routeToAddress,
-        fromIsGps,
-      } satisfies AlongRouteSession);
-    }
-
-    if (mode === 'near_me') {
-      const saved = loadSession<NearMeSession>(SESSION_KEY_NEAR_ME);
-      if (saved) {
-        setSearchCenter(saved.center);
-        setCenterType(saved.centerType === 'manual' ? 'manual' : 'default');
-        setViewMode(saved.viewMode);
-        const isAllIndia = saved.radius === 'all_india';
-        setAllIndiaMode(isAllIndia);
-        setRadius(isAllIndia ? RADIUS_STEPS[RADIUS_STEPS.length - 1] : Number(saved.radius));
-      }
-    } else {
-      const saved = loadSession<AlongRouteSession>(SESSION_KEY_ALONG_ROUTE);
-      if (saved) {
-        if (saved.routeFrom) {
-          setRouteFrom(saved.routeFrom);
-          setRouteFromAddress(saved.routeFromAddress || saved.routeFrom.address);
-        }
-        if (saved.routeTo) {
-          setRouteTo(saved.routeTo);
-          setRouteToAddress(saved.routeToAddress || saved.routeTo.address);
-        }
-        if (saved.fromIsGps) setFromIsGps(true);
-      }
-    }
-
-    saveSession(SESSION_KEY_MODE, mode);
-    setSearchMode(mode);
-    setSelectedCharger(null);
-    setRouteEditOpen(false);
-    if (mode === 'along_route') {
-      setActiveRouteInput('from');
-      userClearedFromRef.current = false; // allow GPS pre-fill on fresh entry to route mode
-    }
-  }
-
-  function handleAddressSelect({ coords, address }: { coords: Coords; address: string }) {
-    setSearchCenter(coords);
-    setCenterType('manual');
-    setSearchAddress(address);
-  }
-
-  function handleAddressChange(v: string) {
-    setSearchAddress(v);
-    if (v === '' && gpsCoords && gpsAvailable === true) {
-      setSearchCenter(gpsCoords);
-      setCenterType('gps');
-    }
-  }
-
-  async function handleLongPress(coords: Coords) {
-    if (isRouteMode) {
-      const target = activeRouteInput;
-      setGeocodingPin(target);
-      let address: string;
-      try {
-        const result = await maps.reverseGeocode(coords);
-        address = result.formattedAddress;
-      } catch {
-        address = `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
-      } finally {
-        setGeocodingPin(null);
-      }
-      if (target === 'from') {
-        setRouteFrom({ coords, address });
-        setRouteFromAddress(address);
-        setActiveRouteInput('to');
-      } else {
-        setRouteTo({ coords, address });
-        setRouteToAddress(address);
-      }
-    } else {
-      setSearchCenter(coords);
-      setCenterType('manual');
-      try {
-        const result = await maps.reverseGeocode(coords);
-        setSearchAddress(result.formattedAddress);
-      } catch {
-        setSearchAddress(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
-      }
-    }
-  }
-
-  async function handlePinDragEnd(pinId: 'from' | 'to', coords: Coords) {
-    const debounceRef = pinId === 'from' ? dragDebounceFromRef : dragDebounceToRef;
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setGeocodingPin(pinId);
-      let address: string;
-      try {
-        const result = await maps.reverseGeocode(coords);
-        address = result.formattedAddress;
-      } catch {
-        address = `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
-      } finally {
-        setGeocodingPin(null);
-      }
-      if (pinId === 'from') {
-        setRouteFrom({ coords, address });
-        setRouteFromAddress(address);
-      } else {
-        setRouteTo({ coords, address });
-        setRouteToAddress(address);
-      }
-    }, 300);
-  }
-
-  function handleRecenter() {
-    if (gpsCoords) {
-      setSearchCenter(gpsCoords);
-      setCenterType('gps');
-      setSearchAddress('');
-    } else if (gpsAvailable === false) {
-      showToastMsg('Location access denied. Enable it in your browser settings.');
-    } else {
-      navigator.geolocation?.getCurrentPosition(pos => {
-        const gps: Coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setGpsCoords(gps);
-        setGpsAvailable(true);
-        setSearchCenter(gps);
-        setCenterType('gps');
-        setSearchAddress('');
-      });
-    }
-  }
-
-  async function handleUseGpsLocation() {
-    async function apply(gps: Coords) {
-      setGpsCoords(gps);
-      setGpsAvailable(true);
-      setSearchCenter(gps);
-      setCenterType('gps');
-      try {
-        const result = await maps.reverseGeocode(gps);
-        setSearchAddress(result.formattedAddress);
-      } catch {
-        setSearchAddress('');
-      }
-    }
-
-    if (gpsCoords) { await apply(gpsCoords); return; }
-    if (gpsAvailable === false) {
-      showToastMsg('Location access denied. Enable it in your browser settings.');
-      return;
-    }
-    if (!navigator.geolocation) {
-      setGpsAvailable(false);
-      showToastMsg('Location access denied. Enable it in your browser settings.');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      pos => { void apply({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-      () => {
-        setGpsAvailable(false);
-        showToastMsg('Location access denied. Enable it in your browser settings.');
-      },
-      { timeout: 8000 },
-    );
-  }
-
-  const handleRefresh = useCallback(async () => {
-    if (searchMode === 'along_route' && routeResult) {
-      await fetchRouteChargers(routeResult.geojson, routeBuffer, routeCoverage);
-    } else if (searchMode === 'near_me') {
-      await fetchChargers(searchCenter, radius, allIndiaMode);
-    }
-  }, [searchMode, routeResult, routeBuffer, routeCoverage, fetchRouteChargers, searchCenter, radius, allIndiaMode, fetchChargers]);
-
-  function handleGpsRouteRefresh() {
-    function applyGps(gps: Coords) {
-      setGpsCoords(gps);
-      setGpsAvailable(true);
-      setSearchCenter(gps);
-      setRouteFrom({ coords: gps, address: 'Your location' });
-      setRouteFromAddress('Your location');
-      setFromIsGps(true);
-      setActiveRouteInput('to');
-      userClearedFromRef.current = false;
-    }
-
-    if (gpsCoords) {
-      applyGps(gpsCoords);
-    } else if (gpsAvailable === false) {
-      showToastMsg('Location access denied. Enable it in your browser settings.');
-    } else {
-      navigator.geolocation?.getCurrentPosition(
-        pos => applyGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {
-          setGpsAvailable(false);
-          showToastMsg('Could not get your location. Please enable location access.');
-        },
-        { timeout: 8000 },
-      );
-    }
-  }
-
-  function handleFromAddressChange(v: string) {
-    setFromIsGps(false);
-    setRouteFromAddress(v);
-    if (v === '') {
-      userClearedFromRef.current = true; // suppress GPS re-fill until user re-enters route mode
-      setRouteFrom(null);
-      setRouteResult(null);
-      setRouteChargers([]);
-    }
-  }
-
-  function handleToAddressChange(v: string) {
-    setRouteToAddress(v);
-    if (v === '') {
-      setRouteTo(null);
-      setRouteResult(null);
-      setRouteChargers([]);
-    }
-  }
-
-  function handleSwap() {
-    if (!routeFrom || !routeTo || isSwapping) return;
-    setIsSwapping(true);
-    setTimeout(() => {
-      const prevFrom = routeFrom;
-      const prevFromAddr = routeFromAddress;
-      setFromIsGps(false); // new From (was To) was never GPS
-      setRouteFrom(routeTo);
-      setRouteFromAddress(routeToAddress);
-      setRouteTo(prevFrom);
-      setRouteToAddress(prevFromAddr);
-      setIsSwapping(false);
-    }, 120);
-  }
 
   // ── Per-mode filter helpers ───────────────────────────────────────────────
 
@@ -926,12 +162,7 @@ export default function ExplorePage() {
   const defaultVehicle = vehicles.find(v => v.is_default) ?? null;
 
   // Resolve which connector set is currently active for charger filtering.
-  const activeConnectors: Set<string> | null = (() => {
-    const c = activeFilters.compatibility;
-    if (c.type === 'vehicle') return new Set(c.connectorTypes);
-    if (c.type === 'manual' && c.connectors.size > 0) return c.connectors;
-    return null;
-  })();
+  const activeConnectors = resolveConnectors(activeFilters.compatibility);
 
   // Suggestion chip: Compatibility = none, default vehicle with connectors exists, not dismissed.
   const showSuggestionChip =
@@ -943,26 +174,8 @@ export default function ExplorePage() {
   // Active vehicle filter chip: Compatibility = vehicle (suggestion was accepted or set via Filters).
   const showVehicleFilterChip = activeFilters.compatibility.type === 'vehicle';
 
-  function applyConnectorFilter(c: ChargerRow): boolean {
-    if (!activeConnectors) return true;
-    return (c.connector_types as string[]).some(ct => activeConnectors.has(ct));
-  }
-
-  const visibleChargers = chargers.filter(c => {
-    if (!applyConnectorFilter(c)) return false;
-    if (activeFilters.maxPrice < MAX_PRICE && Number(c.price_per_kwh) > activeFilters.maxPrice) return false;
-    if (activeFilters.availability !== 'any' && c.status !== 'active') return false;
-    if (activeFilters.powerFilter !== 'any' && c.charger_type !== activeFilters.powerFilter) return false;
-    return true;
-  });
-
-  const visibleRouteChargers = routeChargers.filter(c => {
-    if (!applyConnectorFilter(c)) return false;
-    if (activeFilters.maxPrice < MAX_PRICE && Number(c.price_per_kwh) > activeFilters.maxPrice) return false;
-    if (activeFilters.availability !== 'any' && c.status !== 'active') return false;
-    if (activeFilters.powerFilter !== 'any' && c.charger_type !== activeFilters.powerFilter) return false;
-    return true;
-  });
+  const visibleChargers = filterChargers(chargers, activeFilters);
+  const visibleRouteChargers = filterChargers(routeChargers, activeFilters);
 
   const hiddenByFilters = isRouteMode
     ? routeChargers.length - visibleRouteChargers.length
@@ -970,11 +183,7 @@ export default function ExplorePage() {
 
   // Badge counts ONE per filter DIMENSION deviating from Any — max 4.
   // Multiple manual connector chips still count as 1 (it's one Compatibility dimension).
-  const activeFilterCount =
-    (activeFilters.compatibility.type !== 'none' ? 1 : 0) +
-    (activeFilters.maxPrice < MAX_PRICE ? 1 : 0) +
-    (activeFilters.availability !== 'any' ? 1 : 0) +
-    (activeFilters.powerFilter !== 'any' ? 1 : 0);
+  const activeFilterCount = countActiveFilters(activeFilters);
   const compatState = activeFilters.compatibility;
   const activeVehicle: FilterVehicle | null =
     compatState.type === 'vehicle'
@@ -1022,11 +231,48 @@ export default function ExplorePage() {
 
   const panelChargers = isRouteMode ? visibleRouteChargers : visibleChargers;
 
-  // Scroll the results panel to the selected charger when it changes (desktop).
-  useEffect(() => {
-    if (!selectedCharger) return;
-    chargerItemRefs.current[selectedCharger.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [selectedCharger]);
+  const routeSearchControls = (
+                  routeResult && !routeEditOpen ? (
+                    /* State 3: compact summary */
+                    <RouteCompactSummary
+                      fromAddress={routeFromAddress}
+                      toAddress={routeToAddress}
+                      distanceMeters={routeResult.distanceMeters}
+                      durationSeconds={routeResult.durationSeconds}
+                      chargerCount={visibleRouteChargers.length}
+                      chargerCountLoading={routeFetchLoading}
+                      routeLoading={routeLoading}
+                      chargerRawCount={routeChargers.length}
+                      chargerCappedTotal={routeChargerTotal > 0 ? routeChargerTotal : undefined}
+                      coverageM={routeCoverage}
+                      onCoverageChange={setRouteCoverage}
+                      offRouteM={routeBuffer}
+                      onOffRouteChange={setRouteBuffer}
+                      onEdit={() => setRouteEditOpen(true)}
+                    />
+                  ) : (
+                    /* States 1/2/4: From + To inputs with swap */
+                    <RouteInputs
+                      fromAddress={routeFromAddress}
+                      toAddress={routeToAddress}
+                      onFromAddressChange={handleFromAddressChange}
+                      onToAddressChange={handleToAddressChange}
+                      onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
+                      onToSelect={r => setRouteTo(r)}
+                      onGpsRefresh={handleGpsRouteRefresh}
+                      activeInput={activeRouteInput}
+                      onSetActive={setActiveRouteInput}
+                      fromGeocoding={geocodingPin === 'from'}
+                      toGeocoding={geocodingPin === 'to'}
+                      fromIsGps={fromIsGps}
+                      onSwap={handleSwap}
+                      canSwap={!!(routeFrom && routeTo) && !isSwapping}
+                      isSwapping={isSwapping}
+                      routeLoading={routeLoading}
+                      onDone={routeEditOpen ? () => setRouteEditOpen(false) : undefined}
+                    />
+                  )
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1143,46 +389,7 @@ export default function ExplorePage() {
             <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
               <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3 pointer-events-auto">
                 {isRouteMode ? (
-                  routeResult && !routeEditOpen ? (
-                    /* State 3: compact summary */
-                    <RouteCompactSummary
-                      fromAddress={routeFromAddress}
-                      toAddress={routeToAddress}
-                      distanceMeters={routeResult.distanceMeters}
-                      durationSeconds={routeResult.durationSeconds}
-                      chargerCount={visibleRouteChargers.length}
-                      chargerCountLoading={routeFetchLoading}
-                      routeLoading={routeLoading}
-                      chargerRawCount={routeChargers.length}
-                      chargerCappedTotal={routeChargerTotal > 0 ? routeChargerTotal : undefined}
-                      coverageM={routeCoverage}
-                      onCoverageChange={setRouteCoverage}
-                      offRouteM={routeBuffer}
-                      onOffRouteChange={setRouteBuffer}
-                      onEdit={() => setRouteEditOpen(true)}
-                    />
-                  ) : (
-                    /* States 1/2/4: From + To inputs with swap */
-                    <RouteInputs
-                      fromAddress={routeFromAddress}
-                      toAddress={routeToAddress}
-                      onFromAddressChange={handleFromAddressChange}
-                      onToAddressChange={handleToAddressChange}
-                      onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
-                      onToSelect={r => setRouteTo(r)}
-                      onGpsRefresh={handleGpsRouteRefresh}
-                      activeInput={activeRouteInput}
-                      onSetActive={setActiveRouteInput}
-                      fromGeocoding={geocodingPin === 'from'}
-                      toGeocoding={geocodingPin === 'to'}
-                      fromIsGps={fromIsGps}
-                      onSwap={handleSwap}
-                      canSwap={!!(routeFrom && routeTo) && !isSwapping}
-                      isSwapping={isSwapping}
-                      routeLoading={routeLoading}
-                      onDone={routeEditOpen ? () => setRouteEditOpen(false) : undefined}
-                    />
-                  )
+                  routeSearchControls
                 ) : (
                   /* Near-me mode */
                   <div className="space-y-2">
@@ -1298,95 +505,15 @@ export default function ExplorePage() {
         </div>
 
         {/* ── Results panel — desktop only ──────────────────────────────────── */}
-        <aside
-          className="hidden desk:flex desk:flex-col desk:flex-[2] border-l border-border bg-surface-page"
-          aria-label="Charger results"
-        >
-          <div className="px-4 py-3 border-b border-border bg-surface-card shrink-0">
-            <p className="text-sm font-semibold text-ink">
-              {activeFetchLoading
-                ? 'Searching…'
-                : `${panelChargers.length} charger${panelChargers.length === 1 ? '' : 's'}`}
-            </p>
-          </div>
-
-          <div className="flex-1 overflow-y-auto divide-y divide-border">
-            {panelChargers.length === 0 && !activeFetchLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-2 px-4 text-center">
-                <p className="text-sm font-semibold text-ink">No chargers found</p>
-                {activeFilterCount > 0 && (
-                  <button
-                    onClick={resetFilters}
-                    className="text-xs font-semibold text-green-deep underline"
-                  >
-                    Clear filters
-                  </button>
-                )}
-              </div>
-            ) : (
-              panelChargers.map(c => {
-                const distKm = isRouteMode
-                  ? (c as RouteCharger).distance_from_route_m / 1000
-                  : searchCenter
-                    ? haversineKm(searchCenter, { lat: Number(c.latitude), lng: Number(c.longitude) })
-                    : undefined;
-                const isSelected = selectedCharger?.id === c.id;
-                const isHovered = panelHoveredId === c.id;
-                const cover = c.photos?.[0];
-                const powerLabel = PANEL_TYPE_LABEL[c.charger_type] ?? c.charger_type;
-                const isActive = c.status === 'active';
-                return (
-                  <div
-                    key={c.id}
-                    ref={el => { chargerItemRefs.current[c.id] = el; }}
-                    onMouseEnter={() => setPanelHoveredId(c.id)}
-                    onMouseLeave={() => setPanelHoveredId(null)}
-                    className={cn(
-                      'transition-colors',
-                      isSelected
-                        ? 'bg-green-soft ring-2 ring-inset ring-green'
-                        : isHovered
-                          ? 'bg-surface-card'
-                          : '',
-                    )}
-                  >
-                    <Link href={`/explore/${c.id}`} className="flex items-center gap-3 px-4 py-3">
-                      <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-volt-soft">
-                        {cover ? (
-                          <img src={toJpegUrl(cover)} alt={c.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Zap className="w-5 h-5 text-volt opacity-40" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-ink leading-snug line-clamp-1">{c.title}</p>
-                        <p className="text-xs text-muted mt-0.5">
-                          {powerLabel} · <span className="font-semibold text-ink">₹{c.price_per_kwh}/kWh</span>
-                        </p>
-                        {distKm !== undefined && (
-                          <p className="text-xs text-muted mt-0.5">
-                            {distKm < 1
-                              ? `${Math.round(distKm * 1000)} m`
-                              : `${distKm.toFixed(1)} km`}
-                            {' '}{isRouteMode ? 'off route' : 'away'}
-                          </p>
-                        )}
-                      </div>
-                      <span
-                        className={cn(
-                          'shrink-0 w-2 h-2 rounded-full',
-                          isActive ? 'bg-green' : 'bg-gray-300',
-                        )}
-                      />
-                    </Link>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </aside>
+        <ExploreResultsPanel
+          panelChargers={panelChargers}
+          activeFetchLoading={activeFetchLoading}
+          activeFilterCount={activeFilterCount}
+          resetFilters={resetFilters}
+          isRouteMode={isRouteMode}
+          searchCenter={searchCenter}
+          selectedCharger={selectedCharger}
+        />
 
         {/* ── List view — mobile/tablet only ──────────────────────────────── */}
         {viewMode === 'list' && (
@@ -1394,44 +521,7 @@ export default function ExplorePage() {
             {/* Search controls — same logic as map overlay but inline */}
             <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-3 space-y-2">
               {isRouteMode ? (
-                routeResult && !routeEditOpen ? (
-                  <RouteCompactSummary
-                    fromAddress={routeFromAddress}
-                    toAddress={routeToAddress}
-                    distanceMeters={routeResult.distanceMeters}
-                    durationSeconds={routeResult.durationSeconds}
-                    chargerCount={visibleRouteChargers.length}
-                    chargerCountLoading={routeFetchLoading}
-                    routeLoading={routeLoading}
-                    chargerRawCount={routeChargers.length}
-                    chargerCappedTotal={routeChargerTotal > 0 ? routeChargerTotal : undefined}
-                    coverageM={routeCoverage}
-                    onCoverageChange={setRouteCoverage}
-                    offRouteM={routeBuffer}
-                    onOffRouteChange={setRouteBuffer}
-                    onEdit={() => setRouteEditOpen(true)}
-                  />
-                ) : (
-                  <RouteInputs
-                    fromAddress={routeFromAddress}
-                    toAddress={routeToAddress}
-                    onFromAddressChange={handleFromAddressChange}
-                    onToAddressChange={handleToAddressChange}
-                    onFromSelect={r => { setFromIsGps(false); setRouteFrom(r); setActiveRouteInput('to'); }}
-                    onToSelect={r => setRouteTo(r)}
-                    onGpsRefresh={handleGpsRouteRefresh}
-                    activeInput={activeRouteInput}
-                    onSetActive={setActiveRouteInput}
-                    fromGeocoding={geocodingPin === 'from'}
-                    toGeocoding={geocodingPin === 'to'}
-                    fromIsGps={fromIsGps}
-                    onSwap={handleSwap}
-                    canSwap={!!(routeFrom && routeTo) && !isSwapping}
-                    isSwapping={isSwapping}
-                    routeLoading={routeLoading}
-                    onDone={routeEditOpen ? () => setRouteEditOpen(false) : undefined}
-                  />
-                )
+                routeSearchControls
               ) : (
                 <>
                   <div className="flex items-center gap-2">

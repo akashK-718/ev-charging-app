@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { CreditCard, Smartphone, Info, Banknote, CheckCircle2, Trash2, Star } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { cn } from '@/lib/utils';
-import type { SavedMethod } from '@/app/api/payments/saved-methods/route';
+import type { SavedMethod } from '@/types/payment';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 

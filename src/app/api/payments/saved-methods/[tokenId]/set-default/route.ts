@@ -8,8 +8,6 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
  * Stored locally on users.default_payment_token_id — Razorpay has no
  * server-side "default" concept for tokens.
  *
- * default_payment_token_id is added via migration 033 and is not yet in the
- * generated Supabase types, so we use an `any` cast.
  */
 export async function POST(
   _req: NextRequest,
@@ -21,8 +19,7 @@ export async function POST(
 
   const { tokenId } = params;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   await admin.from('users').update({ default_payment_token_id: tokenId }).eq('id', user.id);
 
   return NextResponse.json({ success: true });
