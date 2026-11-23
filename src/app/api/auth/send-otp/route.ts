@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendOtp } from '@/lib/msg91';
 import { isEmergencyLockdown } from '@/lib/edge-config';
 import { readKillSwitch } from '@/lib/app-settings';
+import { AUTH_MESSAGES, validateMobile } from '@/lib/auth/validation';
 
 // TODO: Add rate limiting here — 3 OTPs per phone per hour (Upstash Redis)
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     body = await request.json();
   } catch {
     return NextResponse.json(
-      { error: 'Invalid request body', code: 'INVALID_REQUEST' },
+      { error: AUTH_MESSAGES.invalidRequest, code: 'INVALID_REQUEST' },
       { status: 400 },
     );
   }
@@ -34,9 +35,10 @@ export async function POST(request: NextRequest) {
   const rawPhone = (body as Record<string, unknown>)?.phone;
   const phone = typeof rawPhone === 'string' ? rawPhone.trim() : '';
 
-  if (!/^\d{10}$/.test(phone)) {
+  const phoneError = validateMobile(phone);
+  if (phoneError) {
     return NextResponse.json(
-      { error: 'Enter a valid 10-digit mobile number', code: 'INVALID_PHONE' },
+      { error: phoneError, code: 'INVALID_PHONE' },
       { status: 400 },
     );
   }
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   if (result.type !== 'success') {
     return NextResponse.json(
-      { error: 'Could not send OTP. Please try again.', code: 'SMS_UNAVAILABLE' },
+      { error: AUTH_MESSAGES.sendCode, code: 'SMS_UNAVAILABLE' },
       { status: 503 },
     );
   }

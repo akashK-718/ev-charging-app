@@ -3,6 +3,7 @@ import { verifyOtp } from '@/lib/msg91';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isEmergencyLockdown } from '@/lib/edge-config';
 import { readKillSwitch } from '@/lib/app-settings';
+import { AUTH_MESSAGES, validateMobile } from '@/lib/auth/validation';
 
 if (!process.env.SUPABASE_PHONE_PASSWORD_SECRET) {
   console.warn(
@@ -41,21 +42,23 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    return NextResponse.json({ error: AUTH_MESSAGES.invalidRequest }, { status: 400 });
   }
 
-  const { phone, otp } = (body ?? {}) as Record<string, unknown>;
+  const { phone: rawPhone, otp } = (body ?? {}) as Record<string, unknown>;
+  const phone = typeof rawPhone === 'string' ? rawPhone.trim() : '';
 
-  if (typeof phone !== 'string' || !/^\d{10}$/.test(phone)) {
+  const phoneError = validateMobile(phone);
+  if (phoneError) {
     return NextResponse.json(
-      { error: 'Invalid phone number', code: 'INVALID_PHONE' },
+      { error: phoneError, code: 'INVALID_PHONE' },
       { status: 400 },
     );
   }
 
   if (typeof otp !== 'string' || !/^\d{4,6}$/.test(otp)) {
     return NextResponse.json(
-      { error: 'Invalid OTP format', code: 'INVALID_OTP' },
+      { error: 'Enter the 6-digit verification code.', code: 'INVALID_OTP' },
       { status: 400 },
     );
   }
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
     const isExpired = verification.message?.toLowerCase().includes('expir') ?? false;
     return NextResponse.json(
       {
-        error: isExpired ? 'This code has expired. Request a new code.' : 'Incorrect OTP. Please try again.',
+        error: isExpired ? AUTH_MESSAGES.expiredCode : AUTH_MESSAGES.invalidCode,
         code: isExpired ? 'EXPIRED_OTP' : 'INVALID_OTP',
       },
       { status: 400 },
@@ -83,11 +86,11 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (profileError) {
-    return NextResponse.json({ error: 'Sign-in is temporarily unavailable. Please try again.' }, { status: 503 });
+    return NextResponse.json({ error: AUTH_MESSAGES.signIn }, { status: 503 });
   }
   if (existingProfile?.username) {
     return NextResponse.json(
-      { error: 'Sign in to this account with your username and password.', code: 'PASSWORD_ACCOUNT' },
+      { error: 'This number is linked to a username account. Use your PIN or contact support.', code: 'USERNAME_ACCOUNT' },
       { status: 409 },
     );
   }
@@ -167,7 +170,7 @@ export async function POST(request: NextRequest) {
     if (createError || !authData.user) {
       console.error('[verify-otp] auth.admin.createUser failed:', createError);
       return NextResponse.json(
-        { error: 'Could not create account. Please try again.' },
+        { error: AUTH_MESSAGES.register },
         { status: 500 },
       );
     }
@@ -186,7 +189,7 @@ export async function POST(request: NextRequest) {
       // A duplicate proves this insert failed. A transport error can leave its outcome unknown.
       if (insertError?.code === '23505') await adminSupabase.auth.admin.deleteUser(userId);
       return NextResponse.json(
-        { error: 'Could not create account. Please try again.' },
+        { error: AUTH_MESSAGES.register },
         { status: 500 },
       );
     }
@@ -210,8 +213,8 @@ export async function POST(request: NextRequest) {
   if (signInError || !signInData.session) {
     console.error('[verify-otp] signInWithPassword failed:', signInError);
     return NextResponse.json(
-      { error: 'Authentication error. Please try again.' },
-      { status: 500 },
+      { error: signInError?.status === 429 ? AUTH_MESSAGES.rateLimit : AUTH_MESSAGES.signIn },
+      { status: signInError?.status === 429 ? 429 : 500 },
     );
   }
 

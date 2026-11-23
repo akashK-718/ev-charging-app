@@ -1,35 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { AUTH_MESSAGES, validateName } from '@/lib/auth/validation';
 
-// Allows letters (including Unicode for Indian scripts) and spaces, 2–50 chars
-const NAME_REGEX = /^[\p{L}\s]{2,50}$/u;
 const VALID_ROLES = ['driver', 'lender'] as const;
 type Role = (typeof VALID_ROLES)[number];
-
-function validateName(v: unknown): string | null {
-  if (typeof v !== 'string') return 'Name is required.';
-  const trimmed = v.trim();
-  if (trimmed.length < 2) return 'Name must be at least 2 characters.';
-  if (trimmed.length > 50) return 'Name must be 50 characters or fewer.';
-  if (!NAME_REGEX.test(trimmed)) return 'Name can only contain letters and spaces.';
-  return null;
-}
 
 export async function PATCH(request: NextRequest) {
   const supabase = createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    return NextResponse.json({ error: 'Sign in to update your profile.' }, { status: 401 });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    return NextResponse.json({ error: AUTH_MESSAGES.invalidRequest }, { status: 400 });
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: AUTH_MESSAGES.invalidRequest }, { status: 400 });
+  }
   const b = body as Record<string, unknown>;
 
   // Reject phone changes — full flow requires dual OTP verification, uniqueness check, auth sync
