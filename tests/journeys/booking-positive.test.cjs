@@ -5,6 +5,7 @@ const { loadHandler } = require('./support/load-handler.cjs');
 const constants = loadHandler('src/lib/constants.ts');
 const { computeSessionEstimate } = loadHandler('src/lib/bookings/session-estimate.ts');
 const { formatINR } = loadHandler('src/lib/currency.ts');
+const bookingPrice = loadHandler('src/lib/bookings/price.ts');
 
 function fixture(chargerType, price) {
   const orders = [];
@@ -13,24 +14,30 @@ function fixture(chargerType, price) {
     price_per_kwh: price, charger_type: chargerType, deleted_at: null };
   const admin = { from(table) {
     tables.push(table);
-    assert.ok(['chargers', 'bookings'].includes(table));
+    assert.ok(['vehicles', 'chargers', 'bookings'].includes(table));
     const query = {
       select() { return query; }, eq() { return query; }, in() { return query; },
       lt() { return query; }, gt() { return Promise.resolve({ count: 0 }); },
       single() { return Promise.resolve({ data: charger }); },
+      maybeSingle() { return Promise.resolve({ data: { id: 'vehicle-test' } }); },
     };
     return query;
   } };
   const { POST } = loadHandler('src/app/api/payments/create-order/route.ts', {
     'next/server': { NextResponse },
+    'node:crypto': require('node:crypto'),
     '@/lib/constants': constants,
+    '@/lib/bookings/price': bookingPrice,
     '@/lib/supabase/server': {
       createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: 'driver-test' } } }) } }),
       createAdminClient: () => admin,
     },
-    '@/lib/razorpay': { getRazorpay: () => ({ orders: { create: async input => {
-      orders.push(input); return { id: 'order_test' };
-    } } }) },
+    '@/lib/razorpay': {
+      getRazorpayKeyId: () => 'rzp_test_key',
+      getRazorpay: () => ({ orders: { create: async input => {
+        orders.push(input); return { id: 'order_test' };
+      } } }),
+    },
     '@/lib/bookings/availability': {
       getPlatformMaxBookingDurationHours: () => 12,
       getBookingBufferMinutes: () => 15,
@@ -73,8 +80,16 @@ for (const [power, price, minutes, kwh, gross, fee, payout] of cases) {
     assert.equal(orders.length, 1);
     assert.equal(orders[0].amount, gross);
     assert.equal(orders[0].currency, 'INR');
-    assert.deepEqual(orders[0].notes, { charger_id: 'charger-test', driver_id: 'driver-test' });
-    assert.deepEqual(tables, ['chargers', 'bookings']);
+    assert.deepEqual(orders[0].notes, {
+      ...payload,
+      constraint_value: String(minutes),
+      kirin_booking: '1',
+      driver_id: 'driver-test',
+      lender_id: 'host-test',
+      platform_fee: String(fee),
+    });
+    assert.equal(orders[0].partial_payment, false);
+    assert.deepEqual(tables, ['vehicles', 'chargers', 'bookings']);
     // The adapters expose no insert/update method: order creation must not create a booking.
   });
 }
@@ -88,4 +103,11 @@ test('MONEY-01: checkout, commission and payout retain paise at display', () => 
   assert.equal(formatINR(10500), '₹105');
   assert.equal(formatINR(1575), '₹15.75');
   assert.equal(formatINR(8925), '₹89.25');
+});
+
+test('a budget quote stays within the selected amount after energy rounding', () => {
+  const minutes = bookingPrice.getBudgetDuration('AC_7kW', 12, 200);
+  const { amount } = bookingPrice.getBookingPrice('AC_7kW', 12, minutes);
+  assert.equal(amount, 19992);
+  assert.equal(formatINR(amount), '₹199.92');
 });

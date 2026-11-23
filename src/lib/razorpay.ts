@@ -6,25 +6,27 @@
  */
 
 import Razorpay from 'razorpay';
-
-if (!process.env.RAZORPAY_KEY_SECRET) {
-  console.warn(
-    '[razorpay] RAZORPAY_KEY_SECRET is not set. Payment endpoints will fail.'
-  );
-}
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 // Lazy-initialize so the module can be imported without crashing when env vars
 // are absent (e.g. during `next build` without a .env.local).
 let _razorpay: Razorpay | null = null;
 
+export function getRazorpayKeyId(): string {
+  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  if (!keyId) throw new Error('NEXT_PUBLIC_RAZORPAY_KEY_ID must be set');
+  if ((process.env.NODE_ENV === 'development' || process.env.OTP_BYPASS === 'true') &&
+      !keyId.startsWith('rzp_test_')) {
+    throw new Error('Razorpay test keys are required when running locally or using mock OTP');
+  }
+  return keyId;
+}
+
 export function getRazorpay(): Razorpay {
   if (!_razorpay) {
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
-    if (!keyId || !keySecret) {
-      throw new Error('Razorpay env vars NEXT_PUBLIC_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set');
-    }
-    _razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    if (!keySecret) throw new Error('RAZORPAY_KEY_SECRET must be set');
+    _razorpay = new Razorpay({ key_id: getRazorpayKeyId(), key_secret: keySecret });
   }
   return _razorpay;
 }
@@ -47,13 +49,7 @@ export function verifyWebhookSignature(
   payload: string,
   signature: string
 ): boolean {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require('crypto') as typeof import('crypto');
-  const expected = crypto
-    .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
-    .update(payload)
-    .digest('hex');
-  return expected === signature;
+  return verifySignature(payload, signature, process.env.RAZORPAY_WEBHOOK_SECRET);
 }
 
 /**
@@ -66,13 +62,13 @@ export function verifyPaymentSignature(
   paymentId: string,
   signature: string,
 ): boolean {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require('crypto') as typeof import('crypto');
-  const expected = crypto
-    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
-    .update(`${orderId}|${paymentId}`)
-    .digest('hex');
-  return expected === signature;
+  return verifySignature(`${orderId}|${paymentId}`, signature, process.env.RAZORPAY_KEY_SECRET);
+}
+
+function verifySignature(payload: string, signature: string, secret: string | undefined): boolean {
+  if (!secret || !/^[a-f0-9]{64}$/i.test(signature)) return false;
+  const expected = createHmac('sha256', secret).update(payload).digest();
+  return timingSafeEqual(expected, Buffer.from(signature, 'hex'));
 }
 
 /**

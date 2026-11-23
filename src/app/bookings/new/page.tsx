@@ -9,18 +9,29 @@ import { Button } from '@/components/ui/Button';
 import { CONNECTOR_LABELS, PLATFORM_MAX_BOOKING_DURATION_HOURS } from '@/lib/constants';
 import { cn, normalizeAddress } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { getBookingPrice, getBudgetDuration } from '@/lib/bookings/price';
+import { formatINR } from '@/lib/currency';
 
 declare global {
   interface Window {
-    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: 'payment.failed', handler: () => void) => void;
+    };
   }
 }
 
-const NOMINAL_KW: Record<string, number> = {
-  'AC_3.3kW': 3.3,
-  'AC_7kW': 7,
-  'AC_22kW': 22,
-  'DC_fast': 50,
+type CheckoutOrder = {
+  razorpay_order_id: string;
+  key_id: string;
+  amount: number;
+  currency: string;
+};
+
+type CheckoutPayment = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
 };
 
 const DURATION_OPTIONS = [
@@ -135,6 +146,8 @@ function NewBookingContent() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [checkoutPayment, setCheckoutPayment] = useState<CheckoutPayment | null>(null);
+  const [canRetryVerification, setCanRetryVerification] = useState(false);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -188,28 +201,24 @@ function NewBookingContent() {
   }, [chargerId, date, time]);
 
   const scheduledStart = useMemo(() => new Date(`${date}T${time}:00`), [date, time]);
-  const nominalKw = useMemo(() => charger ? (NOMINAL_KW[charger.charger_type] ?? 7) : 7, [charger]);
-
   // ── Budget resolution ──────────────────────────────────────────────────────
   // candidate_duration = budget ÷ (price/kWh × rated_kW) — what the budget would buy
   // in an unconstrained world. Resolved duration is capped at maxEnd availability.
   const budgetResolution = useMemo(() => {
-    if (!charger || constraintMode !== 'budget' || budgetRupees <= 0) return null;
-    const candidateDurationMinutes = (budgetRupees / charger.price_per_kwh / nominalKw) * 60;
-    const availableMinutes = maxEnd
-      ? (maxEnd.getTime() - scheduledStart.getTime()) / 60000
-      : Infinity;
-    const resolvedDurationMinutes = Math.min(candidateDurationMinutes, availableMinutes);
-    const resolvedKwh = Math.round(nominalKw * (resolvedDurationMinutes / 60) * 100) / 100;
-    const resolvedGrossRupees = Math.round(charger.price_per_kwh * resolvedKwh);
-    const isCapped = isFinite(availableMinutes) && availableMinutes < candidateDurationMinutes;
-    return { candidateDurationMinutes, resolvedDurationMinutes, resolvedKwh, resolvedGrossRupees, isCapped };
-  }, [charger, constraintMode, budgetRupees, nominalKw, maxEnd, scheduledStart]);
+    if (!charger || constraintMode !== 'budget' || budgetRupees <= 0 || charger.price_per_kwh <= 0) return null;
+    const candidateDurationMinutes = getBudgetDuration(charger.charger_type, charger.price_per_kwh, budgetRupees);
+    const candidateDurationMs = Math.floor(candidateDurationMinutes * 60000);
+    const availableMs = maxEnd ? Math.max(0, maxEnd.getTime() - scheduledStart.getTime()) : Infinity;
+    const durationMs = Math.min(candidateDurationMs, availableMs);
+    const resolvedDurationMinutes = durationMs / 60000;
+    const { kwh, amount } = getBookingPrice(charger.charger_type, charger.price_per_kwh, resolvedDurationMinutes);
+    return { durationMs, resolvedDurationMinutes, kwh, amount, isCapped: availableMs < candidateDurationMs };
+  }, [charger, constraintMode, budgetRupees, maxEnd, scheduledStart]);
 
   // ── Resolved scheduled end ─────────────────────────────────────────────────
   const scheduledEnd = useMemo(() => {
     if (constraintMode === 'budget' && budgetResolution) {
-      return new Date(scheduledStart.getTime() + budgetResolution.resolvedDurationMinutes * 60000);
+      return new Date(scheduledStart.getTime() + budgetResolution.durationMs);
     }
     if (durationMode === 'custom') {
       const totalMins = customHours * 60 + customMins;
@@ -223,13 +232,10 @@ function NewBookingContent() {
     [scheduledEnd, scheduledStart],
   );
 
-  // Duration-mode estimate (unchanged from existing logic)
   const estimate = useMemo(() => {
     if (!charger || constraintMode !== 'duration') return null;
-    const kwh = Math.round(nominalKw * (effectiveDurationMinutes / 60) * 100) / 100;
-    const grossRupees = Math.round(charger.price_per_kwh * kwh);
-    return { kwh, grossRupees };
-  }, [charger, constraintMode, nominalKw, effectiveDurationMinutes]);
+    return getBookingPrice(charger.charger_type, charger.price_per_kwh, effectiveDurationMinutes);
+  }, [charger, constraintMode, effectiveDurationMinutes]);
 
   const noAvailability = useMemo(
     () => maxEnd !== null && maxEnd <= new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000),
@@ -299,16 +305,46 @@ function NewBookingContent() {
   );
 
   // ── Submit gate ────────────────────────────────────────────────────────────
-  const canSubmit = !submitting && !noAvailability && (
+  const canSubmit = !submitting && !checkoutPayment && !noAvailability && (
     constraintMode === 'duration'
       ? customDurationIsValid
       : (budgetResolution !== null && !budgetTooSmall && budgetRupees >= 1)
   );
 
-  // The rupee amount that will actually be charged (resolved, never raw budget)
-  const paymentGrossRupees = constraintMode === 'budget'
-    ? (budgetResolution?.resolvedGrossRupees ?? 0)
-    : (estimate?.grossRupees ?? 0);
+  const paymentAmount = (constraintMode === 'budget' ? budgetResolution?.amount : estimate?.amount) ?? 0;
+
+  async function confirmPayment(payment: CheckoutPayment) {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      // Checkout can return an authorized payment just before automatic capture.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const response = await fetch('/api/payments/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payment),
+        });
+        const body = await response.json() as { data?: { booking_id: string }; error?: string };
+        if (response.ok && body.data) {
+          haptic('medium');
+          router.push(`/bookings/${body.data.booking_id}`);
+          return;
+        }
+        if (response.status === 202 && attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        setCanRetryVerification(response.status === 202 || response.status >= 500);
+        setSubmitError(body.error ?? 'Could not confirm your payment.');
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      setCanRetryVerification(true);
+      setSubmitError('Could not confirm the payment. Check its status again.');
+      setSubmitting(false);
+    }
+  }
 
   async function handlePayAndBook() {
     if (!charger || !canSubmit) return;
@@ -330,7 +366,7 @@ function NewBookingContent() {
             : budgetRupees,
         }),
       });
-      const orderBody = await orderRes.json() as { data?: Record<string, unknown>; error?: string };
+      const orderBody = await orderRes.json() as { data?: CheckoutOrder; error?: string };
       if (!orderRes.ok || !orderBody.data) {
         setSubmitError(orderBody.error ?? 'Could not start payment');
         setSubmitting(false);
@@ -345,6 +381,7 @@ function NewBookingContent() {
         return;
       }
 
+      let checkoutCompleted = false;
       const rzp = new window.Razorpay({
         key: order.key_id,
         amount: order.amount,
@@ -352,35 +389,17 @@ function NewBookingContent() {
         order_id: order.razorpay_order_id,
         name: 'Kirin',
         description: charger.title,
-        handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-          void (async () => {
-            try {
-              const verifyRes = await fetch('/api/payments/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  ...order,
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                }),
-              });
-              const verifyBody = await verifyRes.json() as { data?: { booking_id: string }; error?: string };
-              if (!verifyRes.ok || !verifyBody.data) {
-                setSubmitError(verifyBody.error ?? 'Payment verification failed');
-                setSubmitting(false);
-                return;
-              }
-              haptic('medium');
-              router.push(`/bookings/${verifyBody.data.booking_id}`);
-            } catch {
-              setSubmitError('Payment verification failed. Contact support if you were charged.');
-              setSubmitting(false);
-            }
-          })();
+        handler: (payment: CheckoutPayment) => {
+          if (checkoutCompleted) return;
+          checkoutCompleted = true;
+          setCheckoutPayment(payment);
+          void confirmPayment(payment);
         },
-        modal: { ondismiss: () => setSubmitting(false) },
+        modal: { ondismiss: () => { if (!checkoutCompleted) setSubmitting(false); } },
         theme: { color: '#10d96a' },
+      });
+      rzp.on('payment.failed', () => {
+        setSubmitError('Payment failed. You can retry in Razorpay Checkout.');
       });
       rzp.open();
     } catch {
@@ -693,7 +712,7 @@ function NewBookingContent() {
                     {budgetResolution.isCapped && (
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-xs text-muted">Maximum estimated charge</span>
-                        <span className="text-sm font-bold text-ink">₹{budgetResolution.resolvedGrossRupees}</span>
+                        <span className="text-sm font-bold text-ink">{formatINR(budgetResolution.amount)}</span>
                       </div>
                     )}
                   </div>
@@ -718,10 +737,10 @@ function NewBookingContent() {
           </h2>
           <div className="flex justify-between text-sm">
             <span className="text-muted">~{estimate.kwh} kWh</span>
-            <span className="font-display font-bold text-lg text-ink">₹{estimate.grossRupees}</span>
+            <span className="font-display font-bold text-lg text-ink">{formatINR(estimate.amount)}</span>
           </div>
           <p className="text-xs text-muted">
-            Final amount may vary slightly based on actual energy delivered.
+            Paid upfront for this slot.
           </p>
           {(() => {
             const sv = vehicles.find(v => v.id === selectedVehicleId);
@@ -746,16 +765,16 @@ function NewBookingContent() {
             {budgetResolution.isCapped ? 'Estimated maximum' : 'Estimated cost'}
           </h2>
           <div className="flex justify-between text-sm">
-            <span className="text-muted">~{budgetResolution.resolvedKwh} kWh · {formatMinutes(budgetResolution.resolvedDurationMinutes)}</span>
-            <span className="font-display font-bold text-lg text-ink">₹{budgetResolution.resolvedGrossRupees}</span>
+            <span className="text-muted">~{budgetResolution.kwh} kWh · {formatMinutes(budgetResolution.resolvedDurationMinutes)}</span>
+            <span className="font-display font-bold text-lg text-ink">{formatINR(budgetResolution.amount)}</span>
           </div>
           {budgetResolution.isCapped ? (
             <p className="text-xs text-muted">
-              You will be charged up to ₹{budgetResolution.resolvedGrossRupees} — the maximum available in your selected window.
+              This amount covers the time available in your selected window.
             </p>
           ) : (
             <p className="text-xs text-muted">
-              Final amount may vary slightly based on actual energy delivered.
+              Paid upfront for this slot.
             </p>
           )}
           {(() => {
@@ -775,8 +794,9 @@ function NewBookingContent() {
       )}
 
       {submitError && (
-        <div className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
+        <div role="alert" className="px-4 py-3 bg-red-50 rounded-xl text-sm text-red-600 font-semibold">
           {submitError}
+          {checkoutPayment && <p className="mt-1">Payment reference {checkoutPayment.razorpay_payment_id}</p>}
         </div>
       )}
 
@@ -784,10 +804,10 @@ function NewBookingContent() {
         variant="primary"
         size="lg"
         loading={submitting}
-        disabled={!canSubmit}
-        onClick={() => { void handlePayAndBook(); }}
+        disabled={checkoutPayment ? !canRetryVerification || submitting : !canSubmit}
+        onClick={() => { void (checkoutPayment ? confirmPayment(checkoutPayment) : handlePayAndBook()); }}
       >
-        {submitting ? 'Processing…' : `Pay ₹${paymentGrossRupees} & book`}
+        {submitting ? 'Processing…' : checkoutPayment ? 'Check payment status' : `Pay ${formatINR(paymentAmount)} & book`}
       </Button>
     </main>
   );

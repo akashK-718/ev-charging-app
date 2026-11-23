@@ -33,9 +33,9 @@ cp .env.example .env.local
 | `SUPABASE_PHONE_PASSWORD_SECRET` | Secret used to derive auth passwords from phone numbers — **never change after first user** |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | Mapbox public access token |
 | `MSG91_AUTH_KEY` | MSG91 API key for OTP (omit entirely in dev to use bypass OTP `000000`) |
-| `RAZORPAY_KEY_ID` | Razorpay key ID |
-| `RAZORPAY_KEY_SECRET` | Razorpay secret |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Same Razorpay key ID (for client-side checkout) |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Razorpay Checkout key ID. Use an `rzp_test_…` key locally. |
+| `RAZORPAY_KEY_SECRET` | Matching Razorpay API key secret, server only |
+| `RAZORPAY_WEBHOOK_SECRET` | Secret configured for the Razorpay webhook, server only |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name for photo uploads |
 | `CLOUDINARY_API_KEY` | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret |
@@ -71,6 +71,12 @@ npm run dev
 App runs at `http://localhost:3000`.
 
 **Dev OTP bypass:** when `NODE_ENV=development` and `MSG91_AUTH_KEY` is absent, entering `000000` as the OTP succeeds — no SMS sent.
+
+### Razorpay booking payments
+
+Use the `kirin-dev` Supabase URL and keys for local payment testing. Apply [migration 044](../supabase/migrations/044_restrict_booking_payment_rpc.sql) in the `kirin-dev` SQL Editor to restrict booking writes to the server. Use Test Mode keys and enable automatic payment capture in the matching Razorpay account. Follow the [driver payment journey](journeys/driver.md#select-a-slot-and-pay) to make a sandbox payment and check the receipt.
+
+For webhook verification on an environment with a public HTTPS URL, subscribe to `payment.captured` on `/api/webhooks/razorpay` and use the same webhook secret in that environment. Razorpay Checkout can confirm the payment directly on localhost. The webhook also finalizes captured payments when the driver closes the page before confirmation. [Razorpay Standard Checkout](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps)
 
 ## 5. Seed demo data (optional)
 

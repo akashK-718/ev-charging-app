@@ -25,6 +25,10 @@ const MAINTENANCE_PASSTHROUGH = new Set(['/maintenance', '/emergency', '/auth', 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Settle payments already captured by Razorpay even during maintenance.
+  // The webhook authenticates Razorpay using the raw request signature.
+  if (pathname === '/api/webhooks/razorpay') return NextResponse.next();
+
   // ── Emergency lockdown (Edge Config — Supabase-independent) ──────────────────
   // Checked first, before any other logic. Edge Config reads are cached at the
   // edge so this adds negligible latency on the hot path.
