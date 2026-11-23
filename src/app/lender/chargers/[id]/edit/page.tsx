@@ -48,6 +48,7 @@ export default function EditChargerPage() {
   const params = useParams() as { id: string };
   const chargerId = params.id;
 
+  const [hoursChanged, setHoursChanged] = useState(false);
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<Partial<NewChargerDraft>>({});
   const [stepValid, setStepValid] = useState(false);
@@ -73,11 +74,11 @@ export default function EditChargerPage() {
         const { charger, slots } = body;
         if (!charger) { setLoadError('Charger not found'); setLoading(false); return; }
 
-        const availability: NewChargerDraft['availability'] = (slots ?? []).map(s => ({
-          day_of_week: s.day_of_week[0] ?? 0,
-          start_time: s.start_time,
-          end_time: s.end_time,
-        }));
+        const availability: NewChargerDraft['availability'] = (slots ?? []).flatMap(s => s.day_of_week.map(day => ({
+          day_of_week: day,
+          start_time: s.start_time.slice(0, 5),
+          end_time: s.end_time.slice(0, 5),
+        })));
 
         setDraft({
           chargerType: charger.charger_type as NewChargerDraft['chargerType'],
@@ -102,6 +103,7 @@ export default function EditChargerPage() {
   }, [chargerId]);
 
   function updateDraft(updates: Partial<NewChargerDraft>) {
+    if (updates.availability) setHoursChanged(true);
     setDraft(prev => ({ ...prev, ...updates }));
   }
 
@@ -116,6 +118,7 @@ export default function EditChargerPage() {
     setSubmitError(null);
 
     const payload: Record<string, unknown> = {};
+    if (hoursChanged) payload.availability = draft.availability;
     if (draft.title) payload.title = draft.title;
     if (draft.chargerType) payload.chargerType = draft.chargerType;
     if (draft.connectorTypes) payload.connectorTypes = draft.connectorTypes;

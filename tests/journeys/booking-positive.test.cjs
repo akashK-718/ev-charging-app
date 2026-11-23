@@ -7,7 +7,7 @@ const { computeSessionEstimate } = loadHandler('src/lib/bookings/session-estimat
 const { formatINR } = loadHandler('src/lib/currency.ts');
 const bookingPrice = loadHandler('src/lib/bookings/price.ts');
 
-function fixture(chargerType, price) {
+function fixture(chargerType, price, availableMinutes = 720) {
   const orders = [];
   const tables = [];
   const charger = { id: 'charger-test', lender_id: 'host-test', status: 'active',
@@ -40,7 +40,7 @@ function fixture(chargerType, price) {
     },
     '@/lib/bookings/availability': {
       getPlatformMaxBookingDurationHours: () => 12,
-      getBookingBufferMinutes: () => 15,
+      computeMaxEndTime: async (_id, start) => ({ maxEnd: new Date(+start + availableMinutes * 60000), reason: 'Host hours end at closing' }),
     },
     '@/lib/edge-config': { isEmergencyLockdown: async () => false },
     '@/lib/app-settings': { readKillSwitch: async () => true },
@@ -89,7 +89,7 @@ for (const [power, price, minutes, kwh, gross, fee, payout] of cases) {
       platform_fee: String(fee),
     });
     assert.equal(orders[0].partial_payment, false);
-    assert.deepEqual(tables, ['vehicles', 'chargers', 'bookings']);
+    assert.deepEqual(tables, ['vehicles', 'chargers']);
     // The adapters expose no insert/update method: order creation must not create a booking.
   });
 }
@@ -110,4 +110,16 @@ test('a budget quote stays within the selected amount after energy rounding', ()
   const { amount } = bookingPrice.getBookingPrice('AC_7kW', 12, minutes);
   assert.equal(amount, 19992);
   assert.equal(formatINR(amount), '₹199.92');
+});
+
+test('a slot extending past closing is rejected before a provider order is created', async () => {
+  const { POST, orders } = fixture('AC_7kW', 15, 30);
+  const start = new Date(Date.now() + 86400000);
+  const response = await POST(new Request('http://localhost/api/payments/create-order', {
+    method: 'POST', body: JSON.stringify({ charger_id: 'charger-test', scheduled_start: start.toISOString(),
+      scheduled_end: new Date(+start + 31 * 60000).toISOString() }),
+  }));
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Host hours/);
+  assert.deepEqual(orders, []);
 });

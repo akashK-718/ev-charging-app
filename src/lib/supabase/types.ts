@@ -435,6 +435,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      edit_charger_with_hours: {
+        Args: { p_id: string; p_owner: string; p_changes: Record<string, unknown>; p_slots: { day_of_week: number; start_time: string; end_time: string }[] };
+        Returns: Database['public']['Tables']['chargers']['Row'];
+      };
       reserve_pin_sign_in_attempt: {
         Args: { p_username: string };
         Returns: boolean;

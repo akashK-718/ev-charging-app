@@ -199,6 +199,21 @@ export async function PATCH(
     return NextResponse.json({ error: errors[0], details: errors }, { status: 400 });
   }
 
+  if ('availability' in b) {
+    const slots = b.availability;
+    const time = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (!Array.isArray(slots) || !slots.length || !slots.every(s =>
+      s && Number.isInteger(s.day_of_week) && s.day_of_week >= 0 && s.day_of_week <= 6 &&
+      time.test(s.start_time) && time.test(s.end_time) && s.start_time < s.end_time)) {
+      return NextResponse.json({ error: 'Choose an opening and closing time for each available day.' }, { status: 400 });
+    }
+    const { data, error } = await createAdminClient().rpc('edit_charger_with_hours', {
+      p_id: params.id, p_owner: user.id, p_changes: updates, p_slots: slots,
+    });
+    if (error) return NextResponse.json({ error: 'Could not save the listing and operating hours.' }, { status: 500 });
+    return NextResponse.json({ ok: true, charger: data });
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
   }
