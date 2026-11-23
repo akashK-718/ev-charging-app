@@ -1,19 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { getRazorpay } from '@/lib/razorpay';
+import { getRazorpay, getRazorpayKeyId } from '@/lib/razorpay';
 import { PLATFORM_COMMISSION_PERCENT, ACTIVE_BOOKING_STATUSES } from '@/lib/constants';
 import { getPlatformMaxBookingDurationHours, getBookingBufferMinutes } from '@/lib/bookings/availability';
 import { isEmergencyLockdown } from '@/lib/edge-config';
 import { readKillSwitch } from '@/lib/app-settings';
-
-// Rough nominal output per charger type, used only to estimate kWh for pricing
-// a slot upfront. Actual kwh_delivered is recorded at session end.
-const NOMINAL_KW: Record<string, number> = {
-  'AC_3.3kW': 3.3,
-  'AC_7kW': 7,
-  'AC_22kW': 22,
-  'DC_fast': 50,
-};
+import { getBookingPrice } from '@/lib/bookings/price';
 
 const MIN_DURATION_MINUTES = 15;
 
@@ -54,6 +47,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
   const b = body as Record<string, unknown>;
   const chargerId = b.charger_id;
   const scheduledStart = b.scheduled_start;
@@ -64,6 +60,14 @@ export async function POST(request: NextRequest) {
 
   if (typeof chargerId !== 'string' || typeof scheduledStart !== 'string' || typeof scheduledEnd !== 'string') {
     return NextResponse.json({ error: 'charger_id, scheduled_start, scheduled_end are required' }, { status: 400 });
+  }
+  if (
+    (b.vehicle_id != null && !vehicleId) ||
+    ((b.constraint_type != null || b.constraint_value != null) &&
+      ((constraintType !== 'duration' && constraintType !== 'budget') ||
+        constraintValue === null || !Number.isSafeInteger(constraintValue) || constraintValue <= 0))
+  ) {
+    return NextResponse.json({ error: 'Invalid vehicle or booking constraint' }, { status: 400 });
   }
 
   const start = new Date(scheduledStart);
@@ -84,6 +88,13 @@ export async function POST(request: NextRequest) {
   }
 
   const adminSupabase = createAdminClient();
+  if (vehicleId) {
+    const { data: vehicle, error } = await adminSupabase.from('vehicles')
+      .select('id').eq('id', vehicleId).eq('user_id', user.id).maybeSingle();
+    if (error || !vehicle) {
+      return NextResponse.json({ error: 'Vehicle not found' }, { status: 400 });
+    }
+  }
   const { data: charger } = await adminSupabase
     .from('chargers')
     .select('id, lender_id, status, price_per_kwh, charger_type, deleted_at')
@@ -107,13 +118,16 @@ export async function POST(request: NextRequest) {
   const bufferMs = getBookingBufferMinutes() * 60 * 1000;
   const startMinusBuffer = new Date(start.getTime() - bufferMs);
   const endPlusBuffer = new Date(end.getTime() + bufferMs);
-  const { count: conflictCount } = await adminSupabase
+  const { count: conflictCount, error: availabilityError } = await adminSupabase
     .from('bookings')
     .select('id', { count: 'exact', head: true })
     .eq('charger_id', chargerId)
     .in('status', ACTIVE_BOOKING_STATUSES)
     .lt('scheduled_start', endPlusBuffer.toISOString())
     .gt('scheduled_end', startMinusBuffer.toISOString());
+  if (availabilityError) {
+    return NextResponse.json({ error: 'Could not check availability. Please try again.' }, { status: 503 });
+  }
   if ((conflictCount ?? 0) > 0) {
     return NextResponse.json(
       { error: 'This time slot is no longer available. Please choose a different start time or duration.' },
@@ -121,23 +135,52 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const nominalKw = NOMINAL_KW[charger.charger_type] ?? 7;
-  const estimatedKwh = Math.round(nominalKw * (durationMinutes / 60) * 100) / 100;
-  const grossAmount = Math.round(charger.price_per_kwh * estimatedKwh * 100); // paise
+  const { kwh: estimatedKwh, amount: grossAmount } = getBookingPrice(
+    charger.charger_type, charger.price_per_kwh, durationMinutes,
+  );
   const platformFee = Math.round(grossAmount * (PLATFORM_COMMISSION_PERCENT / 100));
   const lenderPayout = grossAmount - platformFee;
 
-  if (grossAmount < 100) {
+  if (!Number.isSafeInteger(grossAmount) || grossAmount < 100) {
     return NextResponse.json({ error: 'Booking amount is too small to process' }, { status: 400 });
   }
+  if (constraintType === 'budget' && constraintValue !== null && grossAmount > constraintValue * 100) {
+    return NextResponse.json({ error: 'This slot exceeds your selected budget' }, { status: 400 });
+  }
 
+  const quote = {
+    charger_id: chargerId,
+    driver_id: user.id,
+    lender_id: charger.lender_id,
+    scheduled_start: start.toISOString(),
+    scheduled_end: end.toISOString(),
+    platform_fee: platformFee,
+    vehicle_id: vehicleId,
+    constraint_type: constraintType,
+    constraint_value: constraintValue,
+  };
   let order;
+  let keyId: string;
   try {
+    keyId = getRazorpayKeyId();
     order = await getRazorpay().orders.create({
       amount: grossAmount,
       currency: 'INR',
-      receipt: `booking_${Date.now()}`,
-      notes: { charger_id: chargerId, driver_id: user.id },
+      receipt: `booking_${randomUUID().replace(/-/g, '')}`,
+      partial_payment: false,
+      notes: {
+        kirin_booking: '1',
+        charger_id: quote.charger_id,
+        driver_id: quote.driver_id,
+        lender_id: quote.lender_id,
+        scheduled_start: quote.scheduled_start,
+        scheduled_end: quote.scheduled_end,
+        platform_fee: String(quote.platform_fee),
+        ...(vehicleId ? { vehicle_id: vehicleId } : {}),
+        ...(constraintType && constraintValue
+          ? { constraint_type: constraintType, constraint_value: String(constraintValue) }
+          : {}),
+      },
     });
   } catch (err) {
     console.error('[payments/create-order] Razorpay order creation failed:', err);
@@ -149,7 +192,7 @@ export async function POST(request: NextRequest) {
       razorpay_order_id: order.id,
       amount: grossAmount,
       currency: 'INR',
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key_id: keyId,
       charger_id: chargerId,
       lender_id: charger.lender_id,
       scheduled_start: start.toISOString(),

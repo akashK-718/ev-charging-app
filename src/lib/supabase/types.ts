@@ -462,6 +462,8 @@ export type Database = {
           p_payment_method?: string | null;
           p_card_network?: string | null;
           p_card_last4?: string | null;
+          p_constraint_type?: string | null;
+          p_constraint_value?: number | null;
         };
         Returns: string; // new booking UUID
       };
