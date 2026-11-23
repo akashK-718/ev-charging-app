@@ -5,7 +5,12 @@
 1. Open **Profile** and select **Turn on hosting**. Complete verification and provide payout details through the hosting setup.
 2. Open the hosting workspace, go to **Chargers**, and start a listing. Set its connector, power, price, location, photos, availability, and instructions. Review and submit the listing. Set weekly operating hours in IST or choose **24/7 always**. An active listing needs at least one active shift to accept bookings. Editing hours changes future booking availability and preserves existing reservations.
 
-For the booking test, a synthetic host with approved test payout details and a dedicated charger was seeded. The onboarding and verification screens still need their own run.
+### Submit and correct identity documents
+
+1. From **Profile → Start verification**, upload the Aadhaar photo and enter its last four digits. Upload the PAN photo and enter the PAN number, then upload a selfie.
+2. Enter a UPI ID or bank details, review the application, and select **Submit for verification**. Profile shows **Under review**.
+3. If the reviewer rejects the application or requests new documents, read the reason on Profile. Select **Resubmit documents** and complete the verification form again.
+4. After approval, return to Profile to see **Verified**. An eligible draft charger is published at approval.
 
 ## Accept a paid booking
 

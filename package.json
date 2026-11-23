@@ -10,7 +10,8 @@
     "type-check": "tsc --noEmit",
     "test": "tsc -p tsconfig.test.json && node --test .test-build/tests/*.test.js",
     "test:journeys": "node --test tests/journeys/*.test.cjs",
-    "test:browser": "node --test tests/browser/*.test.cjs"
+    "test:browser": "node --test tests/browser/*.test.cjs",
+    "test:kyc": "node --test tests/kyc/onboarding.test.cjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

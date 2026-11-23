@@ -283,6 +283,7 @@ export type Database = {
           status: 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           rejection_reason: string | null;
           submitted_at: string;
+          updated_at: string | null;
           reviewed_at: string | null;
           reviewed_by: string | null;
         };
@@ -300,6 +301,7 @@ export type Database = {
           status: 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          updated_at?: string | null;
           reviewed_by?: string | null;
         };
         Update: Partial<Database['public']['Tables']['kyc_submissions']['Insert']>;

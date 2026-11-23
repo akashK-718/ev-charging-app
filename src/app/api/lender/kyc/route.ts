@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { notify } from '@/lib/notifications';
 
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 
@@ -123,8 +122,6 @@ export async function POST(request: NextRequest) {
     .from('users')
     .update({ kyc_status: 'pending' })
     .eq('id', user.id);
-
-  await notify(user.id, 'kyc_approved', { submission_id: submission.id });
 
   return NextResponse.json({ ok: true, id: submission.id });
 }

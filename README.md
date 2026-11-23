@@ -96,6 +96,8 @@ Optional development and staging controls are `NOSHOW_WARNING_MINUTES`, `NOSHOW_
 
 For the browser suite, start the app at `http://localhost:3000` with the local `kirin-dev` configuration and `OTP_BYPASS=true`. Install the test browser once with `npx playwright-core install chromium`. Set `KIRIN_TEST_PHONE` to a dedicated OTP driver’s 10-digit number and run `npm run test:browser`. If the account needs onboarding, the suite saves `KIRIN_TEST_NAME` (default `Journey Driver`). The booking screen uses a synthetic charger and stops at the quote.
 
+The opt-in `npm run test:kyc` suite exercises host onboarding and admin review on local port 3000 with `kirin-dev` and migration 048. It uses two temporary accounts and uploads synthetic PNGs to the configured Cloudinary account. Supply working upload and deletion credentials. The suite removes its fixtures after the run.
+
 ## Repository layout
 
 ```text

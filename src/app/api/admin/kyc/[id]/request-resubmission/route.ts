@@ -43,7 +43,7 @@ export async function POST(
     return NextResponse.json({ error: 'Submission is not in pending state' }, { status: 409 });
   }
 
-  const { error: updateError } = await admin
+  const { data: reviewed, error: updateError } = await admin
     .from('kyc_submissions')
     .update({
       status: 'resubmission_required',
@@ -51,15 +51,21 @@ export async function POST(
       reviewed_at: new Date().toISOString(),
       reviewed_by: adminUser.id,
     })
-    .eq('id', params.id);
+    .eq('id', params.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     return NextResponse.json({ error: 'Failed to request resubmission' }, { status: 500 });
   }
+  if (!reviewed) {
+    return NextResponse.json({ error: 'This submission has already been reviewed.' }, { status: 409 });
+  }
 
   await admin
     .from('users')
-    .update({ kyc_status: 'resubmission_required' })
+    .update({ kyc_status: 'rejected' })
     .eq('id', sub.user_id);
 
   await Promise.all([

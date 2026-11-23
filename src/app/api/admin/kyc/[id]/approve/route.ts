@@ -31,17 +31,23 @@ export async function POST(
     return NextResponse.json({ error: 'Submission is not in pending state' }, { status: 409 });
   }
 
-  const { error: updateSubError } = await adminSupabase
+  const { data: reviewed, error: updateSubError } = await adminSupabase
     .from('kyc_submissions')
     .update({
       status: 'approved',
       reviewed_at: new Date().toISOString(),
       reviewed_by: adminUser.id,
     })
-    .eq('id', params.id);
+    .eq('id', params.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
 
   if (updateSubError) {
     return NextResponse.json({ error: 'Failed to approve submission' }, { status: 500 });
+  }
+  if (!reviewed) {
+    return NextResponse.json({ error: 'This submission has already been reviewed.' }, { status: 409 });
   }
 
   await adminSupabase
