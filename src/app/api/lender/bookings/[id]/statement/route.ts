@@ -172,14 +172,11 @@ export async function GET(
     row('Status', 'Paid out', MUTED, GREEN);
     row('Transfer date', formatDateOnly(payment.payout_released_at));
     row('Transfer reference', payment.razorpay_transfer_id, MUTED, MUTED);
+  } else if (payment.payout_released_at) {
+    row('Status', 'Marked processed', MUTED, GREEN);
+    row('Processing date', formatDateOnly(payment.payout_released_at));
   } else {
-    // Current honest state — RazorpayX bank transfer wiring not yet complete.
-    doc.fillColor(MUTED).fontSize(9).font('Helvetica');
-    doc.text(
-      'Payout processing — bank transfer integration in progress. Funds will be transferred to your registered bank account once payout processing is complete.',
-      L, y, { width: W },
-    );
-    y += 36;
+    row('Status', 'Pending');
   }
 
   // ── Footer ─────────────────────────────────────────────────────────────────

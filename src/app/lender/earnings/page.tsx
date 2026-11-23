@@ -1,3 +1,4 @@
+import { formatINR } from '@/lib/currency';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Download } from 'lucide-react';
@@ -38,11 +39,13 @@ function PayoutStatus({
     );
   }
 
-  // Current honest state — RazorpayX payout wiring not yet complete.
+  if (payoutReleasedAt) {
+    return <p className="pt-2 border-t border-gray-100 text-xs text-green">Payout marked processed</p>;
+  }
   return (
     <div className="pt-2 border-t border-gray-100">
       <p className="text-xs text-muted">
-        Payout processing — bank transfer integration in progress
+        Payout pending
       </p>
     </div>
   );
@@ -98,6 +101,7 @@ async function getEarningsData(userId: string) {
     adminSupabase
       .from('payments')
       .select('booking_id, gross_amount, platform_fee, lender_payout, payout_released_at, razorpay_transfer_id, created_at')
+      .in('status', ['paid', 'transferred'])
       .in('booking_id', bookingIds),
     adminSupabase
       .from('chargers')
@@ -159,20 +163,20 @@ export default async function LenderEarningsPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs text-muted uppercase tracking-wide font-semibold">Total earned</p>
           <p className="font-display font-extrabold text-3xl text-ink mt-1">
-            ₹{(totalEarned / 100).toFixed(0)}
+            {formatINR(totalEarned)}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-xl border border-gray-100 p-4">
             <p className="text-xs text-muted">This month</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
-              ₹{(thisMonth / 100).toFixed(0)}
+              {formatINR(thisMonth)}
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 p-4">
             <p className="text-xs text-muted">Pending payout</p>
             <p className="font-display font-bold text-xl text-ink mt-1">
-              ₹{(pendingPayout / 100).toFixed(0)}
+              {formatINR(pendingPayout)}
             </p>
           </div>
         </div>
@@ -227,16 +231,16 @@ export default async function LenderEarningsPage() {
                     <div className="space-y-1.5 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted">Session total</span>
-                        <span className="text-ink">₹{(session.payment.gross_amount / 100).toFixed(0)}</span>
+                        <span className="text-ink">{formatINR(session.payment.gross_amount)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted">Platform fee ({PLATFORM_COMMISSION_PERCENT}%)</span>
-                        <span className="text-muted">−₹{(session.payment.platform_fee / 100).toFixed(0)}</span>
+                        <span className="text-muted">−{formatINR(session.payment.platform_fee)}</span>
                       </div>
                       <div className="flex justify-between border-t border-gray-100 pt-1.5">
                         <span className="font-semibold text-ink">Your earnings</span>
                         <span className="font-display font-bold text-green">
-                          ₹{(session.payment.lender_payout / 100).toFixed(0)}
+                          {formatINR(session.payment.lender_payout)}
                         </span>
                       </div>
                     </div>

@@ -317,6 +317,7 @@ export type Database = {
           razorpay_payout_id: string | null;
           booking_ids: string[];
           created_at: string;
+          updated_at: string | null;
           processed_at: string | null;
           failed_reason: string | null;
         };
@@ -328,6 +329,7 @@ export type Database = {
           bank_or_upi: string;
           razorpay_payout_id?: string | null;
           booking_ids: string[];
+          updated_at?: string | null;
           processed_at?: string | null;
           failed_reason?: string | null;
         };
@@ -437,6 +439,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      record_processed_payout: {
+        Args: { p_id: string; p_admin: string; p_hold_hours: number };
+        Returns: undefined;
+      };
       edit_charger_with_hours: {
         Args: { p_id: string; p_owner: string; p_changes: Record<string, unknown>; p_slots: { day_of_week: number; start_time: string; end_time: string }[] };
         Returns: Database['public']['Tables']['chargers']['Row'];

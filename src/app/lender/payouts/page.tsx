@@ -1,5 +1,6 @@
 'use client';
 
+import { formatINR } from '@/lib/currency';
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { PAYOUT_HOLD_HOURS } from '@/lib/constants';
@@ -125,7 +126,7 @@ export default function LenderPayoutsPage() {
                   <div className="bg-volt-soft rounded-xl border border-volt p-4">
                     <p className="text-sm text-muted">Total pending</p>
                     <p className="font-display font-extrabold text-3xl text-ink mt-0.5">
-                      ₹{(data.pending.total_paise / 100).toFixed(0)}
+                      {formatINR(data.pending.total_paise)}
                     </p>
                     <p className="text-xs text-muted mt-1">
                       Across {data.pending.count} booking{data.pending.count !== 1 ? 's' : ''}
@@ -134,7 +135,7 @@ export default function LenderPayoutsPage() {
 
                   {/* Hold period notice */}
                   <div className="px-4 py-3 bg-blue-50 rounded-xl text-sm text-blue-700">
-                    Payouts are released {PAYOUT_HOLD_HOURS} hours after session completion.
+                    Payouts become eligible for processing {PAYOUT_HOLD_HOURS} hours after session completion.
                   </div>
 
                   {/* Pending items list */}
@@ -154,13 +155,13 @@ export default function LenderPayoutsPage() {
                             </p>
                           </div>
                           <p className="font-display font-bold text-ink">
-                            ₹{(item.lender_payout / 100).toFixed(0)}
+                            {formatINR(item.lender_payout)}
                           </p>
                         </div>
                         <div className="mt-2 flex items-center gap-3 text-xs text-muted">
-                          <span>Session: ₹{(item.gross_amount / 100).toFixed(0)}</span>
+                          <span>Session: {formatINR(item.gross_amount)}</span>
                           <span>·</span>
-                          <span>Fee: −₹{(item.platform_fee / 100).toFixed(0)}</span>
+                          <span>Fee: −{formatINR(item.platform_fee)}</span>
                         </div>
                       </div>
                     ))}
@@ -192,7 +193,7 @@ export default function LenderPayoutsPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="font-display font-bold text-ink">
-                            ₹{(payout.amount_paise / 100).toFixed(0)}
+                            {formatINR(payout.amount_paise)}
                           </p>
                           <p className="text-xs text-muted mt-0.5">
                             {payout.processed_at ? formatDate(payout.processed_at) : '—'}

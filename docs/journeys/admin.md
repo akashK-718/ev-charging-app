@@ -9,8 +9,9 @@
 
 ## Reconcile a completed session and record a payout
 
-1. Open **Admin → Payouts** and locate the pending payout for the completed booking.
-2. Match the host, booking, and amount to the captured payment and platform fee. Verify the applicable hold and complete settlement through the configured payout process.
-3. Select **Mark processed** after settlement. The admin action records the processing timestamp and updates the associated payment records.
+1. Open **Admin → Payouts**. Locate the host and match the amount, booking count, and payout destination to the session under review.
+2. Allow 24 hours from session completion. Selecting **Mark processed** during the hold leaves the payout pending and displays the waiting period.
+3. After the hold, select **Mark processed**. The app checks the linked bookings, their host, and the unreleased payment amounts. A mismatch keeps the payout in the queue for investigation.
+4. On success the payout leaves the queue. The payment release, processing timestamp, audit entry, and host notification are recorded together. A repeated request leaves the original record intact.
 
-The charging test verified that the completed booking queued one pending payout. Admin review, settlement, and marking the payout processed remain to be exercised with a designated test admin.
+On kirin-dev this journey uses a synthetic payment. Marking the payout processed records the admin decision. Actual bank or UPI transfers are separate.
