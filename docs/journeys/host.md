@@ -25,3 +25,9 @@
 4. Review the completed booking and earnings. With approved payout details, completion queues the host share for [admin processing](admin.md).
 
 For booking `038abc7a-cdbb-4898-be25-ad32b1499e84`, the host used an authenticated session with the app APIs for acceptance, start, and end. The driver confirmed both steps in the browser. Supabase recorded one pending ₹35.70 payout from the ₹42 test payment after a ₹6.30 platform fee. The synthetic charger was paused after the run. The test host, bookings, and payout remain in the configured test backend.
+
+## Track session earnings and payout
+
+1. Open **Earnings** after the driver confirms session completion. Match the charger and booking reference. A ₹42 session with a 15% platform fee shows ₹6.30 in fees and ₹35.70 in host earnings.
+2. Open **Statement** for the session breakdown, or **View detailed payout history → Pending** to find the host share during the 24-hour hold.
+3. After the admin marks the payout processed, open **Payouts → Processed** to see the amount, destination and reference. On **Earnings**, total earned still includes the session and the pending balance excludes it.

@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { PAYOUT_HOLD_HOURS } from '@/lib/constants';
 
 /**
  * GET /api/lender/payouts
  *
  * Query: ?tab=pending|processed|all (default: all)
  *
- * pending  — completed bookings with paid payments, payout_released_at IS NULL,
- *            and session ended > PAYOUT_HOLD_HOURS ago (hold period satisfied),
- *            not already included in a completed payout.
+ * pending — completed bookings with paid, unreleased payments, including those on hold.
  * processed — payouts rows where user_id = current user, status = 'completed'
  * all       — combine both
  */
@@ -35,8 +32,6 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const tab = searchParams.get('tab') ?? 'all';
 
-  const holdCutoff = new Date(Date.now() - PAYOUT_HOLD_HOURS * 60 * 60 * 1000).toISOString();
-
   // ── Pending items: completed bookings with paid-but-unreleased payments ──────
   const pendingItems: Array<{
     booking_id: string;
@@ -58,14 +53,13 @@ export async function GET(request: NextRequest) {
       .is('payout_released_at', null)
       .in(
         'booking_id',
-        // subselect: completed bookings belonging to this lender where actual_end < hold cutoff
+        // subselect: completed bookings belonging to this lender
         (
           await adminSupabase
             .from('bookings')
             .select('id')
             .eq('lender_id', user.id)
             .eq('status', 'completed')
-            .lt('actual_end', holdCutoff)
         ).data?.map(b => b.id) ?? [],
       );
 

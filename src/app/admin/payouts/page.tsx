@@ -1,5 +1,6 @@
 'use client';
 
+import { formatINR } from '@/lib/currency';
 import { useState, useEffect, useCallback } from 'react';
 
 type PayoutRow = {
@@ -94,7 +95,7 @@ export default function AdminPayoutsPage() {
                   </p>
                   <p className="text-xs text-muted">{payout.lender?.phone ?? '—'}</p>
                   <p className="font-display font-bold text-xl text-ink mt-2">
-                    ₹{(payout.amount_paise / 100).toFixed(0)}
+                    {formatINR(payout.amount_paise)}
                   </p>
                   <p className="text-xs text-muted mt-0.5">
                     {payout.booking_ids.length} booking{payout.booking_ids.length !== 1 ? 's' : ''}

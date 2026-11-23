@@ -98,6 +98,8 @@ For the browser suite, start the app at `http://localhost:3000` with the local `
 
 The opt-in `npm run test:kyc` suite exercises host onboarding and admin review on local port 3000 with `kirin-dev` and migration 048. It uses two temporary accounts and uploads synthetic PNGs to the configured Cloudinary account. Supply working upload and deletion credentials. The suite removes its fixtures after the run.
 
+Run `npm run test:payouts` with the local app on port 3000, Chromium installed for Playwright, and migration 049 applied to `kirin-dev`. The suite uses temporary driver, host, and admin accounts and a synthetic paid booking. It checks the 24-hour hold, advances the test booking’s timestamps, marks the payout processed in the admin UI, and removes its fixtures. It requires no payment provider credentials.
+
 ## Repository layout
 
 ```text

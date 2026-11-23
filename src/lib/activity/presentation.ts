@@ -165,7 +165,7 @@ export function notifBody(type: string, data: Record<string, unknown>): string {
     case 'kyc_resubmission_required':
       return 'Please update your verification documents in Profile';
     case 'payout_processed':
-      return 'Your payout has been transferred';
+      return 'Your payout was marked processed';
     default:
       return '';
   }

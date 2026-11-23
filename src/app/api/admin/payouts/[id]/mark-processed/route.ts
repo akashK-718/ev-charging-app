@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { notify } from '@/lib/notifications';
+import { PAYOUT_HOLD_HOURS } from '@/lib/constants';
+import { formatINR } from '@/lib/currency';
 import { sendPushNotification } from '@/lib/notifications/push';
-import { getAdminUser, logAdminAction } from '@/lib/admin';
+import { getAdminUser } from '@/lib/admin';
 import { readKillSwitch } from '@/lib/app-settings';
 
 export async function POST(
@@ -23,7 +24,7 @@ export async function POST(
 
   const { data: payout, error: fetchError } = await adminSupabase
     .from('payouts')
-    .select('id, user_id, status, booking_ids, amount_paise')
+    .select('id, user_id, amount_paise')
     .eq('id', params.id)
     .single();
 
@@ -31,54 +32,27 @@ export async function POST(
     return NextResponse.json({ error: 'Payout not found' }, { status: 404 });
   }
 
-  const p = payout as {
-    id: string; user_id: string; status: string;
-    booking_ids: string[]; amount_paise: number;
-  };
-
-  if (p.status !== 'pending') {
-    return NextResponse.json({ error: `Payout is already ${p.status}` }, { status: 409 });
+  const { error } = await adminSupabase.rpc('record_processed_payout', {
+    p_id: payout.id, p_admin: adminUser.id, p_hold_hours: PAYOUT_HOLD_HOURS,
+  });
+  if (error) {
+    const failures: Record<string, [number, string]> = {
+      PAYOUT_FORBIDDEN: [403, 'Forbidden'],
+      PAYOUT_NOT_FOUND: [404, 'Payout not found'],
+      PAYOUT_ALREADY_REVIEWED: [409, 'This payout is no longer pending.'],
+      PAYOUT_ON_HOLD: [409, `Payouts can be processed ${PAYOUT_HOLD_HOURS} hours after session completion.`],
+      PAYOUT_RECONCILIATION_FAILED: [409, 'Check the linked bookings, payments and payout amount.'],
+    };
+    const [status, message] = failures[error.message] ?? [500, 'Could not record this payout.'];
+    return NextResponse.json({ error: message }, { status });
   }
 
-  const now = new Date().toISOString();
-
-  // Update payout status
-  const { error: updatePayoutError } = await adminSupabase
-    .from('payouts')
-    .update({ status: 'completed', processed_at: now })
-    .eq('id', params.id);
-
-  if (updatePayoutError) {
-    return NextResponse.json({ error: 'Failed to mark payout as processed' }, { status: 500 });
-  }
-
-  // Release payments — set payout_released_at for all bookings in this payout
-  if (p.booking_ids.length > 0) {
-    await adminSupabase
-      .from('payments')
-      .update({ payout_released_at: now, status: 'transferred' })
-      .in('booking_id', p.booking_ids);
-  }
-
-  const amountRupees = Math.round(p.amount_paise / 100).toLocaleString('en-IN');
-  await Promise.all([
-    notify(p.user_id, 'payout_processed', {
-      payout_id: params.id,
-      amount_paise: p.amount_paise,
-      booking_count: p.booking_ids.length,
-    }),
-    logAdminAction(adminUser.id, 'payout_processed', p.user_id, {
-      payout_id: params.id,
-      amount_paise: p.amount_paise,
-    }),
-    sendPushNotification({
-      userId: p.user_id,
-      title: 'Payout sent',
-      body: `₹${amountRupees} is on its way to your bank account.`,
-      url: '/lender/payouts',
-      category: 'payments_payouts',
-    }),
-  ]);
-
+  await sendPushNotification({
+    userId: payout.user_id,
+    title: 'Payout processed',
+    body: `Your host payout of ${formatINR(payout.amount_paise)} was marked processed.`,
+    url: '/lender/payouts',
+    category: 'payments_payouts',
+  });
   return NextResponse.json({ ok: true });
 }
