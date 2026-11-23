@@ -80,10 +80,16 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
+function localDateInput(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 function defaultDateTime() {
   const d = new Date(Date.now() + 60 * 60 * 1000);
   d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
-  const date = d.toISOString().slice(0, 10);
+  const date = localDateInput(d);
   const time = d.toTimeString().slice(0, 5);
   return { date, time };
 }
@@ -137,12 +143,23 @@ function NewBookingContent() {
 
   // ── Budget mode state ──────────────────────────────────────────────────────
   const [budgetMode, setBudgetMode] = useState<'preset' | 'custom'>('preset');
-  const [budgetRupees, setBudgetRupees] = useState(500);
+  const [presetBudget, setPresetBudget] = useState(500);
   const [budgetCustomInput, setBudgetCustomInput] = useState('');
 
+  const customBudget = /^\d+$/.test(budgetCustomInput) ? Number(budgetCustomInput) : 0;
+  const budgetRupees = budgetMode === 'preset' ? presetBudget : Number.isSafeInteger(customBudget) ? customBudget : 0;
+
   // ── Availability window ────────────────────────────────────────────────────
-  const [maxEnd, setMaxEnd] = useState<Date | null>(null);
-  const [maxEndReason, setMaxEndReason] = useState('');
+  const scheduledStart = useMemo(() => new Date(`${date}T${time}:00`), [date, time]);
+  const futureStart = scheduledStart.getTime() > Date.now();
+  const startIso = futureStart ? scheduledStart.toISOString() : '';
+  const windowUrl = chargerId && startIso
+    ? `/api/chargers/${chargerId}/availability-window?start=${encodeURIComponent(startIso)}` : '';
+  const [availability, setAvailability] = useState<{ url: string; end: Date | null; reason: string } | null>(null);
+  const [retry, setRetry] = useState(0);
+  const currentWindow = availability?.url === windowUrl ? availability : null;
+  const maxEnd = currentWindow?.end ?? null;
+  const maxEndReason = currentWindow?.reason ?? '';
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -166,49 +183,49 @@ function NewBookingContent() {
 
   useEffect(() => {
     if (!chargerId) { setLoadError('No charger selected'); setLoadingCharger(false); return; }
-    fetch(`/api/chargers/${chargerId}`)
+    const controller = new AbortController();
+    setLoadingCharger(true);
+    setCharger(null);
+    setLoadError(null);
+    fetch(`/api/chargers/${chargerId}`, { signal: controller.signal })
       .then(res => res.json())
       .then((body: { data?: Charger; error?: string }) => {
+        if (controller.signal.aborted) return;
         if (body.data) setCharger(body.data);
         else setLoadError(body.error ?? 'Charger not found');
       })
-      .catch(() => setLoadError('Failed to load charger'))
-      .finally(() => setLoadingCharger(false));
+      .catch(() => { if (!controller.signal.aborted) setLoadError('Failed to load charger'); })
+      .finally(() => { if (!controller.signal.aborted) setLoadingCharger(false); });
+    return () => controller.abort();
   }, [chargerId]);
 
   useEffect(() => {
-    if (!chargerId) return;
-    let cancelled = false;
+    setAvailability(null);
+    if (!windowUrl) return;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      const startIso = new Date(`${date}T${time}:00`).toISOString();
-      fetch(
-        `/api/chargers/${chargerId}/availability-window?start=${encodeURIComponent(startIso)}`,
-        { signal: controller.signal },
-      )
-        .then(res => res.json())
-        .then((body: { data?: { max_end: string; reason: string } }) => {
-          if (!cancelled && body.data) {
-            setMaxEnd(new Date(body.data.max_end));
-            setMaxEndReason(body.data.reason);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) { setMaxEnd(null); setMaxEndReason(''); }
-        });
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(windowUrl, { signal: controller.signal });
+        if (!res.ok) throw new Error('Availability unavailable');
+        const { data } = await res.json();
+        const end = new Date(data.max_end);
+        if (!Number.isFinite(end.getTime())) throw new Error('Invalid availability');
+        if (!controller.signal.aborted) setAvailability({ url: windowUrl, end, reason: data.reason });
+      } catch {
+        if (!controller.signal.aborted) setAvailability({ url: windowUrl, end: null, reason: 'Could not check availability.' });
+      }
     }, 400);
-    return () => { cancelled = true; clearTimeout(timeoutId); controller.abort(); };
-  }, [chargerId, date, time]);
+    return () => { clearTimeout(timeoutId); controller.abort(); };
+  }, [windowUrl, retry]);
 
-  const scheduledStart = useMemo(() => new Date(`${date}T${time}:00`), [date, time]);
   // ── Budget resolution ──────────────────────────────────────────────────────
   // candidate_duration = budget ÷ (price/kWh × rated_kW) — what the budget would buy
   // in an unconstrained world. Resolved duration is capped at maxEnd availability.
   const budgetResolution = useMemo(() => {
-    if (!charger || constraintMode !== 'budget' || budgetRupees <= 0 || charger.price_per_kwh <= 0) return null;
+    if (!charger || !maxEnd || constraintMode !== 'budget' || budgetRupees <= 0 || charger.price_per_kwh <= 0) return null;
     const candidateDurationMinutes = getBudgetDuration(charger.charger_type, charger.price_per_kwh, budgetRupees);
     const candidateDurationMs = Math.floor(candidateDurationMinutes * 60000);
-    const availableMs = maxEnd ? Math.max(0, maxEnd.getTime() - scheduledStart.getTime()) : Infinity;
+    const availableMs = Math.max(0, maxEnd.getTime() - scheduledStart.getTime());
     const durationMs = Math.min(candidateDurationMs, availableMs);
     const resolvedDurationMinutes = durationMs / 60000;
     const { kwh, amount } = getBookingPrice(charger.charger_type, charger.price_per_kwh, resolvedDurationMinutes);
@@ -233,12 +250,12 @@ function NewBookingContent() {
   );
 
   const estimate = useMemo(() => {
-    if (!charger || constraintMode !== 'duration') return null;
+    if (!charger || !maxEnd || effectiveDurationMinutes < MIN_CUSTOM_DURATION_MINUTES || scheduledEnd > maxEnd || constraintMode !== 'duration') return null;
     return getBookingPrice(charger.charger_type, charger.price_per_kwh, effectiveDurationMinutes);
-  }, [charger, constraintMode, effectiveDurationMinutes]);
+  }, [charger, maxEnd, scheduledEnd, constraintMode, effectiveDurationMinutes]);
 
   const noAvailability = useMemo(
-    () => maxEnd !== null && maxEnd <= new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000),
+    () => maxEnd !== null && maxEnd < new Date(scheduledStart.getTime() + MIN_CUSTOM_DURATION_MINUTES * 60000),
     [maxEnd, scheduledStart],
   );
 
@@ -284,18 +301,12 @@ function NewBookingContent() {
   // ── Budget-mode helpers ────────────────────────────────────────────────────
   function handleBudgetPresetSelect(rupees: number) {
     setBudgetMode('preset');
-    setBudgetRupees(rupees);
+    setPresetBudget(rupees);
   }
 
   function handleSelectCustomBudget() {
     setBudgetMode('custom');
     if (!budgetCustomInput) setBudgetCustomInput(String(budgetRupees));
-  }
-
-  function handleBudgetCustomChange(raw: string) {
-    setBudgetCustomInput(raw);
-    const parsed = parseInt(raw, 10);
-    if (!isNaN(parsed) && parsed > 0) setBudgetRupees(parsed);
   }
 
   const budgetTooSmall = useMemo(
@@ -305,9 +316,9 @@ function NewBookingContent() {
   );
 
   // ── Submit gate ────────────────────────────────────────────────────────────
-  const canSubmit = !submitting && !checkoutPayment && !noAvailability && (
+  const canSubmit = !submitting && !checkoutPayment && futureStart && maxEnd !== null && !noAvailability && (
     constraintMode === 'duration'
-      ? customDurationIsValid
+      ? customDurationIsValid && scheduledEnd <= maxEnd
       : (budgetResolution !== null && !budgetTooSmall && budgetRupees >= 1)
   );
 
@@ -348,6 +359,10 @@ function NewBookingContent() {
 
   async function handlePayAndBook() {
     if (!charger || !canSubmit) return;
+    if (scheduledStart.getTime() <= Date.now()) {
+      setSubmitError('Choose a start time in the future.');
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
 
@@ -438,10 +453,19 @@ function NewBookingContent() {
     );
   }
 
-  const minDate = new Date().toISOString().slice(0, 10);
+  if (charger.status !== 'active') {
+    return (
+      <main className="mx-auto max-w-lg space-y-4 px-4 py-10">
+        <h1 className="text-xl font-semibold text-ink">This charger is unavailable</h1>
+        <Link href="/explore" className="text-green-deep underline">Find another charger</Link>
+      </main>
+    );
+  }
+
+  const minDate = localDateInput(new Date());
 
   return (
-    <main className="min-h-screen px-6 py-10 space-y-5 max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
+    <main className="min-h-screen px-4 sm:px-6 py-6 sm:py-10 space-y-5 max-w-lg mx-auto pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] md:pb-10">
       <h1 className="text-2xl font-medium text-ink">Book a slot</h1>
 
       {/* Charger summary */}
@@ -498,7 +522,7 @@ function NewBookingContent() {
             value={date}
             min={minDate}
             onChange={e => setDate(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+            className="min-w-0 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
           />
         </div>
 
@@ -512,8 +536,16 @@ function NewBookingContent() {
             type="time"
             value={time}
             onChange={e => setTime(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+            className="min-w-0 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
           />
+        </div>
+
+        <div role="status" className="text-sm text-muted empty:hidden">
+          {!windowUrl ? (date && time ? 'Choose a start time in the future.' : 'Choose a date and start time.')
+            : !currentWindow ? 'Checking availability…'
+            : !maxEnd && <>{maxEndReason}{' '}
+              <button type="button" className="underline" onClick={() => { setAvailability(null); setRetry(n => n + 1); }}>Try again</button>
+            </>}
         </div>
 
         {/* Constraint mode tabs */}
@@ -544,7 +576,7 @@ function NewBookingContent() {
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 min-[400px]:grid-cols-4 gap-2">
                   {DURATION_OPTIONS.map(opt => {
                     const disabled = isPresetDisabled(opt.minutes);
                     const selected = durationMode === 'preset' && durationMinutes === opt.minutes;
@@ -554,8 +586,8 @@ function NewBookingContent() {
                         onClick={() => !disabled && handlePresetSelect(opt.minutes)}
                         disabled={disabled}
                         className={cn(
-                          'py-2 rounded-xl text-xs font-semibold transition-colors',
-                          selected
+                          'min-h-11 py-2 rounded-xl text-xs font-semibold transition-colors',
+                          selected && !disabled
                             ? 'bg-volt text-ink'
                             : disabled
                               ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
@@ -591,7 +623,7 @@ function NewBookingContent() {
                         <Clock className="w-4 h-4" /> Duration
                       </label>
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 flex items-center gap-2">
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
                           <input
                             id="custom-hours"
                             type="number"
@@ -599,12 +631,12 @@ function NewBookingContent() {
                             max={PLATFORM_MAX_BOOKING_DURATION_HOURS}
                             value={customHours}
                             onChange={e => setCustomHours(Math.max(0, Math.min(PLATFORM_MAX_BOOKING_DURATION_HOURS, parseInt(e.target.value, 10) || 0)))}
-                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                            className="min-w-0 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
                             aria-label="Hours"
                           />
                           <span className="text-sm text-muted shrink-0">h</span>
                         </div>
-                        <div className="flex-1 flex items-center gap-2">
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
                           <input
                             id="custom-mins"
                             type="number"
@@ -612,7 +644,7 @@ function NewBookingContent() {
                             max={59}
                             value={customMins}
                             onChange={e => setCustomMins(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
-                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                            className="min-w-0 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
                             aria-label="Minutes"
                           />
                           <span className="text-sm text-muted shrink-0">min</span>
@@ -649,7 +681,7 @@ function NewBookingContent() {
                         key={opt.rupees}
                         onClick={() => handleBudgetPresetSelect(opt.rupees)}
                         className={cn(
-                          'py-2 rounded-xl text-xs font-semibold transition-colors',
+                          'min-h-11 py-2 rounded-xl text-xs font-semibold transition-colors',
                           selected
                             ? 'bg-volt text-ink'
                             : 'bg-gray-100 text-muted hover:text-ink',
@@ -686,11 +718,14 @@ function NewBookingContent() {
                         inputMode="numeric"
                         min={1}
                         value={budgetCustomInput}
-                        onChange={e => handleBudgetCustomChange(e.target.value)}
+                        onChange={e => setBudgetCustomInput(e.target.value)}
+                        aria-invalid={!budgetRupees}
+                        aria-describedby={!budgetRupees ? "budget-error" : undefined}
                         placeholder="e.g. 750"
-                        className="w-full rounded-xl border border-gray-200 pl-8 pr-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
+                        className="min-w-0 w-full rounded-xl border border-gray-200 pl-8 pr-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-volt"
                       />
                     </div>
+                    {!budgetRupees && <p id="budget-error" className="mt-1 text-sm text-danger">Enter a positive whole-rupee amount.</p>}
                   </div>
                 )}
 
@@ -803,11 +838,12 @@ function NewBookingContent() {
       <Button
         variant="primary"
         size="lg"
+        className="w-full"
         loading={submitting}
         disabled={checkoutPayment ? !canRetryVerification || submitting : !canSubmit}
         onClick={() => { void (checkoutPayment ? confirmPayment(checkoutPayment) : handlePayAndBook()); }}
       >
-        {submitting ? 'Processing…' : checkoutPayment ? 'Check payment status' : `Pay ${formatINR(paymentAmount)} & book`}
+        {submitting ? 'Processing…' : checkoutPayment ? 'Check payment status' : paymentAmount > 0 ? `Pay ${formatINR(paymentAmount)} & book` : 'Pay & book'}
       </Button>
     </main>
   );

@@ -105,13 +105,19 @@ export async function POST(
   if (booking.status === 'in_progress') {
     const nowIso = new Date().toISOString();
 
-    const { error: updateError } = await adminSupabase
+    const { data: updated, error: updateError } = await adminSupabase
       .from('bookings')
       .update({ status: 'awaiting_end_confirmation', end_initiated_at: nowIso })
-      .eq('id', params.id);
+      .eq('id', params.id)
+      .eq('status', 'in_progress')
+      .select('id')
+      .maybeSingle();
 
     if (updateError) {
       return NextResponse.json({ error: 'Failed to initiate session end' }, { status: 500 });
+    }
+    if (!updated) {
+      return NextResponse.json({ error: 'Booking status has changed. Refresh to see the latest status.' }, { status: 409 });
     }
 
     const lenderName = (user.user_metadata?.name as string | undefined) ?? 'Your host';

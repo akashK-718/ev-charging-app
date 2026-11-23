@@ -114,8 +114,9 @@ export function FilterSheet({
       <div
         className={cn(
           'fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl',
-          'transition-transform duration-300 ease-out',
-          isOpen ? 'translate-y-0' : 'translate-y-full',
+          'flex max-h-[90dvh] flex-col md:mx-auto md:max-w-lg',
+          'transition-[transform,visibility] duration-300 ease-out',
+          isOpen ? 'visible translate-y-0' : 'invisible translate-y-full',
         )}
         role="dialog"
         aria-modal="true"
@@ -138,7 +139,7 @@ export function FilterSheet({
           </button>
         </div>
 
-        <div className="px-4 pb-8 space-y-6 max-h-[70dvh] overflow-y-auto">
+        <div className="min-h-0 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-6 overflow-y-auto overscroll-contain">
 
           {/* ── Vehicle (Compatibility) ──────────────────────────────────── */}
           {vehicles.length > 0 && (

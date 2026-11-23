@@ -88,10 +88,13 @@ Optional development and staging controls are `NOSHOW_WARNING_MINUTES`, `NOSHOW_
 | `npm run dev` | Start the development server on port 3000 |
 | `npm test` | Run regression tests for payment display, route geometry, Activity selectors, and Explore filters, session validation, and stale-request guards |
 | `npm run type-check` | Check TypeScript without emitting files |
-| `npm run test:journeys` | Run isolated positive booking-order and session tests without external services |
+| `npm run test:journeys` | Run isolated auth, booking availability, order and session lifecycle tests with success, failure and retry cases |
+| `npm run test:browser` | Exercise the driver journey and responsive layouts in Chromium against the local development server |
 | `npm run lint` | Run ESLint; the current codebase has warnings |
 | `npm run build` | Create a production build and run lint/type checks |
 | `npm run start` | Serve an existing production build |
+
+For the browser suite, start the app at `http://localhost:3000` with the local `kirin-dev` configuration and `OTP_BYPASS=true`. Install the test browser once with `npx playwright-core install chromium`. Set `KIRIN_TEST_PHONE` to a dedicated OTP driver’s 10-digit number and run `npm run test:browser`. If the account needs onboarding, the suite saves `KIRIN_TEST_NAME` (default `Journey Driver`). The booking screen uses a synthetic charger and stops at the quote.
 
 ## Repository layout
 

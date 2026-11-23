@@ -71,8 +71,9 @@ export function SessionFilterSheet({
       <div
         className={cn(
           'fixed inset-x-0 bottom-0 z-50 bg-surface-card rounded-t-2xl shadow-2xl',
-          'transition-transform duration-300 ease-out',
-          isOpen ? 'translate-y-0' : 'translate-y-full',
+          'flex max-h-[90dvh] flex-col md:mx-auto md:max-w-lg',
+          'transition-[transform,visibility] duration-300 ease-out',
+          isOpen ? 'visible translate-y-0' : 'invisible translate-y-full',
         )}
         role="dialog"
         aria-modal="true"
@@ -91,7 +92,7 @@ export function SessionFilterSheet({
             <X className="w-4 h-4 text-muted" />
           </button>
         </div>
-        <div className="pb-8">
+        <div className="min-h-0 overflow-y-auto overscroll-contain pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {options.map(({ key, label }) => (
             <button
               key={key}

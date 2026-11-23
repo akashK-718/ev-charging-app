@@ -10,7 +10,7 @@ For the booking test, a synthetic host with approved test payout details and a d
 ## Accept a paid booking
 
 1. Open the incoming request in **Hosting → Bookings**. Check the charger, driver, and reserved time.
-2. Select **Accept booking** within 30 minutes of the request. Check that the status changes from **Pending** to **Confirmed** and the timeline shows when it was accepted.
+2. Select **Accept booking** within 30 minutes of the request. Check that the status changes from **Pending** to **Confirmed** and the timeline shows when it was accepted. If the booking changed while the request was open, refresh it to see the current status.
 
 ## Run the charging session
 

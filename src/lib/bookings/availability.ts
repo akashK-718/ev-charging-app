@@ -50,15 +50,18 @@ export async function computeMaxEndTime(
 
   const supabase = createAdminClient();
 
-  const { data: nextBooking } = await supabase
+  const bufferMs = getBookingBufferMinutes() * 60 * 1000;
+  const { data: nextBooking, error } = await supabase
     .from('bookings')
     .select('scheduled_start')
     .eq('charger_id', chargerId)
     .in('status', ACTIVE_BOOKING_STATUSES)
-    .gt('scheduled_start', start.toISOString())
+    .gt('scheduled_end', new Date(start.getTime() - bufferMs).toISOString())
     .order('scheduled_start', { ascending: true })
     .limit(1)
     .maybeSingle();
+
+  if (error) throw new Error('Could not check availability');
 
   if (!nextBooking) {
     return {
@@ -67,9 +70,10 @@ export async function computeMaxEndTime(
     };
   }
 
-  const bufferMs = getBookingBufferMinutes() * 60 * 1000;
   const nextStart = new Date(nextBooking.scheduled_start);
   const bookingCap = new Date(nextStart.getTime() - bufferMs);
+
+  if (bookingCap <= start) return { maxEnd: start, reason: 'This start time is already reserved' };
 
   if (bookingCap < platformMax) {
     return { maxEnd: bookingCap, reason: formatNextBookingReason(nextStart, start) };

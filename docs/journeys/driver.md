@@ -3,7 +3,7 @@
 ## Sign in and set up a vehicle
 
 1. Open `/auth` and choose phone OTP or username and PIN. With OTP, enter the mobile number and verification code. For PIN signup, choose **Create an account** and enter a username, four-digit PIN, and mobile number. The phone number is saved for booking contact without sending a code.
-2. A new driver enters a name and lands on Home. A returning driver lands on Home with their saved profile.
+2. A new driver enters a name and lands on Home. If they leave OTP signup before saving a name, signing in again resumes that step. A returning driver lands on Home with their saved profile.
 3. Open **Profile → My Vehicles → Add vehicle**. Enter the make, model, and connector types, then save. The first vehicle becomes the default. Use the vehicle list to edit it or choose another default.
 
 The returning session and first vehicle were verified in the browser. The CCS2 test vehicle stayed the default after reload.
@@ -17,7 +17,7 @@ The vehicle filter reduced the nearby results from 25 to 5. The charger detail a
 
 ## Select a slot and pay
 
-1. Choose a future date, start time, and duration or budget. Check the vehicle and estimated total. To run the full test immediately, choose a slot starting within 30 minutes and make sure the test host is ready to accept it.
+1. Choose a future date, start time, and duration or budget. Check the vehicle and estimated total. If availability cannot be loaded, choose **Try again**. An exact 30-minute opening supports **30 min**. A custom budget must be a positive whole-rupee amount that covers the minimum duration. To run the full test immediately, choose a slot starting within 30 minutes and make sure the test host is ready to accept it.
 2. Select **Pay & book**. For a sandbox run, confirm **Test Mode** in Razorpay, choose **Netbanking** and a test bank, then select **Success** on the demo bank page. [Razorpay test integration](https://razorpay.com/blog/payment-gateway-testing)
 3. Return to Kirin and confirm that the booking shows **Pending** and the payment amount. The booking moves to **Confirmed** after the host accepts. The confirmed booking includes the charger address and host contact.
 
