@@ -3,7 +3,7 @@
 ## Set up hosting
 
 1. Open **Profile** and select **Turn on hosting**. Complete verification and provide payout details through the hosting setup.
-2. Open the hosting workspace, go to **Chargers**, and start a listing. Set its connector, power, price, location, photos, availability, and instructions. Review and submit the listing. Confirm it can be booked once verification is approved and the listing is active.
+2. Open the hosting workspace, go to **Chargers**, and start a listing. Set its connector, power, price, location, photos, availability, and instructions. Review and submit the listing. Set weekly operating hours in IST or choose **24/7 always**. An active listing needs at least one active shift to accept bookings. Editing hours changes future booking availability and preserves existing reservations.
 
 For the booking test, a synthetic host with approved test payout details and a dedicated charger was seeded. The onboarding and verification screens still need their own run.
 

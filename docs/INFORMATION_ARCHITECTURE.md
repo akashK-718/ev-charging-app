@@ -746,11 +746,12 @@ When a driver requests a booking `[start, end)`:
 ```
 maxEnd = min(
   start + PLATFORM_MAX_BOOKING_DURATION_HOURS,
+  end_of_continuous_host_hours,
   next_active_booking.scheduled_start − BOOKING_BUFFER_MINUTES
 )
 ```
 
-**Charger operating hours (`availability_slots`):** The `availability_slots` table (`day_of_week`, `start_time`, `end_time`) represents the lender's declared operating hours but is **currently not enforced during booking creation** — the API accepts bookings at any hour. This table is not included in `computeMaxEndTime` and is treated as "no per-day window constraint." Enforcing it is deferred to a future PR.
+The host's active weekly slots use India Standard Time. Opening is inclusive and a session can finish exactly at closing. Touching or overlapping shifts form a continuous window. With no active shift covering the requested start, the latest possible end equals the start. The 24/7 preset covers midnight. Migration 047 checks the entire interval when inserting a booking or changing its scheduled times or charger.
 
 **Server-side revalidation:** `POST /api/payments/create-order` re-runs the conflict check independently before opening a Razorpay order. The `create_booking_with_payment` DB function (migration 029) re-runs it atomically with a `SELECT … FOR UPDATE` lock, so races that slip through the API layer are caught and rejected with a `SLOT_CONFLICT` exception before any booking row is written.
 

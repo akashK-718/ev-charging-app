@@ -174,7 +174,16 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
 
   function updateDays(next: DayState[]) {
     setDays(next);
-    onChange({ availability: toDraftSlots(next) });
+    // A legacy listing can have several shifts on a day. Preserve the saved
+    // shifts on days the host did not edit in this one-window-per-day form.
+    const slots = next.flatMap((day, index) => {
+      const prior = days[index];
+      if (day.enabled === prior.enabled && day.start_time === prior.start_time && day.end_time === prior.end_time) {
+        return draft.availability?.filter(slot => slot.day_of_week === day.day_of_week) ?? [];
+      }
+      return toDraftSlots([day]);
+    });
+    onChange({ availability: slots });
   }
 
   function toggleDay(dayOfWeek: number) {
@@ -205,7 +214,7 @@ export function StepAvailability({ draft, onChange, onValidChange }: StepAvailab
     <div>
       <h1 className="text-2xl font-medium text-ink">Availability</h1>
       <p className="mt-2 text-base text-muted">
-        When is your charger available for bookings?
+        Set the hours drivers can book your charger in India Standard Time (IST).
       </p>
 
       {/* Quick-set presets */}

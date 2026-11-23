@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getRazorpay, getRazorpayKeyId } from '@/lib/razorpay';
-import { PLATFORM_COMMISSION_PERCENT, ACTIVE_BOOKING_STATUSES } from '@/lib/constants';
-import { getPlatformMaxBookingDurationHours, getBookingBufferMinutes } from '@/lib/bookings/availability';
+import { PLATFORM_COMMISSION_PERCENT } from '@/lib/constants';
+import { getPlatformMaxBookingDurationHours, computeMaxEndTime } from '@/lib/bookings/availability';
 import { isEmergencyLockdown } from '@/lib/edge-config';
 import { readKillSwitch } from '@/lib/app-settings';
 import { getBookingPrice } from '@/lib/bookings/price';
@@ -111,28 +111,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'You cannot book your own charger' }, { status: 400 });
   }
 
-  // Reject if the requested window overlaps any active booking's effective
-  // blocking window [scheduled_start, scheduled_end + BOOKING_BUFFER_MINUTES).
-  // The DB function re-checks this atomically with FOR UPDATE; this early check
-  // surfaces a friendly error before payment is attempted.
-  const bufferMs = getBookingBufferMinutes() * 60 * 1000;
-  const startMinusBuffer = new Date(start.getTime() - bufferMs);
-  const endPlusBuffer = new Date(end.getTime() + bufferMs);
-  const { count: conflictCount, error: availabilityError } = await adminSupabase
-    .from('bookings')
-    .select('id', { count: 'exact', head: true })
-    .eq('charger_id', chargerId)
-    .in('status', ACTIVE_BOOKING_STATUSES)
-    .lt('scheduled_start', endPlusBuffer.toISOString())
-    .gt('scheduled_end', startMinusBuffer.toISOString());
-  if (availabilityError) {
+  try {
+    const window = await computeMaxEndTime(chargerId, start);
+    if (end > window.maxEnd) {
+      return NextResponse.json({ error: window.reason + '. Choose a different start time or duration.' }, { status: 409 });
+    }
+  } catch {
     return NextResponse.json({ error: 'Could not check availability. Please try again.' }, { status: 503 });
-  }
-  if ((conflictCount ?? 0) > 0) {
-    return NextResponse.json(
-      { error: 'This time slot is no longer available. Please choose a different start time or duration.' },
-      { status: 409 },
-    );
   }
 
   const { kwh: estimatedKwh, amount: grossAmount } = getBookingPrice(
