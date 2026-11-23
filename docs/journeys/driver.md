@@ -2,8 +2,9 @@
 
 ## Sign in and set up a vehicle
 
-1. Open `/auth`, enter a mobile number, and verify it with the OTP. A new driver enters a name and lands on Home. A returning driver lands on Home with their saved profile.
-2. Open **Profile → My Vehicles → Add vehicle**. Enter the make, model, and connector types, then save. The first vehicle becomes the default. Use the vehicle list to edit it or choose another default.
+1. Open `/auth` and choose phone OTP or username and password. With OTP, enter the mobile number and verification code. With a password, use your username to sign in or choose **Create an account** and enter a new username, password, and mobile number. The phone number is saved for booking contact without sending a code.
+2. A new driver enters a name and lands on Home. A returning driver lands on Home with their saved profile.
+3. Open **Profile → My Vehicles → Add vehicle**. Enter the make, model, and connector types, then save. The first vehicle becomes the default. Use the vehicle list to edit it or choose another default.
 
 The returning session and first vehicle were verified in the browser. The CCS2 test vehicle stayed the default after reload.
 
