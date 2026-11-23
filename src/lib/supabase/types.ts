@@ -4,8 +4,8 @@
  * In production, auto-generate from your Supabase schema:
  *   npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/lib/supabase/types.ts
  *
- * This is a hand-written stub that matches 001_initial_schema.sql + 008_lender_complete_flow.sql
- * + 010_booking_lifecycle.sql.
+ * This is a hand-maintained application projection, not a complete generated schema.
+ * Keep fields aligned with supabase/migrations when changing database access.
  */
 
 type BookingStatus =
@@ -32,6 +32,8 @@ export type Database = {
           kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
           kyc_doc_url: string | null;
           avg_rating: number | null;
+          razorpay_customer_id: string | null;
+          default_payment_token_id: string | null;
           razorpay_contact_id: string | null;
           razorpay_fund_account_id: string | null;
           is_admin: boolean;
@@ -45,6 +47,8 @@ export type Database = {
         Insert: {
           id?: string;
           phone: string;
+          razorpay_customer_id?: string | null;
+          default_payment_token_id?: string | null;
           name?: string | null;
           role?: 'driver' | 'lender' | 'admin';
           kyc_status?: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';

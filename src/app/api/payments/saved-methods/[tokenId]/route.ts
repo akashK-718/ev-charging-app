@@ -8,8 +8,6 @@ import { getRazorpay } from '@/lib/razorpay';
  * Removes a saved payment token from the user's Razorpay customer record.
  * If the deleted token was the user's default, clears default_payment_token_id.
  *
- * razorpay_customer_id and default_payment_token_id are added via migration 033
- * and are not yet in the generated Supabase types, so we use `any` casts.
  */
 export async function DELETE(
   _req: NextRequest,
@@ -21,15 +19,14 @@ export async function DELETE(
 
   const { tokenId } = params;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient();
   const { data: userRow } = await admin
     .from('users')
     .select('razorpay_customer_id, default_payment_token_id')
     .eq('id', user.id)
     .single();
 
-  const row = userRow as { razorpay_customer_id: string | null; default_payment_token_id: string | null } | null;
+  const row = userRow;
   if (!row?.razorpay_customer_id) {
     return NextResponse.json({ error: 'No payment methods on file' }, { status: 404 });
   }

@@ -80,6 +80,7 @@ Optional development and staging controls are `NOSHOW_WARNING_MINUTES`, `NOSHOW_
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Start the development server on port 3000 |
+| `npm test` | Run regression tests for payment display, route geometry, Activity selectors, and Explore filters, session validation, and stale-request guards |
 | `npm run type-check` | Check TypeScript without emitting files |
 | `npm run lint` | Run ESLint; the current codebase has warnings |
 | `npm run build` | Create a production build and run lint/type checks |
@@ -100,3 +101,5 @@ docs/                    Architecture and feature setup notes
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the map provider design and [`docs/SETUP.md`](docs/SETUP.md) for Edge Config and lifecycle job configuration. The migration list in `docs/SETUP.md` covers an earlier stage of the project; apply the complete migration directory as described above.
+
+For module boundaries, testing, and the remaining refactoring areas, see [`docs/MAINTAINABILITY.md`](docs/MAINTAINABILITY.md).
