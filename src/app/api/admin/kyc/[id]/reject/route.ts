@@ -42,7 +42,7 @@ export async function POST(
 
   const newStatus = 'rejected';
 
-  const { error: updateSubError } = await adminSupabase
+  const { data: reviewed, error: updateSubError } = await adminSupabase
     .from('kyc_submissions')
     .update({
       status: newStatus,
@@ -50,10 +50,16 @@ export async function POST(
       reviewed_at: new Date().toISOString(),
       reviewed_by: adminUser.id,
     })
-    .eq('id', params.id);
+    .eq('id', params.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
 
   if (updateSubError) {
     return NextResponse.json({ error: 'Failed to reject submission' }, { status: 500 });
+  }
+  if (!reviewed) {
+    return NextResponse.json({ error: 'This submission has already been reviewed.' }, { status: 409 });
   }
 
   await adminSupabase

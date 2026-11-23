@@ -586,7 +586,7 @@ export function ProfileBody({
                   <div className="flex gap-3 p-4 rounded-2xl border bg-red-50 border-red-200">
                     <ShieldX className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
                     <div>
-                      <p className="font-semibold text-sm text-red-700">Verification rejected</p>
+                      <p className="font-semibold text-sm text-red-700">{submission?.status === 'resubmission_required' ? 'New documents requested' : 'Verification rejected'}</p>
                       {submission?.rejection_reason && (
                         <p className="text-xs text-muted mt-1">Reason: {submission.rejection_reason}</p>
                       )}

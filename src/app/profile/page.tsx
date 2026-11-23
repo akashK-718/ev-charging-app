@@ -121,6 +121,9 @@ export default async function ProfilePage({
   // Defend against phantom-pending: kyc_status='pending' with no submission row
   const rawKycStatus = profile.kyc_status as string;
   const kycStatus: 'not_started' | 'pending' | 'approved' | 'rejected' = (() => {
+    // Older reviews could save the request on the submission while the profile
+    // remained pending. Surface the latest request so the host can correct it.
+    if (submission?.status === 'resubmission_required') return 'rejected';
     if (rawKycStatus === 'pending' && !submission) return 'not_started';
     return rawKycStatus as 'not_started' | 'pending' | 'approved' | 'rejected';
   })();

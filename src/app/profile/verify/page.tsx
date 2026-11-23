@@ -110,6 +110,7 @@ function PhotoUploader({ label, hint, value, onChange, capture }: PhotoUploaderP
 
       <input
         ref={inputRef}
+        aria-label={label}
         type="file"
         accept="image/*"
         capture={capture}
