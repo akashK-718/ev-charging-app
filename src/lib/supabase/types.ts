@@ -27,6 +27,7 @@ export type Database = {
         Row: {
           id: string;
           phone: string;
+          username: string | null;
           name: string | null;
           role: 'driver' | 'lender' | 'admin';
           kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected' | 'resubmission_required';
@@ -47,6 +48,7 @@ export type Database = {
         Insert: {
           id?: string;
           phone: string;
+          username?: string | null;
           razorpay_customer_id?: string | null;
           default_payment_token_id?: string | null;
           name?: string | null;

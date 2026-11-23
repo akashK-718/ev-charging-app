@@ -48,7 +48,7 @@ Docker and the Supabase CLI are needed only if you choose to run Supabase locall
 
    Replace the example values with credentials for the features you need. At minimum, configure the Supabase URL, public key, service role key, and phone password secret for the core authenticated flows. `.env.local` is ignored by Git; never commit real secrets. Variables prefixed `NEXT_PUBLIC_` are exposed to the browser, so do not put private keys in them.
 
-3. Apply **every SQL file** in [`supabase/migrations/`](supabase/migrations/) to the chosen Supabase project in filename order. There are currently 41 migrations (`001` through `041`); stopping after the first seven leaves newer features without their schema. Use the Supabase SQL Editor or your established migration workflow. For demo chargers, optionally run [`supabase/seeds/006_demo_chargers.sql`](supabase/seeds/006_demo_chargers.sql) in a non-production environment.
+3. Apply **every SQL file** in [`supabase/migrations/`](supabase/migrations/) to the chosen Supabase project in filename order. For an existing database, apply any pending migrations through [043](supabase/migrations/043_defer_username_account_provisioning.sql) before running this version. Use the Supabase SQL Editor or your established migration workflow.
 
 4. Start the app:
 
@@ -57,6 +57,12 @@ Docker and the Supabase CLI are needed only if you choose to run Supabase locall
    ```
 
    Open [http://localhost:3000](http://localhost:3000). If `MSG91_AUTH_KEY` is unset in development, the OTP flow accepts `000000` without sending an SMS. Keep `OTP_BYPASS` unset outside development.
+
+### Sign-in methods
+
+Choose phone OTP or username and password on `/auth`. Password signup requires a unique mobile number for booking contact. It sends no SMS and does not verify ownership of the number. A phone already on an OTP account stays with that account. Use the original sign-in method for an existing account. Password login uses Supabase Auth and needs no MSG91 credentials. Recovery and conversion between sign-in methods are not available yet.
+
+Migration 042 adds the username column and profile trigger. Migration 043 defers the trigger until Supabase Auth has written its signup metadata. If you used the development bootstrap through 042, apply only the pending migration 043. Backend instances sharing a database must use the updated OTP handler before password accounts are registered. The older handler resets passwords on profiles it finds by phone.
 
 ## Environment variables
 

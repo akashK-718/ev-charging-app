@@ -3,20 +3,20 @@
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { PasswordAuthForm } from '@/components/auth/PasswordAuthForm';
 import { Button } from '@/components/ui/Button';
 import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { BackButton } from '@/components/ui/BackButton';
 import { cn } from '@/lib/utils';
+import { MOBILE_PATTERN, type PasswordSession } from '@/lib/auth/password';
 import { createClient } from '@/lib/supabase/client';
 import { clearExploreSession } from '@/lib/user-storage';
 
-type AuthStep = null | 'phone' | 'otp' | 'profile';
+type AuthStep = null | 'phone' | 'password' | 'otp' | 'profile';
 
 const OTP_LENGTH = 6;
 const INITIAL_COOLDOWN = 30;
 const RESEND_COOLDOWN = 60;
-// Indian mobile numbers start with 6–9 and are 10 digits
-const INDIAN_PHONE_RE = /^[6-9]\d{9}$/;
 const NAME_REGEX = /^[\p{L}\s]{2,50}$/u;
 
 // Subtle green glow on primary auth CTAs — matches --green at 35% opacity
@@ -139,7 +139,7 @@ function AuthFlow() {
   // ── Phone handlers ──────────────────────────────────────────────────────────
   async function handlePhoneSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!INDIAN_PHONE_RE.test(phone)) {
+    if (!MOBILE_PATTERN.test(phone)) {
       setPhoneError('Enter a valid 10-digit Indian mobile number.');
       shakePhone();
       return;
@@ -165,6 +165,17 @@ function AuthFlow() {
     }
   }
 
+  async function handlePasswordSignIn(result: PasswordSession) {
+    if (result.onboarded) {
+      // Full navigation reads the new session cookies and bypasses prefetched auth redirects.
+      window.location.assign(result.isAdmin ? '/admin' : '/home');
+      return;
+    }
+    const { error } = await createClient().auth.setSession(result.session);
+    if (error) throw new Error('Could not start your session. Please try again.');
+    goToStep('profile');
+  }
+
   // ── OTP handlers ────────────────────────────────────────────────────────────
   const otp = digits.join('');
   const isOtpComplete = otp.length === OTP_LENGTH && digits.every(Boolean);
@@ -182,6 +193,8 @@ function AuthFlow() {
       if (!res.ok) {
         if (data.code === 'EXPIRED_OTP') {
           setOtpError('This code has expired. Request a new code.');
+        } else if (data.code === 'PASSWORD_ACCOUNT' || res.status >= 500) {
+          setOtpError(data.error ?? 'Sign-in is temporarily unavailable. Please try again.');
         } else {
           setOtpError('The code you entered is incorrect. Try again.');
         }
@@ -375,9 +388,17 @@ function AuthFlow() {
     );
   }
 
+  if (step === 'password') {
+    return (
+      <main key={stepKey} className={baseCls}>
+        <PasswordAuthForm onBack={() => goToStep('phone')} onSignedIn={handlePasswordSignIn} />
+      </main>
+    );
+  }
+
   // Phone step — Part A
   if (step === 'phone') {
-    const isPhoneValid = INDIAN_PHONE_RE.test(phone);
+    const isPhoneValid = MOBILE_PATTERN.test(phone);
     return (
       <main key={stepKey} className={baseCls}>
         <h1 className="text-2xl font-bold text-ink">Welcome</h1>
@@ -387,7 +408,7 @@ function AuthFlow() {
 
         <form onSubmit={handlePhoneSubmit} className="mt-10 space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-ink mb-2">
+            <label htmlFor="auth-otp-phone" className="block text-sm font-semibold text-ink mb-2">
               Phone number
             </label>
             <div className={cn(
@@ -399,6 +420,7 @@ function AuthFlow() {
                 +91
               </span>
               <input
+                id="auth-otp-phone"
                 type="tel"
                 value={phone}
                 onChange={(e) => {
@@ -426,6 +448,11 @@ function AuthFlow() {
             className={cn('w-full rounded-pill', CTA_GLOW)}
           >
             {!phoneLoading && 'Send OTP'}
+          </Button>
+
+          <Button type="button" variant="secondary" size="lg" disabled={phoneLoading}
+            onClick={() => goToStep('password')} className="w-full rounded-pill">
+            Use username and password
           </Button>
 
           <p className="text-xs text-muted text-center pt-1">

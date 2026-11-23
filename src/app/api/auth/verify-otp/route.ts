@@ -44,16 +44,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { phone, otp } = body as Record<string, string>;
+  const { phone, otp } = (body ?? {}) as Record<string, unknown>;
 
-  if (!/^\d{10}$/.test(phone)) {
+  if (typeof phone !== 'string' || !/^\d{10}$/.test(phone)) {
     return NextResponse.json(
       { error: 'Invalid phone number', code: 'INVALID_PHONE' },
       { status: 400 },
     );
   }
 
-  if (!/^\d{4,6}$/.test(otp)) {
+  if (typeof otp !== 'string' || !/^\d{4,6}$/.test(otp)) {
     return NextResponse.json(
       { error: 'Invalid OTP format', code: 'INVALID_OTP' },
       { status: 400 },
@@ -75,15 +75,22 @@ export async function POST(request: NextRequest) {
   }
 
   const adminSupabase = createAdminClient();
-  const password = await derivePassword(fullPhone);
-  const email = phoneToAuthEmail(fullPhone);
-
   // Look up in our users table to determine isNewUser
-  const { data: existingProfile } = await adminSupabase
+  const { data: existingProfile, error: profileError } = await adminSupabase
     .from('users')
-    .select('id, role, name, is_admin')
+    .select('id, role, name, is_admin, username')
     .eq('phone', fullPhone)
     .maybeSingle();
+
+  if (profileError) {
+    return NextResponse.json({ error: 'Sign-in is temporarily unavailable. Please try again.' }, { status: 503 });
+  }
+  if (existingProfile?.username) {
+    return NextResponse.json(
+      { error: 'Sign in to this account with your username and password.', code: 'PASSWORD_ACCOUNT' },
+      { status: 409 },
+    );
+  }
 
   // Registrations kill switch only blocks brand-new accounts — existing users
   // must always be able to sign in regardless of this flag.
@@ -106,6 +113,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const password = await derivePassword(fullPhone);
+  const email = phoneToAuthEmail(fullPhone);
   let userId: string;
   let role: string;
   let isAdmin: boolean;
@@ -126,9 +135,6 @@ export async function POST(request: NextRequest) {
       ...(profile.name ? { name: profile.name } : {}),
     };
 
-    // Step 1: create auth.users entry if absent (migration path for accounts that
-    // predate this OTP flow, or were inserted directly into public.users).
-    // "User already registered" error is intentionally ignored.
     // Step 1: create auth.users entry if absent (migration path for accounts that
     // predate this OTP flow, or were inserted directly into public.users).
     // "User already registered" error is intentionally ignored.
@@ -177,6 +183,8 @@ export async function POST(request: NextRequest) {
 
     if (insertError || !newProfile) {
       console.error('[verify-otp] users table insert failed:', insertError);
+      // A duplicate proves this insert failed. A transport error can leave its outcome unknown.
+      if (insertError?.code === '23505') await adminSupabase.auth.admin.deleteUser(userId);
       return NextResponse.json(
         { error: 'Could not create account. Please try again.' },
         { status: 500 },
