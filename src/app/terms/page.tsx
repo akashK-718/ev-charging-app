@@ -20,7 +20,7 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <section>
+        <section id="privacy" className="scroll-mt-16">
           <h2 className="font-semibold text-base mb-2">Privacy Policy</h2>
           <p className="text-muted">
             A full privacy policy is being drafted and will be published here before

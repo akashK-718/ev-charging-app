@@ -61,6 +61,7 @@ export function ActivityView({ historyItems, updates, initialUnreadCount }: Prop
           {(['sessions', 'updates'] as const).map(t => (
             <button
               key={t}
+              aria-pressed={tab === t}
               onClick={() => setTab(t)}
               className={cn(
                 'flex flex-1 items-center justify-center gap-1.5 h-9 rounded-full text-sm font-semibold border transition-colors',

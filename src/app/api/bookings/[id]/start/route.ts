@@ -64,13 +64,19 @@ export async function POST(
     if (booking.status !== 'confirmed') {
       return NextResponse.json({ error: `Booking is ${booking.status}, not confirmed` }, { status: 409 });
     }
-    const { error: updateError } = await adminSupabase
+    const { data: updated, error: updateError } = await adminSupabase
       .from('bookings')
       .update({ status: 'awaiting_driver_confirmation' })
-      .eq('id', params.id);
+      .eq('id', params.id)
+      .eq('status', 'confirmed')
+      .select('id')
+      .maybeSingle();
 
     if (updateError) {
       return NextResponse.json({ error: 'Failed to initiate session' }, { status: 500 });
+    }
+    if (!updated) {
+      return NextResponse.json({ error: 'Booking status has changed. Refresh to see the latest status.' }, { status: 409 });
     }
     const lenderName = (user.user_metadata?.name as string | undefined) ?? 'Your host';
     void (async () => {
@@ -158,13 +164,19 @@ export async function POST(
   }
 
   const nowIso = new Date().toISOString();
-  const { error: updateError } = await adminSupabase
+  const { data: updated, error: updateError } = await adminSupabase
     .from('bookings')
     .update({ status: 'in_progress', started_at: nowIso, actual_start: nowIso })
-    .eq('id', params.id);
+    .eq('id', params.id)
+    .eq('status', 'awaiting_driver_confirmation')
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     return NextResponse.json({ error: 'Failed to start session' }, { status: 500 });
+  }
+  if (!updated) {
+    return NextResponse.json({ error: 'Booking status has changed. Refresh to see the latest status.' }, { status: 409 });
   }
   const driverName = (user.user_metadata?.name as string | undefined) ?? 'Your driver';
   const chargerName = (chargerRes.data as { title?: string } | null)?.title ?? 'your charger';

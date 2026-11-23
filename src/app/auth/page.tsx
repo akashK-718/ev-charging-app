@@ -208,7 +208,7 @@ function AuthFlow() {
       }
       const { isNewUser, isAdmin, name: returnedName, session } = data.data as OtpData;
 
-      if (isNewUser) {
+      if (isNewUser || (!isAdmin && !returnedName)) {
         // Sync browser client before profile step so SIGNED_IN fires immediately.
         if (session) {
           await createClient().auth.setSession(session);
@@ -363,7 +363,7 @@ function AuthFlow() {
   // ── Render ───────────────────────────────────────────────────────────────────
   const stepKey = welcomeBackName !== null ? 'welcome' : step;
   const baseCls = cn(
-    'min-h-screen flex flex-col px-6 py-12 max-w-sm mx-auto w-full',
+    'min-h-dvh flex flex-col px-4 py-6 sm:px-6 sm:py-12 max-w-sm mx-auto w-full',
     hasTransitioned && 'animate-step-in',
   );
 
@@ -432,7 +432,7 @@ function AuthFlow() {
                 required
                 aria-invalid={Boolean(phoneError)}
                 aria-describedby={phoneError ? 'otp-phone-error' : undefined}
-                className="flex-1 px-4 bg-transparent focus:outline-none text-ink font-semibold placeholder:text-muted placeholder:font-normal text-base"
+                className="min-w-0 flex-1 px-4 bg-transparent focus:outline-none text-ink font-semibold placeholder:text-muted placeholder:font-normal text-base"
               />
             </div>
             <AuthError id="otp-phone-error" className="mt-1.5">{phoneError}</AuthError>
@@ -455,9 +455,9 @@ function AuthFlow() {
 
           <p className="text-xs text-muted text-center pt-1">
             By continuing, you agree to our{' '}
-            <Link href="#" className="underline hover:text-ink transition-colors">Terms</Link>
+            <Link href="/terms" className="underline hover:text-ink transition-colors">Terms</Link>
             {' '}&amp;{' '}
-            <Link href="#" className="underline hover:text-ink transition-colors">Privacy Policy</Link>.
+            <Link href="/terms#privacy" className="underline hover:text-ink transition-colors">Privacy Policy</Link>.
           </p>
         </form>
       </main>

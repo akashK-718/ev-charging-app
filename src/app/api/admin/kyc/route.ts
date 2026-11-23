@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get('status') ?? 'pending';
 
+  if (statusParam !== 'all' && !VALID_STATUSES.includes(statusParam as KycStatus)) {
+    return NextResponse.json({ error: 'Choose a valid submission status.' }, { status: 400 });
+  }
   const adminSupabase = createAdminClient();
 
   let submissionsQuery = adminSupabase
@@ -21,7 +24,7 @@ export async function GET(request: NextRequest) {
     .select('id, user_id, pan_number, aadhaar_last_4, status, submitted_at, rejection_reason')
     .order('submitted_at', { ascending: true });
 
-  if (statusParam !== 'all' && VALID_STATUSES.includes(statusParam as KycStatus)) {
+  if (statusParam !== 'all') {
     submissionsQuery = submissionsQuery.eq('status', statusParam as KycStatus);
   }
 

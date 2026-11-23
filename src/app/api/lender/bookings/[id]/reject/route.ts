@@ -25,7 +25,7 @@ export async function POST(
   }
 
   const b = body as { reason?: string };
-  const reason = typeof b.reason === 'string' ? b.reason.trim() : '';
+  const reason = typeof b?.reason === 'string' ? b.reason.trim() : '';
   if (reason.length < MIN_REASON_LENGTH) {
     return NextResponse.json(
       { error: `Rejection reason must be at least ${MIN_REASON_LENGTH} characters` },
@@ -54,7 +54,7 @@ export async function POST(
     );
   }
 
-  const { error: updateError } = await adminSupabase
+  const { data: updated, error: updateError } = await adminSupabase
     .from('bookings')
     .update({
       status: 'rejected',
@@ -62,10 +62,16 @@ export async function POST(
       rejection_reason: reason,
       cancellation_reason: reason,
     })
-    .eq('id', params.id);
+    .eq('id', params.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     return NextResponse.json({ error: 'Failed to reject booking' }, { status: 500 });
+  }
+  if (!updated) {
+    return NextResponse.json({ error: 'Booking status has changed. Refresh to see the latest status.' }, { status: 409 });
   }
 
   await refundIfNeeded(adminSupabase, params.id);

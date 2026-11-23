@@ -29,7 +29,10 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid start time' }, { status: 400 });
   }
 
-  const { maxEnd, reason } = await computeMaxEndTime(params.id, start);
-
-  return NextResponse.json({ data: { max_end: maxEnd.toISOString(), reason } });
+  try {
+    const { maxEnd, reason } = await computeMaxEndTime(params.id, start);
+    return NextResponse.json({ data: { max_end: maxEnd.toISOString(), reason } });
+  } catch {
+    return NextResponse.json({ error: 'Could not check availability. Please try again.' }, { status: 503 });
+  }
 }

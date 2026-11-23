@@ -47,13 +47,19 @@ export async function POST(
     );
   }
 
-  const { error: updateError } = await adminSupabase
+  const { data: updated, error: updateError } = await adminSupabase
     .from('bookings')
     .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
-    .eq('id', params.id);
+    .eq('id', params.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     return NextResponse.json({ error: 'Failed to accept booking' }, { status: 500 });
+  }
+  if (!updated) {
+    return NextResponse.json({ error: 'Booking status has changed. Refresh to see the latest status.' }, { status: 409 });
   }
 
   // Push: notify driver that booking is confirmed (fire-and-forget)
