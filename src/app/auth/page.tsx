@@ -3,21 +3,21 @@
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PasswordAuthForm } from '@/components/auth/PasswordAuthForm';
+import { AuthError } from '@/components/auth/AuthError';
+import { PinAuthForm } from '@/components/auth/PinAuthForm';
 import { Button } from '@/components/ui/Button';
 import { RoutineSuccess } from '@/components/ui/RoutineSuccess';
 import { BackButton } from '@/components/ui/BackButton';
 import { cn } from '@/lib/utils';
-import { MOBILE_PATTERN, type PasswordSession } from '@/lib/auth/password';
+import type { PinSession } from '@/lib/auth/pin';
+import { AUTH_MESSAGES, CODE_LENGTH as OTP_LENGTH, validateMobile, validateName } from '@/lib/auth/validation';
 import { createClient } from '@/lib/supabase/client';
 import { clearExploreSession } from '@/lib/user-storage';
 
-type AuthStep = null | 'phone' | 'password' | 'otp' | 'profile';
+type AuthStep = null | 'phone' | 'pin' | 'otp' | 'profile';
 
-const OTP_LENGTH = 6;
 const INITIAL_COOLDOWN = 30;
 const RESEND_COOLDOWN = 60;
-const NAME_REGEX = /^[\p{L}\s]{2,50}$/u;
 
 // Subtle green glow on primary auth CTAs — matches --green at 35% opacity
 const CTA_GLOW = 'shadow-[0_4px_20px_-4px_rgba(28,107,71,0.35)]';
@@ -59,15 +59,6 @@ function useShake() {
   }, []);
 
   return { shaking, shake };
-}
-
-function validateName(v: string): string | null {
-  const t = v.trim();
-  if (!t) return 'Name is required.';
-  if (t.length < 2) return 'Name must be at least 2 characters.';
-  if (t.length > 50) return 'Name must be 50 characters or fewer.';
-  if (!NAME_REGEX.test(t)) return 'Name can only contain letters and spaces.';
-  return null;
 }
 
 function AuthFlow() {
@@ -139,8 +130,10 @@ function AuthFlow() {
   // ── Phone handlers ──────────────────────────────────────────────────────────
   async function handlePhoneSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!MOBILE_PATTERN.test(phone)) {
-      setPhoneError('Enter a valid 10-digit Indian mobile number.');
+    if (phoneLoading) return;
+    const error = validateMobile(phone);
+    if (error) {
+      setPhoneError(error);
       shakePhone();
       return;
     }
@@ -152,35 +145,45 @@ function AuthFlow() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed to send verification code');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setPhoneError(data?.error ?? AUTH_MESSAGES.sendCode);
+        shakePhone();
+        return;
+      }
       setDigits(Array(OTP_LENGTH).fill(''));
       setOtpError(null);
       goToStep('otp');
-    } catch (err) {
-      setPhoneError(err instanceof Error ? err.message : 'Something went wrong');
+    } catch {
+      setPhoneError(AUTH_MESSAGES.sendCode);
       shakePhone();
     } finally {
       setPhoneLoading(false);
     }
   }
 
-  async function handlePasswordSignIn(result: PasswordSession) {
+  async function handlePinSignIn(result: PinSession) {
     if (result.onboarded) {
       // Full navigation reads the new session cookies and bypasses prefetched auth redirects.
       window.location.assign(result.isAdmin ? '/admin' : '/home');
-      return;
+      return true;
     }
     const { error } = await createClient().auth.setSession(result.session);
-    if (error) throw new Error('Could not start your session. Please try again.');
+    if (error) return false;
     goToStep('profile');
+    return true;
   }
 
   // ── OTP handlers ────────────────────────────────────────────────────────────
   const otp = digits.join('');
-  const isOtpComplete = otp.length === OTP_LENGTH && digits.every(Boolean);
-
   async function submitOtp(otpValue: string) {
+    if (otpLoading) return;
+    if (otpValue.length !== OTP_LENGTH) {
+      setOtpError('Enter the 6-digit verification code.');
+      shakeOtp();
+      inputRefs.current[digits.findIndex(digit => !digit)]?.focus();
+      return;
+    }
     setOtpError(null);
     setOtpLoading(true);
     try {
@@ -189,23 +192,21 @@ function AuthFlow() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, otp: otpValue }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        if (data.code === 'EXPIRED_OTP') {
-          setOtpError('This code has expired. Request a new code.');
-        } else if (data.code === 'PASSWORD_ACCOUNT' || res.status >= 500) {
-          setOtpError(data.error ?? 'Sign-in is temporarily unavailable. Please try again.');
-        } else {
-          setOtpError('The code you entered is incorrect. Try again.');
-        }
+        setOtpError(data?.error ?? AUTH_MESSAGES.signIn);
         shakeOtp();
         setDigits(Array(OTP_LENGTH).fill(''));
-        inputRefs.current[0]?.focus();
         setOtpLoading(false);
         return;
       }
       type OtpData = { isNewUser: boolean; isAdmin: boolean; name: string | null; session?: { access_token: string; refresh_token: string } };
-      const { isNewUser, isAdmin, name: returnedName, session } = (data.data ?? {}) as OtpData;
+      if (!data?.data) {
+        setOtpError(AUTH_MESSAGES.signIn);
+        setOtpLoading(false);
+        return;
+      }
+      const { isNewUser, isAdmin, name: returnedName, session } = data.data as OtpData;
 
       if (isNewUser) {
         // Sync browser client before profile step so SIGNED_IN fires immediately.
@@ -238,7 +239,7 @@ function AuthFlow() {
         }, 1800);
       }
     } catch {
-      setOtpError('Something went wrong. Please try again.');
+      setOtpError(AUTH_MESSAGES.signIn);
       shakeOtp();
       setOtpLoading(false);
     }
@@ -251,7 +252,7 @@ function AuthFlow() {
     setDigits(next);
     setOtpError(null);
     if (digit && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
-    if (digit && index === OTP_LENGTH - 1) void submitOtp(next.join(''));
+    if (next.every(Boolean)) void submitOtp(next.join(''));
   }
 
   function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
@@ -270,6 +271,7 @@ function AuthFlow() {
     const next = Array(OTP_LENGTH).fill('');
     pasted.split('').forEach((d, i) => { next[i] = d; });
     setDigits(next);
+    setOtpError(null);
     const lastIdx = Math.min(pasted.length, OTP_LENGTH) - 1;
     inputRefs.current[lastIdx]?.focus();
     if (pasted.length === OTP_LENGTH) void submitOtp(pasted);
@@ -285,14 +287,9 @@ function AuthFlow() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
       });
-      const data = await res.json();
-      if (res.status === 429) {
-        setResendMessage(data.error ?? 'Too many requests. Please wait before trying again.');
-        setResendState('idle');
-        return;
-      }
       if (!res.ok) {
-        setResendMessage("Couldn't send code. Please try again.");
+        const data = await res.json().catch(() => null);
+        setResendMessage(data?.error ?? AUTH_MESSAGES.sendCode);
         setResendState('idle');
         return;
       }
@@ -303,7 +300,7 @@ function AuthFlow() {
       restart(RESEND_COOLDOWN);
       setTimeout(() => setResendState('idle'), 3000);
     } catch {
-      setResendMessage("Couldn't send code. Please try again.");
+      setResendMessage(AUTH_MESSAGES.sendCode);
       setResendState('idle');
     }
   }
@@ -311,15 +308,16 @@ function AuthFlow() {
   // ── Profile handlers ─────────────────────────────────────────────────────────
   function handleNameChange(v: string) {
     setName(v);
-    if (nameTouched) setNameError(validateName(v));
+    if (nameTouched) setNameError(validateName(v) ?? null);
   }
 
   function handleNameBlur() {
     setNameTouched(true);
-    setNameError(validateName(name));
+    setNameError(validateName(name) ?? null);
   }
 
   async function handleNameContinue() {
+    if (nameLoading) return;
     const err = validateName(name);
     if (err) {
       setNameTouched(true);
@@ -335,9 +333,10 @@ function AuthFlow() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim() }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setNameError(data.error ?? 'Something went wrong. Please try again.');
+        const data = await res.json().catch(() => null);
+        setNameTouched(true);
+        setNameError(data?.error ?? AUTH_MESSAGES.saveName);
         shakeName();
         setNameLoading(false);
         return;
@@ -346,7 +345,8 @@ function AuthFlow() {
       await createClient().auth.refreshSession();
       router.push('/home');
     } catch {
-      setNameError('Something went wrong. Please try again.');
+      setNameTouched(true);
+      setNameError(AUTH_MESSAGES.saveName);
       shakeName();
       setNameLoading(false);
     }
@@ -388,17 +388,16 @@ function AuthFlow() {
     );
   }
 
-  if (step === 'password') {
+  if (step === 'pin') {
     return (
       <main key={stepKey} className={baseCls}>
-        <PasswordAuthForm onBack={() => goToStep('phone')} onSignedIn={handlePasswordSignIn} />
+        <PinAuthForm onBack={() => goToStep('phone')} onSignedIn={handlePinSignIn} />
       </main>
     );
   }
 
   // Phone step — Part A
   if (step === 'phone') {
-    const isPhoneValid = MOBILE_PATTERN.test(phone);
     return (
       <main key={stepKey} className={baseCls}>
         <h1 className="text-2xl font-bold text-ink">Welcome</h1>
@@ -406,7 +405,7 @@ function AuthFlow() {
           We&apos;ll send you a 6-digit code to verify.
         </p>
 
-        <form onSubmit={handlePhoneSubmit} className="mt-10 space-y-4">
+        <form noValidate onSubmit={handlePhoneSubmit} className="mt-10 space-y-4">
           <div>
             <label htmlFor="auth-otp-phone" className="block text-sm font-semibold text-ink mb-2">
               Phone number
@@ -431,12 +430,12 @@ function AuthFlow() {
                 maxLength={10}
                 inputMode="numeric"
                 required
+                aria-invalid={Boolean(phoneError)}
+                aria-describedby={phoneError ? 'otp-phone-error' : undefined}
                 className="flex-1 px-4 bg-transparent focus:outline-none text-ink font-semibold placeholder:text-muted placeholder:font-normal text-base"
               />
             </div>
-            {phoneError && (
-              <p className="mt-1.5 text-xs text-danger font-medium">{phoneError}</p>
-            )}
+            <AuthError id="otp-phone-error" className="mt-1.5">{phoneError}</AuthError>
           </div>
 
           <Button
@@ -444,15 +443,14 @@ function AuthFlow() {
             variant="primary"
             size="lg"
             loading={phoneLoading}
-            disabled={!isPhoneValid}
             className={cn('w-full rounded-pill', CTA_GLOW)}
           >
             {!phoneLoading && 'Send OTP'}
           </Button>
 
           <Button type="button" variant="secondary" size="lg" disabled={phoneLoading}
-            onClick={() => goToStep('password')} className="w-full rounded-pill">
-            Use username and password
+            onClick={() => goToStep('pin')} className="w-full rounded-pill">
+            Use username and PIN
           </Button>
 
           <p className="text-xs text-muted text-center pt-1">
@@ -497,6 +495,9 @@ function AuthFlow() {
               pattern="[0-9]*"
               maxLength={1}
               value={digit}
+              aria-label={`Verification code digit ${i + 1}`}
+              aria-invalid={Boolean(otpError)}
+              aria-describedby={otpError ? 'verification-code-error' : undefined}
               onChange={(e) => handleOtpChange(i, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(i, e)}
               disabled={otpLoading}
@@ -512,9 +513,7 @@ function AuthFlow() {
           ))}
         </div>
 
-        {otpError && (
-          <p className="mt-4 text-xs text-danger font-medium">{otpError}</p>
-        )}
+        <AuthError id="verification-code-error" className="mt-4">{otpError}</AuthError>
 
         <div className="mt-8">
           <Button
@@ -522,7 +521,6 @@ function AuthFlow() {
             variant="primary"
             size="lg"
             loading={otpLoading}
-            disabled={!isOtpComplete}
             className={cn('w-full rounded-pill', CTA_GLOW)}
           >
             {!otpLoading && 'Verify'}
@@ -546,14 +544,9 @@ function AuthFlow() {
             )}
           </p>
 
-          {resendMessage && (
-            <p className={cn(
-              'text-xs font-medium',
-              resendState === 'sent' ? 'text-green-deep' : 'text-danger',
-            )}>
-              {resendMessage}
-            </p>
-          )}
+          {resendState === 'sent' ? (
+            <p role="status" className="text-xs font-medium text-green-deep">{resendMessage}</p>
+          ) : <AuthError>{resendMessage}</AuthError>}
         </div>
       </main>
     );
@@ -563,7 +556,6 @@ function AuthFlow() {
   // Uses min-h-[calc(100dvh-3.5rem)] (full dynamic viewport minus Navbar h-14) so
   // the main fills exactly the space below the Navbar without creating page overflow.
   // Content sits at the top; a flex-1 spacer pins Continue to the bottom of the viewport.
-  const nameValid = validateName(name) === null;
   const profileCls = cn(
     'min-h-[calc(100dvh-3.5rem)] flex flex-col px-6 pt-10 pb-[calc(2rem+env(safe-area-inset-bottom))] max-w-sm mx-auto w-full',
     hasTransitioned && 'animate-step-in',
@@ -589,6 +581,8 @@ function AuthFlow() {
             maxLength={50}
             autoComplete="name"
             autoFocus
+            aria-invalid={Boolean(nameError && nameTouched)}
+            aria-describedby={nameError && nameTouched ? 'display-name-error' : 'display-name-hint'}
             className={cn(
               'w-full px-4 py-3 rounded-token-lg border text-sm font-medium text-ink placeholder:text-muted',
               'focus:outline-none focus:ring-2 focus:ring-green transition-colors',
@@ -597,9 +591,9 @@ function AuthFlow() {
             )}
           />
           {nameError && nameTouched ? (
-            <p className="text-xs text-danger font-medium">{nameError}</p>
+            <AuthError id="display-name-error">{nameError}</AuthError>
           ) : (
-            <p className="text-xs text-muted">
+            <p id="display-name-hint" className="text-xs text-muted">
               This is how others on the platform will see you. You can use your nickname or first name.
             </p>
           )}
@@ -614,7 +608,6 @@ function AuthFlow() {
           variant="primary"
           size="lg"
           loading={nameLoading}
-          disabled={!nameValid || nameLoading}
           className={cn('w-full rounded-pill', CTA_GLOW)}
         >
           {!nameLoading && 'Continue'}

@@ -60,7 +60,7 @@ Docker and the Supabase CLI are needed only if you choose to run Supabase locall
 
 ### Sign-in methods
 
-Choose phone OTP or username and password on `/auth`. Password signup requires a unique mobile number for booking contact. It sends no SMS and does not verify ownership of the number. A phone already on an OTP account stays with that account. Use the original sign-in method for an existing account. Password login uses Supabase Auth and needs no MSG91 credentials. Recovery and conversion between sign-in methods are not available yet.
+Choose phone OTP or username and PIN on `/auth`. PIN signup requires a four-digit PIN and a unique mobile number for booking contact. It saves the number without sending a verification SMS. Username sign-in uses Supabase Auth without MSG91. Apply migrations 045 and 046 before enabling PIN signup and sign-in, and retain the server's existing `SUPABASE_PHONE_PASSWORD_SECRET`.
 
 Migration 042 adds the username column and profile trigger. Migration 043 defers the trigger until Supabase Auth has written its signup metadata. If you used the development bootstrap through 042, apply only the pending migration 043. Backend instances sharing a database must use the updated OTP handler before password accounts are registered. The older handler resets passwords on profiles it finds by phone.
 

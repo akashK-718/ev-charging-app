@@ -23,6 +23,12 @@ type BookingStatus =
 export type Database = {
   public: {
     Tables: {
+      pin_sign_in_attempts: {
+        Row: { username: string; attempted_at: string[] };
+        Insert: { username: string; attempted_at: string[] };
+        Update: { username?: string; attempted_at?: string[] };
+        Relationships: [];
+      };
       users: {
         Row: {
           id: string;
@@ -429,6 +435,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      reserve_pin_sign_in_attempt: {
+        Args: { p_username: string };
+        Returns: boolean;
+      };
       create_charger_with_slots: {
         Args: {
           p_lender_id: string;
