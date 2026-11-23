@@ -2,10 +2,12 @@
 const nextConfig = {
   // pdfkit uses dynamic require() for its font/image subsystem — prevent webpack
   // from bundling it and let Node resolve it at runtime in serverless functions.
-  // The webpack externals function is belt-and-suspenders: serverExternalPackages
-  // targets the ssr/rsc layers, but the explicit externals callback reliably
+  // The webpack externals function is belt-and-suspenders: the experimental
+  // serverComponentsExternalPackages option targets the ssr/rsc layers, while the callback
   // catches pdfkit regardless of how webpack resolves it (CJS vs ESM entry).
-  serverExternalPackages: ['pdfkit'],
+  experimental: {
+    serverComponentsExternalPackages: ['pdfkit'],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       const prev = config.externals ?? [];
