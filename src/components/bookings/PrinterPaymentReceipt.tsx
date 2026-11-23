@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ReceiptPrinter, type ReceiptPrinterStage } from "@/components/ui/ReceiptPrinter";
 import type { PaymentData } from "@/components/bookings/PlainPaymentReceipt";
 
@@ -56,12 +56,8 @@ export function PrinterPaymentReceipt({
   const [stage, setStage] = useState<ReceiptPrinterStage>(
     alreadySeen ? "complete" : "processing",
   );
-  // Track whether the printing animation has been triggered this mount
-  const animationFiredRef = useRef(false);
-
   useEffect(() => {
-    if (alreadySeen || animationFiredRef.current) return;
-    animationFiredRef.current = true;
+    if (alreadySeen) return;
 
     // Brief processing frame, then feed the paper
     const printingTimer = setTimeout(() => {
